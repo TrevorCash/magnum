@@ -480,6 +480,9 @@ bool Sdl2Application::tryCreate(const Configuration& configuration, const GLConf
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, glConfiguration.colorBufferSize().a());
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, glConfiguration.depthBufferSize());
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, glConfiguration.stencilBufferSize());
+    SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
+
+
 
     /* Multisampling */
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, glConfiguration.sampleCount() > 1 ? 1 : 0);
@@ -575,6 +578,7 @@ bool Sdl2Application::tryCreate(const Configuration& configuration, const GLConf
     }
 
     /* Create context */
+    _glRenderContext = SDL_GL_CreateContext(_window);
     _glContext = SDL_GL_CreateContext(_window);
 
     #ifndef MAGNUM_TARGET_GLES

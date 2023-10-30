@@ -641,7 +641,10 @@ class Sdl2Application {
          *      @ref CORRADE_TARGET_EMSCRIPTEN "Emscripten".
          */
         SDL_GLContext glContext() { return _glContext; }
+        SDL_GLContext glRenderContext() { return _glRenderContext; }
         #endif
+
+        auto Context() { return &_context.operator*(); }
 
     protected:
         /* Nobody will need to have (and delete) Sdl2Application*, thus this is
@@ -1265,6 +1268,7 @@ class Sdl2Application {
         #ifdef MAGNUM_TARGET_GL
         #ifndef CORRADE_TARGET_EMSCRIPTEN
         SDL_GLContext _glContext{};
+        SDL_GLContext _glRenderContext{};
         #endif
         /* Has to be in an Optional because we delay-create it in a constructor
            with populated Arguments and it gets explicitly destroyed before the
