@@ -337,6 +337,7 @@ endif()
 # SDL2 application
 if(MAGNUM_WITH_SDL2APPLICATION)
     find_package(SDL2)
+    message("SDL2_INCLUDE_DIR is ${SDL2_INCLUDE_DIR}")
     if(NOT SDL2_FOUND)
         message(FATAL_ERROR "SDL2 library, required by Sdl2Application, was not found. Set MAGNUM_WITH_SDL2APPLICATION to OFF to skip building it.")
     endif()
