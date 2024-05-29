@@ -271,11 +271,13 @@ endif()
 
 # GLFW application
 if(MAGNUM_WITH_GLFWAPPLICATION)
-    find_package(GLFW)
-    if(NOT GLFW_FOUND)
+    find_package(glfw3 CONFIG)
+    if(NOT glfw3_FOUND)
         message(FATAL_ERROR "GLFW library, required by GlfwApplication, was not found. Set MAGNUM_WITH_GLFWAPPLICATION to OFF to skip building it.")
     endif()
 
+    get_target_property(incdir glfw INTERFACE_INCLUDE_DIRECTORIES)
+    message("incdir is ${incdir}")
     set(MagnumGlfwApplication_SRCS
         $<TARGET_OBJECTS:MagnumPlatformObjects>
         GlfwApplication.cpp)
@@ -296,7 +298,7 @@ if(MAGNUM_WITH_GLFWAPPLICATION)
     # linked to the executable and not to any intermediate shared lib
     # TODO: use MagnumPlatformObjects instead of ${MagnumPlatform_*} when
     # CMake supports it
-    target_link_libraries(MagnumGlfwApplication PUBLIC Magnum GLFW::GLFW
+    target_link_libraries(MagnumGlfwApplication PUBLIC Magnum glfw
         ${MagnumPlatform_LINK_LIBRARIES})
     target_compile_definitions(MagnumGlfwApplication PRIVATE
         ${MagnumPlatform_COMPILE_DEFINITIONS})
