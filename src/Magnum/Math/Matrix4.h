@@ -1047,6 +1047,11 @@ template<class T> class Matrix4: public Matrix4x4<T> {
         Vector3<T>& translation() { return (*this)[3].xyz(); }
         constexpr Vector3<T> translation() const { return (*this)[3].xyz(); } /**< @overload */
 
+
+
+        void setTranslation(Vector3<T> translation) { (*this)[3].xyz() = translation; }
+
+
         /**
          * @brief Distance to near plane of an orthographic projection matrix
          * @m_since_latest
@@ -1065,6 +1070,7 @@ template<class T> class Matrix4: public Matrix4x4<T> {
         Float orthographicProjectionNear() const {
             return ((*this)[3][2] + T(1))/(*this)[2][2];
         }
+
 
         /**
          * @brief Distance to far plane of an orthographic projection matrix

@@ -50,6 +50,10 @@ template<class T> class BasicMatrixTransformation3D: public AbstractBasicTransla
         /** @brief Object transformation */
         Math::Matrix4<T> transformation() const { return _transformation; }
 
+        /** @brief Object transformation reference*/
+        Math::Matrix4<T>& transformationRef() { return _transformation; }
+
+
         /**
          * @brief Set transformation
          * @return Reference to self (for method chaining)
