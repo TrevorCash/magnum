@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -25,9 +26,11 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#ifdef MAGNUM_TARGET_GL
 /** @file
  * @brief Function @ref Magnum::MeshTools::compile()
  */
+#endif
 
 #include "Magnum/configure.h"
 
@@ -48,6 +51,10 @@ namespace Magnum { namespace MeshTools {
 /**
 @brief Mesh compilation flag
 @m_since{2019,10}
+
+@note This enum is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 
 @see @ref CompileFlags, @ref compile(const Trade::MeshData&, CompileFlags)
 */
@@ -87,6 +94,10 @@ enum class CompileFlag: UnsignedByte {
 /**
 @brief Mesh compilation flags
 @m_since{2019,10}
+
+@note This enum set is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 
 @see @ref compile(const Trade::MeshData&, CompileFlags)
 */
@@ -187,14 +198,14 @@ Assumes the whole vertex / index data are already uploaded to @p indices /
 index/vertex buffer when multiple @ref Trade::MeshData instances share the same
 data arrays, or to allow buffer access later. For example:
 
-@snippet MagnumMeshTools-gl.cpp compile-external
+@snippet MeshTools-gl.cpp compile-external
 
 Another use case is specifying additional vertex attributes that are not
 recognized by the function itself. You can choose among various r-value
 overloads depending on whether you want to have the index/vertex buffers owned
 by the mesh or not:
 
-@snippet MagnumMeshTools-gl.cpp compile-external-attributes
+@snippet MeshTools-gl.cpp compile-external-attributes
 
 If @p mesh is not indexed, the @p indices parameter is ignored --- in that case
 you can pass a @ref NoCreate "NoCreate"-d instance to avoid allocating an
@@ -204,6 +215,10 @@ Compared to @ref compile(const Trade::MeshData&, CompileFlags), this function
 implicitly enables the @ref CompileFlag::NoWarnOnCustomAttributes flag,
 assuming that custom attributes and attributes with implementation-specific
 formats are explicitly handled on the application side.
+
+@note This function is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 */
 MAGNUM_MESHTOOLS_EXPORT GL::Mesh compile(const Trade::MeshData& mesh, GL::Buffer& indices, GL::Buffer& vertices);
 
@@ -320,7 +335,8 @@ Useful to get subsequently fed to
 @ref Shaders::FlatGL::Configuration::setJointCount() or to
 @ref Shaders::FlatGL::setPerVertexJointCount() if
 @ref Shaders::FlatGL::Flag::DynamicPerVertexJointCount is enabled, and
-similarly with other builtin shaders.
+similarly with other builtin shaders. See @ref shaders-usage-skinning for a
+high-level introduction.
 
 @note This function is available only if Magnum is compiled with
     @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features

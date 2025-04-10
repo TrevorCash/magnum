@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
+#include <Corrade/Containers/ArrayView.h> /* arraySize() */
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Bezier.h"
 #include "Magnum/Math/CubicHermite.h"
@@ -891,7 +893,7 @@ void CubicHermiteTest::lerpComplex() {
 void CubicHermiteTest::lerpComplexNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* This one should not assert as the default constructor should create
@@ -902,7 +904,7 @@ void CubicHermiteTest::lerpComplexNotNormalized() {
     CubicHermiteComplex a{{}, Complex{}*2.0f, {}};
     Math::lerp({}, a, 0.3f);
     Math::lerp(a, {}, 0.3f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::lerp(): complex numbers Complex(1, 0) and Complex(2, 0) are not normalized\n"
         "Math::lerp(): complex numbers Complex(2, 0) and Complex(1, 0) are not normalized\n");
 }
@@ -934,7 +936,7 @@ void CubicHermiteTest::lerpQuaternion() {
 void CubicHermiteTest::lerpQuaternionNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* This one should not assert as the default constructor should create
@@ -945,7 +947,7 @@ void CubicHermiteTest::lerpQuaternionNotNormalized() {
     CubicHermiteQuaternion a{{}, Quaternion{}*2.0f, {}};
     Math::lerp({}, a, 0.3f);
     Math::lerp(a, {}, 0.3f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::lerp(): quaternions Quaternion({0, 0, 0}, 1) and Quaternion({0, 0, 0}, 2) are not normalized\n"
         "Math::lerp(): quaternions Quaternion({0, 0, 0}, 2) and Quaternion({0, 0, 0}, 1) are not normalized\n");
 }
@@ -976,7 +978,7 @@ void CubicHermiteTest::lerpQuaternionShortestPath() {
 void CubicHermiteTest::lerpQuaternionShortestPathNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* This one should not assert as the default constructor should create
@@ -988,7 +990,7 @@ void CubicHermiteTest::lerpQuaternionShortestPathNotNormalized() {
     Math::lerpShortestPath({}, a, 0.3f);
     Math::lerpShortestPath(a, {}, 0.3f);
     /* lerpShortestPath() is calling lerp(), so the message is from there */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::lerp(): quaternions Quaternion({0, 0, 0}, 1) and Quaternion({0, 0, 0}, 2) are not normalized\n"
         "Math::lerp(): quaternions Quaternion({0, 0, 0}, 2) and Quaternion({0, 0, 0}, 1) are not normalized\n");
 }
@@ -1014,7 +1016,7 @@ void CubicHermiteTest::slerpComplex() {
 void CubicHermiteTest::slerpComplexNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* This one should not assert as the default constructor should create
@@ -1025,7 +1027,7 @@ void CubicHermiteTest::slerpComplexNotNormalized() {
     CubicHermiteComplex a{{}, Complex{}*2.0f, {}};
     Math::slerp({}, a, 0.3f);
     Math::slerp(a, {}, 0.3f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::slerp(): complex numbers Complex(1, 0) and Complex(2, 0) are not normalized\n"
         "Math::slerp(): complex numbers Complex(2, 0) and Complex(1, 0) are not normalized\n");
 }
@@ -1057,7 +1059,7 @@ void CubicHermiteTest::slerpQuaternion() {
 void CubicHermiteTest::slerpQuaternionNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* This one should not assert as the default constructor should create
@@ -1068,7 +1070,7 @@ void CubicHermiteTest::slerpQuaternionNotNormalized() {
     CubicHermiteQuaternion a{{}, Quaternion{}*2.0f, {}};
     Math::slerp({}, a, 0.3f);
     Math::slerp(a, {}, 0.3f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::slerp(): quaternions Quaternion({0, 0, 0}, 1) and Quaternion({0, 0, 0}, 2) are not normalized\n"
         "Math::slerp(): quaternions Quaternion({0, 0, 0}, 2) and Quaternion({0, 0, 0}, 1) are not normalized\n");
 }
@@ -1100,7 +1102,7 @@ void CubicHermiteTest::slerpQuaternionShortestPath() {
 void CubicHermiteTest::slerpQuaternionShortestPathNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* This one should not assert as the default constructor should create
@@ -1111,7 +1113,7 @@ void CubicHermiteTest::slerpQuaternionShortestPathNotNormalized() {
     CubicHermiteQuaternion a{{}, Quaternion{}*2.0f, {}};
     Math::slerpShortestPath({}, a, 0.3f);
     Math::slerpShortestPath(a, {}, 0.3f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::slerpShortestPath(): quaternions Quaternion({0, 0, 0}, 1) and Quaternion({0, 0, 0}, 2) are not normalized\n"
         "Math::slerpShortestPath(): quaternions Quaternion({0, 0, 0}, 2) and Quaternion({0, 0, 0}, 1) are not normalized\n");
 }
@@ -1174,7 +1176,7 @@ void CubicHermiteTest::splerpComplex() {
 void CubicHermiteTest::splerpComplexNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* This one should not assert as the default constructor should create
@@ -1185,7 +1187,7 @@ void CubicHermiteTest::splerpComplexNotNormalized() {
     CubicHermiteComplex a{{}, Complex{}*2.0f, {}};
     Math::splerp({}, a, 0.3f);
     Math::splerp(a, {}, 0.3f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::splerp(): complex spline points Complex(1, 0) and Complex(2, 0) are not normalized\n"
         "Math::splerp(): complex spline points Complex(2, 0) and Complex(1, 0) are not normalized\n");
 }
@@ -1213,7 +1215,7 @@ void CubicHermiteTest::splerpQuaternion() {
 void CubicHermiteTest::splerpQuaternionNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* This one should not assert as the default constructor should create
@@ -1224,7 +1226,7 @@ void CubicHermiteTest::splerpQuaternionNotNormalized() {
     CubicHermiteQuaternion a{{}, Quaternion{}*2.0f, {}};
     Math::splerp({}, a, 0.3f);
     Math::splerp(a, {}, 0.3f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::splerp(): quaternion spline points Quaternion({0, 0, 0}, 1) and Quaternion({0, 0, 0}, 2) are not normalized\n"
         "Math::splerp(): quaternion spline points Quaternion({0, 0, 0}, 2) and Quaternion({0, 0, 0}, 1) are not normalized\n");
 }
@@ -1249,30 +1251,30 @@ void CubicHermiteTest::strictWeakOrdering() {
 }
 
 void CubicHermiteTest::debugScalar() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << CubicHermite1D{2.0f, 3.0f, -1.0f};
-    CORRADE_COMPARE(out.str(), "CubicHermite(2, 3, -1)\n");
+    CORRADE_COMPARE(out, "CubicHermite(2, 3, -1)\n");
 }
 
 void CubicHermiteTest::debugVector() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << CubicHermite2D{{2.0f, 1.5f}, {3.0f, 0.1f}, {-1.0f, 0.0f}};
-    CORRADE_COMPARE(out.str(), "CubicHermite(Vector(2, 1.5), Vector(3, 0.1), Vector(-1, 0))\n");
+    CORRADE_COMPARE(out, "CubicHermite(Vector(2, 1.5), Vector(3, 0.1), Vector(-1, 0))\n");
 }
 
 void CubicHermiteTest::debugComplex() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << CubicHermiteComplex{{2.0f, 1.5f}, {3.0f, 0.1f}, {-1.0f, 0.0f}};
-    CORRADE_COMPARE(out.str(), "CubicHermite(Complex(2, 1.5), Complex(3, 0.1), Complex(-1, 0))\n");
+    CORRADE_COMPARE(out, "CubicHermite(Complex(2, 1.5), Complex(3, 0.1), Complex(-1, 0))\n");
 }
 
 void CubicHermiteTest::debugQuaternion() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << CubicHermiteQuaternion{
         {{2.0f, 1.5f, 0.3f}, 1.1f},
         {{3.0f, 0.1f, 2.3f}, 0.7f},
         {{-1.0f, 0.0f, 0.3f}, 0.4f}};
-    CORRADE_COMPARE(out.str(), "CubicHermite(Quaternion({2, 1.5, 0.3}, 1.1), Quaternion({3, 0.1, 2.3}, 0.7), Quaternion({-1, 0, 0.3}, 0.4))\n");
+    CORRADE_COMPARE(out, "CubicHermite(Quaternion({2, 1.5, 0.3}, 1.1), Quaternion({3, 0.1, 2.3}, 0.7), Quaternion({-1, 0, 0.3}, 0.4))\n");
 }
 
 }}}}

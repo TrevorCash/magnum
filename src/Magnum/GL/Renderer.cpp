@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -32,6 +33,16 @@
 
 #include "Magnum/GL/Implementation/State.h"
 #include "Magnum/GL/Implementation/RendererState.h"
+
+/* The __EMSCRIPTEN_major__ etc macros used to be passed implicitly, version
+   3.1.4 moved them to a version header and version 3.1.23 dropped the
+   backwards compatibility. To work consistently on all versions, including the
+   header only if the version macros aren't present.
+   https://github.com/emscripten-core/emscripten/commit/f99af02045357d3d8b12e63793cef36dfde4530a
+   https://github.com/emscripten-core/emscripten/commit/f76ddc702e4956aeedb658c49790cc352f892e4c */
+#if defined(CORRADE_TARGET_EMSCRIPTEN) && !defined(__EMSCRIPTEN_major__)
+#include <emscripten/version.h>
+#endif
 
 namespace Magnum { namespace GL {
 
@@ -126,22 +137,25 @@ void Renderer::setFaceCullingMode(const PolygonFacing mode) {
     glCullFace(GLenum(mode));
 }
 
-#ifndef MAGNUM_TARGET_GLES
+#if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
 void Renderer::setProvokingVertex(const ProvokingVertex mode) {
-    glProvokingVertex(GLenum(mode));
+    #ifndef MAGNUM_TARGET_GLES
+    glProvokingVertex
+    #else
+    glProvokingVertexANGLE
+    #endif
+        (GLenum(mode));
 }
 #endif
 
-#ifndef MAGNUM_TARGET_WEBGL
 void Renderer::setPolygonMode(const PolygonMode mode) {
     #ifndef MAGNUM_TARGET_GLES
     glPolygonMode
     #else
-    glPolygonModeNV
+    Context::current().state().renderer.polygonModeImplementation
     #endif
         (GL_FRONT_AND_BACK, GLenum(mode));
 }
-#endif
 
 void Renderer::setPolygonOffset(const Float factor, const Float units) {
     glPolygonOffset(factor, units);
@@ -326,15 +340,17 @@ void Renderer::depthRangefImplementationDefault(const Float near, const Float fa
 }
 #endif
 
-#ifndef MAGNUM_TARGET_WEBGL
 void Renderer::setClipControl(const ClipOrigin origin, const ClipDepth depth) {
     #ifndef MAGNUM_TARGET_GLES
     glClipControl(GLenum(origin), GLenum(depth));
-    #else
+    #elif !defined(MAGNUM_TARGET_WEBGL) || __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 30166
     glClipControlEXT(GLenum(origin), GLenum(depth));
+    #else
+    static_cast<void>(origin);
+    static_cast<void>(depth);
+    CORRADE_INTERNAL_ASSERT_UNREACHABLE();
     #endif
 }
-#endif
 
 void Renderer::setColorMask(const GLboolean allowRed, const GLboolean allowGreen, const GLboolean allowBlue, const GLboolean allowAlpha) {
     glColorMask(allowRed, allowGreen, allowBlue, allowAlpha);
@@ -450,7 +466,6 @@ void Renderer::initializeContextBasedFunctionality() {
     setClearColor(0x1f1f1f_rgbf);
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 Debug& operator<<(Debug& debug, const Renderer::Error value) {
     debug << "GL::Renderer::Error" << Debug::nospace;
 
@@ -471,7 +486,7 @@ Debug& operator<<(Debug& debug, const Renderer::Error value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 #ifndef MAGNUM_TARGET_WEBGL
@@ -487,7 +502,7 @@ Debug& operator<<(Debug& debug, const Renderer::ResetNotificationStrategy value)
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const Renderer::GraphicsResetStatus value) {
@@ -504,9 +519,8 @@ Debug& operator<<(Debug& debug, const Renderer::GraphicsResetStatus value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
-#endif
 #endif
 
 }}

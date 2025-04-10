@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h> /** @todo remove once Debug is stream-free */
 
 #include "Magnum/Text/Direction.h"
 
@@ -44,15 +44,15 @@ DirectionTest::DirectionTest() {
 }
 
 void DirectionTest::debugShape() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << ShapeDirection::RightToLeft << ShapeDirection(0xab);
-    CORRADE_COMPARE(out.str(), "Text::ShapeDirection::RightToLeft Text::ShapeDirection(0xab)\n");
+    CORRADE_COMPARE(out, "Text::ShapeDirection::RightToLeft Text::ShapeDirection(0xab)\n");
 }
 
 void DirectionTest::debugLayout() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << LayoutDirection::VerticalRightToLeft << LayoutDirection(0xab);
-    CORRADE_COMPARE(out.str(), "Text::LayoutDirection::VerticalRightToLeft Text::LayoutDirection(0xab)\n");
+    CORRADE_COMPARE(out, "Text::LayoutDirection::VerticalRightToLeft Text::LayoutDirection(0xab)\n");
 }
 
 }}}}

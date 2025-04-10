@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -81,18 +82,23 @@ template<UnsignedInt dimensions, class T> class CORRADE_DEPRECATED("use Math::Ve
          * @param first     First value
          * @param next      Next values
          */
-        #ifdef DOXYGEN_GENERATING_OUTPUT
-        template<class ...U> constexpr /*implicit*/ Array(T first, U... next);
-        #else
-        template<class ...U, class V = typename std::enable_if<sizeof...(U)+1 == dimensions, T>::type> constexpr /*implicit*/ Array(T first, U... next): _data{first, next...} {}
-        #endif
+        template<class ...U
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<sizeof...(U)+1 == dimensions, int>::type = 0
+            #endif
+        > constexpr /*implicit*/ Array(T first, U... next): _data{first, next...} {}
 
         /** @brief Construct array with one value for all fields */
         #ifdef DOXYGEN_GENERATING_OUTPUT
         constexpr /*implicit*/ Array(T value);
         #else
-        template<class U, class V = typename std::enable_if<std::is_same<T, U>::value && dimensions != 1, T>::type>
-        constexpr /*implicit*/ Array(U value): Array(typename Containers::Implementation::GenerateSequence<dimensions>::Type{}, value) {}
+        #ifdef CORRADE_TARGET_MSVC /* MSVC warns for the constructor delegation */
+        CORRADE_IGNORE_DEPRECATED_PUSH
+        #endif
+        template<class U, typename std::enable_if<std::is_same<T, U>::value && dimensions != 1, int>::type = 0> constexpr /*implicit*/ Array(U value): Array(typename Containers::Implementation::GenerateSequence<dimensions>::Type{}, value) {}
+        #ifdef CORRADE_TARGET_MSVC
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
         #endif
 
         /** @brief Convert to a vector */
@@ -141,8 +147,8 @@ CORRADE_IGNORE_DEPRECATED_PUSH
 /**
 @brief One-dimensional array
 @tparam T           Data type
-@m_deprecated_since_latest Use @ref Math::Vector or @ref Containers::Array1
-    instead.
+@m_deprecated_since_latest Use @ref Math::Vector or
+    @relativeref{Corrade,Containers::Array1} instead.
 */
 template<class T> class CORRADE_DEPRECATED("use Math::Vector or Containers::Array1 instead") Array1D: public Array<1, T> {
     public:
@@ -165,8 +171,8 @@ template<class T> class CORRADE_DEPRECATED("use Math::Vector or Containers::Arra
 /**
 @brief Two-dimensional array
 @tparam T           Data type
-@m_deprecated_since_latest Use @ref Math::Vector2 or @ref Containers::Array2
-    instead.
+@m_deprecated_since_latest Use @ref Math::Vector2 or
+    @relativeref{Corrade,Containers::Array2} instead.
 */
 template<class T> class CORRADE_DEPRECATED("use Math::Vector2 or Containers::Array2 instead")  Array2D: public Array<2, T> {
     public:
@@ -200,8 +206,8 @@ template<class T> class CORRADE_DEPRECATED("use Math::Vector2 or Containers::Arr
 /**
 @brief Three-dimensional array
 @tparam T           Data type
-@m_deprecated_since_latest Use @ref Math::Vector3 or @ref Containers::Array3
-    instead.
+@m_deprecated_since_latest Use @ref Math::Vector3 or
+    @relativeref{Corrade,Containers::Array3} instead.
 */
 template<class T> class CORRADE_DEPRECATED("use Math::Vector3 or Containers::Array3 instead") Array3D: public Array<3, T> {
     public:

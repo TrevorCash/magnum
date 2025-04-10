@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -427,7 +428,7 @@ Debug& operator<<(Debug& debug, const FrameProfiler::Units value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(UnsignedByte(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << UnsignedByte(value) << Debug::nospace << ")";
 }
 
 #ifdef MAGNUM_TARGET_GL
@@ -475,7 +476,11 @@ void FrameProfilerGL::setup(const Values values, const UnsignedInt maxFrameCount
         arrayAppend(measurements, InPlaceInit,
             "Frame time"_s, Units::Nanoseconds, UnsignedInt(Containers::arraySize(_state->frameTimeStartFrame)),
             [](void* state, UnsignedInt current) {
-                static_cast<State*>(state)->frameTimeStartFrame[current] = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+                /* Using steady_clock even though it might not be as precise as
+                   high_resolution_clock in order to avoid the delta being
+                   negative between frames, causing an underflow and an assert
+                   similar to what used to happen for PrimitiveClipRatio */
+                static_cast<State*>(state)->frameTimeStartFrame[current] = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
             },
             [](void*, UnsignedInt) {},
             [](void* state, UnsignedInt previous, UnsignedInt current) {
@@ -489,11 +494,15 @@ void FrameProfilerGL::setup(const Values values, const UnsignedInt maxFrameCount
         arrayAppend(measurements, InPlaceInit,
             "CPU duration"_s, Units::Nanoseconds,
             [](void* state) {
-                static_cast<State*>(state)->cpuDurationStartFrame = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+                /* Using steady_clock even though it might not be as precise as
+                   high_resolution_clock in order to avoid the delta being
+                   negative between frames, causing an underflow and an assert
+                   similar to what used to happen for PrimitiveClipRatio */
+                static_cast<State*>(state)->cpuDurationStartFrame = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
             },
             [](void* state) {
                 /* libc++ 10 needs an explicit cast to UnsignedLong */
-                return UnsignedLong(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() - static_cast<State*>(state)->cpuDurationStartFrame);
+                return UnsignedLong(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() - static_cast<State*>(state)->cpuDurationStartFrame);
             }, _state.get());
         _state->cpuDurationIndex = index++;
     }
@@ -656,7 +665,7 @@ Debug& operator<<(Debug& debug, const FrameProfilerGL::Value value) {
     if(1 << bit == UnsignedShort(value))
         return debug << "::" << Debug::nospace << FrameProfilerGLValueNames[bit];
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(UnsignedShort(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << UnsignedShort(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const FrameProfilerGL::Values value) {

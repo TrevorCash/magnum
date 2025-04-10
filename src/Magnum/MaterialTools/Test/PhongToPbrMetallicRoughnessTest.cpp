@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h> /** @todo remove once Debug is stream-free */
 
 #include "Magnum/DebugTools/CompareMaterial.h"
 #include "Magnum/MaterialTools/PhongToPbrMetallicRoughness.h"
@@ -177,7 +177,7 @@ const struct {
             {Trade::MaterialAttribute::DiffuseTextureCoordinates, 2u},
             {Trade::MaterialAttribute::DiffuseTextureLayer, 155u},
         }}},
-    {"ambient texture properties without texture, fail on unconvertable", PhongToPbrMetallicRoughnessFlag::FailOnUnconvertableAttributes,
+    {"ambient texture properties without texture, fail on unconvertible", PhongToPbrMetallicRoughnessFlag::FailOnUnconvertibleAttributes,
         Trade::MaterialData{{}, {
             {Trade::MaterialAttribute::DiffuseColor, 0xff3366cc_rgbaf},
             {Trade::MaterialAttribute::AmbientTextureMatrix, Matrix3::scaling(Vector2{0.5f})},
@@ -212,9 +212,9 @@ const struct {
             {Trade::MaterialAttribute::SpecularTexture, 3u},
             {Trade::MaterialAttribute::SpecularTextureCoordinates, 2u},
         }},
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::AmbientColor attribute, skipping\n"
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::SpecularTexture attribute, skipping\n"},
-    {"specular color, texture + matrix + layer, ambient texture + coordinates; drop unconvertable", PhongToPbrMetallicRoughnessFlag::DropUnconvertableAttributes,
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::AmbientColor attribute, skipping\n"
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::SpecularTexture attribute, skipping\n"},
+    {"specular color, texture + matrix + layer, ambient texture + coordinates; drop unconvertible", PhongToPbrMetallicRoughnessFlag::DropUnconvertibleAttributes,
         Trade::MaterialData{{}, {
             {Trade::MaterialAttribute::DiffuseColor, 0xff3366cc_rgbaf},
             {Trade::MaterialAttribute::SpecularColor, 0x3366ffff_rgbaf},
@@ -229,9 +229,9 @@ const struct {
             {Trade::MaterialAttribute::BaseColor, 0xff3366cc_rgbaf},
             {Trade::MaterialAttribute::DoubleSided, true}
         }},
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::SpecularColor attribute, skipping\n"
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::AmbientTexture attribute, skipping\n"
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::SpecularTexture attribute, skipping\n"},
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::SpecularColor attribute, skipping\n"
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::AmbientTexture attribute, skipping\n"
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::SpecularTexture attribute, skipping\n"},
 };
 
 const struct {
@@ -240,26 +240,26 @@ const struct {
     Trade::MaterialData material;
     const char* message;
 } FailData[]{
-    {"ambient color, fail on unconvertable", PhongToPbrMetallicRoughnessFlag::FailOnUnconvertableAttributes,
+    {"ambient color, fail on unconvertible", PhongToPbrMetallicRoughnessFlag::FailOnUnconvertibleAttributes,
         Trade::MaterialData{{}, {
             {Trade::MaterialAttribute::AmbientColor, Color4{}},
         }},
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::AmbientColor attribute\n"},
-    {"specular texture, fail on unconvertable", PhongToPbrMetallicRoughnessFlag::FailOnUnconvertableAttributes,
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::AmbientColor attribute\n"},
+    {"specular texture, fail on unconvertible", PhongToPbrMetallicRoughnessFlag::FailOnUnconvertibleAttributes,
         Trade::MaterialData{{}, {
             {Trade::MaterialAttribute::SpecularTexture, 0u},
         }},
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::SpecularTexture attribute\n"},
-    {"shininess, fail on unconvertable", PhongToPbrMetallicRoughnessFlag::FailOnUnconvertableAttributes,
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::SpecularTexture attribute\n"},
+    {"shininess, fail on unconvertible", PhongToPbrMetallicRoughnessFlag::FailOnUnconvertibleAttributes,
         Trade::MaterialData{{}, {
             {Trade::MaterialAttribute::Shininess, 0.5f},
         }},
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::Shininess attribute\n"},
-    {"specular color, both drop & fail on unconvertable", PhongToPbrMetallicRoughnessFlag::FailOnUnconvertableAttributes|PhongToPbrMetallicRoughnessFlag::DropUnconvertableAttributes,
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::Shininess attribute\n"},
+    {"specular color, both drop & fail on unconvertible", PhongToPbrMetallicRoughnessFlag::FailOnUnconvertibleAttributes|PhongToPbrMetallicRoughnessFlag::DropUnconvertibleAttributes,
         Trade::MaterialData{{}, {
             {Trade::MaterialAttribute::SpecularTexture, 0u},
         }},
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::SpecularTexture attribute\n"},
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::SpecularTexture attribute\n"},
 };
 
 PhongToPbrMetallicRoughnessTest::PhongToPbrMetallicRoughnessTest() {
@@ -277,35 +277,35 @@ void PhongToPbrMetallicRoughnessTest::convert() {
     auto&& data = ConvertData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     Warning redirectWarning{&out};
     Containers::Optional<Trade::MaterialData> actual = phongToPbrMetallicRoughness(data.material, data.flags);
     CORRADE_VERIFY(actual);
     CORRADE_COMPARE_AS(*actual, data.expected, DebugTools::CompareMaterial);
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void PhongToPbrMetallicRoughnessTest::warning() {
     auto&& data = WarningData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Containers::Optional<Trade::MaterialData> actual = phongToPbrMetallicRoughness(data.material, data.flags);
     CORRADE_VERIFY(actual);
     CORRADE_COMPARE_AS(*actual, data.expected, DebugTools::CompareMaterial);
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 
 void PhongToPbrMetallicRoughnessTest::fail() {
     auto&& data = FailData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!phongToPbrMetallicRoughness(data.material, data.flags));
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 
 }}}}

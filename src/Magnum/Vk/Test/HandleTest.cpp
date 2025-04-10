@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Vk/Handle.h"
 
@@ -44,15 +44,15 @@ HandleTest::HandleTest() {
 }
 
 void HandleTest::debugHandleFlag() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << HandleFlag::DestroyOnDestruction << HandleFlag(0xf0);
-    CORRADE_COMPARE(out.str(), "Vk::HandleFlag::DestroyOnDestruction Vk::HandleFlag(0xf0)\n");
+    CORRADE_COMPARE(out, "Vk::HandleFlag::DestroyOnDestruction Vk::HandleFlag(0xf0)\n");
 }
 
 void HandleTest::debugHandleFlags() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << (HandleFlag::DestroyOnDestruction|HandleFlag(0xf0)) << HandleFlags{};
-    CORRADE_COMPARE(out.str(), "Vk::HandleFlag::DestroyOnDestruction|Vk::HandleFlag(0xf0) Vk::HandleFlags{}\n");
+    CORRADE_COMPARE(out, "Vk::HandleFlag::DestroyOnDestruction|Vk::HandleFlag(0xf0) Vk::HandleFlags{}\n");
 }
 
 }}}}

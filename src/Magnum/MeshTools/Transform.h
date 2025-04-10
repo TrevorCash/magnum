@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -51,7 +52,7 @@ translation.
 
 Example usage:
 
-@snippet MagnumMeshTools.cpp transformVectors
+@snippet MeshTools.cpp transformVectors
 
 @see @ref transformVectors(), @ref transform2DInPlace(),
     @ref transform3DInPlace(), @ref transformTextureCoordinates2DInPlace(),
@@ -105,7 +106,7 @@ translation.
 
 Example usage:
 
-@snippet MagnumMeshTools.cpp transformPoints
+@snippet MeshTools.cpp transformPoints
 
 @see @ref transformPoints(), @ref transform2DInPlace(),
     @ref transform3DInPlace(), @ref transformTextureCoordinates2DInPlace(),
@@ -151,12 +152,12 @@ template<class T, class U> U transformPoints(const T& transformation, U vectors)
 Expects that the mesh contains a two-dimensional
 @ref Trade::MeshAttribute::Position with index @p id (and in morph target
 @p morphTargetId if not @cpp -1 @ce) and that the attribute does not have an
-implementation-specific format. To avoid data loss with packed types, the  positions are converted to @ref VertexFormat::Vector2 if not
-already. In that case the data layouting is done by @ref interleavedLayout()
-with the @p flags parameter propagated to it, see its documentation for
-detailed behavior description. Other attributes, position attributes other than
-@p id or with different @p morphTargetId, and indices (if any) are passed
-through untouched.
+implementation-specific format. To avoid data loss with packed types, the
+positions are converted to @ref VertexFormat::Vector2 if not already. In that
+case the data layouting is done by @ref interleavedLayout() with the @p flags
+parameter propagated to it, see its documentation for detailed behavior
+description. Other attributes, position attributes other than @p id or with
+different @p morphTargetId, and indices (if any) are passed through untouched.
 
 See also @ref transform2D(Trade::MeshData&&, const Matrix3&, UnsignedInt, Int, InterleaveFlags)
 for a potentially more efficient operation instead of always performing a full
@@ -235,6 +236,11 @@ that case the data layouting is done by @ref interleavedLayout() with the
 behavior description. Other attributes, additional position/TBN attributes
 other than @p id or with different @p morphTargetId, and indices (if any) are
 passed through untouched.
+
+If you're applying negative scaling, you may want to also flip face winding
+afterwards using @ref flipFaceWindingInPlace().
+
+@todoc reference the MeshData flipFaceWindingInPlace variant once it exists
 
 See also @ref transform3D(Trade::MeshData&&, const Matrix4&, UnsignedInt, Int, InterleaveFlags)
 for a potentially more efficient operation instead of always performing a full

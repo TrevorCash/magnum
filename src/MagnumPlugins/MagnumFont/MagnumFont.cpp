@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -39,9 +40,10 @@
 #include <Corrade/Utility/Unicode.h>
 
 #include "Magnum/ImageView.h"
+#include "Magnum/PixelFormat.h"
 #include "Magnum/Math/ConfigurationValue.h"
 #include "Magnum/Text/AbstractShaper.h"
-#include "Magnum/Text/GlyphCache.h"
+#include "Magnum/Text/GlyphCacheGL.h"
 #include "Magnum/Trade/ImageData.h"
 #include "MagnumPlugins/TgaImporter/TgaImporter.h"
 
@@ -137,14 +139,16 @@ auto MagnumFont::doOpenData(const Containers::ArrayView<const char> data, const 
 
 auto MagnumFont::doOpenFile(const Containers::StringView filename, const Float size) -> Properties {
     _opened.emplace();
-    _opened->filePath.emplace(Utility::Path::split(filename).first());
+    _opened->filePath.emplace(Utility::Path::path(filename));
 
     return AbstractFont::doOpenFile(filename, size);
 }
 
-UnsignedInt MagnumFont::doGlyphId(const char32_t character) {
-    auto it = _opened->glyphId.find(character);
-    return it != _opened->glyphId.end() ? it->second : 0;
+void MagnumFont::doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>& characters, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) {
+    for(std::size_t i = 0; i != characters.size(); ++i) {
+        auto it = _opened->glyphId.find(characters[i]);
+        glyphs[i] = it != _opened->glyphId.end() ? it->second : 0;
+    }
 }
 
 Vector2 MagnumFont::doGlyphSize(const UnsignedInt glyph) {
@@ -156,20 +160,26 @@ Vector2 MagnumFont::doGlyphAdvance(const UnsignedInt glyph) {
 }
 
 Containers::Pointer<AbstractGlyphCache> MagnumFont::doCreateGlyphCache() {
-    /* Set cache image */
-    Containers::Pointer<GlyphCache> cache{InPlaceInit,
+    /* Set cache image. Have to create a custom subclass in order to have
+       control over both the source and processed format (where
+       DistanceFieldGlyphCache may set the processed format to RGBA if there's
+       no renderable single-channel format). */
+    /** @todo figure out a nicer way, and ideally how to do this with
+        fillGlyphCache() instead */
+    struct Cache: GlyphCacheGL {
+        explicit Cache(PixelFormat format, const Vector2i& size, PixelFormat processedFormat, const Vector2i& processedSize, const Vector2i& padding): GlyphCacheGL{format, size, processedFormat, processedSize, padding} {}
+
+        GlyphCacheFeatures doFeatures() const override {
+            return GlyphCacheFeature::ImageProcessing;
+        }
+    };
+    Containers::Pointer<Cache> cache{InPlaceInit,
+        PixelFormat::R8Unorm,
         _opened->conf.value<Vector2i>("originalImageSize"),
+        PixelFormat::R8Unorm,
         _opened->image->size(),
         _opened->conf.value<Vector2i>("padding")};
-    /* Copy the opened image data directly to the GL texture because (unlike
-       image()) it matches the actual image size if it differs from
-       originalImageSize. A potential other way would be to create a
-       DistanceFieldGlyphCache instead, and call setDistanceFieldImage() on it,
-       but the font file itself doesn't contain any info about whether it
-       actually is a distance field, so that would be not really any better. */
-    /** @todo clean this up once there's a way to upload the processed image
-        directly from the base class */
-    cache->texture().setSubImage(0, {}, *_opened->image);
+    cache->setProcessedImage({}, *_opened->image);
 
     const std::vector<Utility::ConfigurationGroup*> glyphs = _opened->conf.groups("glyph");
 
@@ -201,7 +211,9 @@ Containers::Pointer<AbstractShaper> MagnumFont::doCreateShaper() {
             for(std::size_t i = 0; i != text.size(); ) {
                 const Containers::Pair<char32_t, std::size_t> codepointNext = Utility::Unicode::nextChar(text, i);
                 const auto it = fontData.glyphId.find(codepointNext.first());
-                arrayAppend(_glyphs, it == fontData.glyphId.end() ? 0 : it->second);
+                arrayAppend(_glyphs, InPlaceInit,
+                    it == fontData.glyphId.end() ? 0 : it->second,
+                    begin + UnsignedInt(i));
                 i = codepointNext.second();
             }
 
@@ -209,19 +221,22 @@ Containers::Pointer<AbstractShaper> MagnumFont::doCreateShaper() {
         }
 
         void doGlyphIdsInto(const Containers::StridedArrayView1D<UnsignedInt>& ids) const override {
-            Utility::copy(_glyphs, ids);
+            Utility::copy(stridedArrayView(_glyphs).slice(&Containers::Pair<UnsignedInt, UnsignedInt>::first), ids);
         }
         void doGlyphOffsetsAdvancesInto(const Containers::StridedArrayView1D<Vector2>& offsets, const Containers::StridedArrayView1D<Vector2>& advances) const override {
             const Data& fontData = *static_cast<const MagnumFont&>(font())._opened;
             for(std::size_t i = 0; i != _glyphs.size(); ++i) {
                 /* There's no glyph offsets in addition to advances */
                 offsets[i] = {};
-                advances[i] = fontData.glyphs[_glyphs[i]].advance;
+                advances[i] = fontData.glyphs[_glyphs[i].first()].advance;
             }
+        }
+        void doGlyphClustersInto(const Containers::StridedArrayView1D<UnsignedInt>& clusters) const override {
+            Utility::copy(stridedArrayView(_glyphs).slice(&Containers::Pair<UnsignedInt, UnsignedInt>::second), clusters);
         }
 
         Containers::StridedArrayView1D<const Vector2> _glyphAdvance;
-        Containers::Array<UnsignedInt> _glyphs;
+        Containers::Array<Containers::Pair<UnsignedInt, UnsignedInt>> _glyphs;
     };
 
     return Containers::pointer<Shaper>(*this);

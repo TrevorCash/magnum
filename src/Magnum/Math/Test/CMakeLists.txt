@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
 #   copy of this software and associated documentation files (the "Software"),
@@ -66,6 +67,8 @@ corrade_add_test(MathMatrix4Test Matrix4Test.cpp LIBRARIES MagnumMathTestLib)
 corrade_add_test(MathSwizzleTest SwizzleTest.cpp LIBRARIES MagnumMathTestLib)
 corrade_add_test(MathUnitTest UnitTest.cpp LIBRARIES MagnumMathTestLib)
 corrade_add_test(MathAngleTest AngleTest.cpp LIBRARIES MagnumMathTestLib)
+corrade_add_test(MathTimeTest TimeTest.cpp LIBRARIES MagnumMathTestLib)
+corrade_add_test(MathTimeStlTest TimeStlTest.cpp LIBRARIES MagnumMathTestLib)
 corrade_add_test(MathRangeTest RangeTest.cpp LIBRARIES MagnumMathTestLib)
 
 corrade_add_test(MathDualTest DualTest.cpp LIBRARIES MagnumMathTestLib)

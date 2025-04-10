@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,15 +24,13 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/Iterable.h>
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/String.h>
 #include <Corrade/Containers/StringIterable.h>
 #include <Corrade/PluginManager/Manager.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 #include <Corrade/Utility/System.h>
 
@@ -797,13 +796,13 @@ template<UnsignedInt dimensions> void LineGLTest::constructUniformBuffersInvalid
         CORRADE_SKIP(GL::Extensions::ARB::uniform_buffer_object::string() << "is not supported.");
     #endif
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     LineGL<dimensions>{typename LineGL<dimensions>::Configuration{}
         .setFlags(data.flags)
         .setMaterialCount(data.materialCount)
         .setDrawCount(data.drawCount)};
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Shaders::LineGL: {}\n", data.message));
 }
 
@@ -825,7 +824,7 @@ template<UnsignedInt dimensions> void LineGLTest::setUniformUniformBuffersEnable
     /* This should work fine */
     shader.setViewportSize({});
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setTransformationProjectionMatrix({})
         .setBackgroundColor({})
@@ -835,7 +834,7 @@ template<UnsignedInt dimensions> void LineGLTest::setUniformUniformBuffersEnable
         .setMiterLengthLimit({})
         .setMiterAngleLimit({})
         .setObjectId({});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::LineGL::setTransformationProjectionMatrix(): the shader was created with uniform buffers enabled\n"
         "Shaders::LineGL::setBackgroundColor(): the shader was created with uniform buffers enabled\n"
         "Shaders::LineGL::setColor(): the shader was created with uniform buffers enabled\n"
@@ -859,7 +858,7 @@ template<UnsignedInt dimensions> void LineGLTest::bindBufferUniformBuffersNotEna
     GL::Buffer buffer;
     LineGL<dimensions> shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindTransformationProjectionBuffer(buffer)
           .bindTransformationProjectionBuffer(buffer, 0, 16)
@@ -868,7 +867,7 @@ template<UnsignedInt dimensions> void LineGLTest::bindBufferUniformBuffersNotEna
           .bindMaterialBuffer(buffer)
           .bindMaterialBuffer(buffer, 0, 16)
           .setDrawOffset(0);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::LineGL::bindTransformationProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::LineGL::bindTransformationProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::LineGL::bindDrawBuffer(): the shader was not created with uniform buffers enabled\n"
@@ -895,10 +894,10 @@ template<UnsignedInt dimensions> void LineGLTest::setMiterLengthLimitInvalid() {
         .setJoinStyle(data.joinStyle)
     };
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setMiterLengthLimit(data.limit);
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Shaders::LineGL::setMiterLengthLimit(): {}\n", data.message));
 }
 
@@ -919,10 +918,10 @@ template<UnsignedInt dimensions> void LineGLTest::setMiterAngleLimitInvalid() {
         .setJoinStyle(data.joinStyle)
     };
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setMiterAngleLimit(data.limit);
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Shaders::LineGL::setMiterAngleLimit(): {}\n", data.message));
 }
 
@@ -938,10 +937,10 @@ template<UnsignedInt dimensions> void LineGLTest::setObjectIdNotEnabled() {
 
     LineGL<dimensions> shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setObjectId(33376);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::LineGL::setObjectId(): the shader was not created with object ID enabled\n");
 }
 
@@ -962,10 +961,10 @@ template<UnsignedInt dimensions> void LineGLTest::setWrongDrawOffset() {
         .setMaterialCount(2)
         .setDrawCount(5)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setDrawOffset(5);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::LineGL::setDrawOffset(): draw offset 5 is out of range for 5 draws\n");
 }
 
@@ -1258,7 +1257,7 @@ template<LineGL2D::Flag flag> void LineGLTest::renderDefaults2D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(SHADERS_TEST_DIR, "LineTestFiles/defaults.tga"),
         (DebugTools::CompareImageToFile{_manager}));
 }
@@ -1356,7 +1355,7 @@ template<LineGL3D::Flag flag> void LineGLTest::renderDefaults3D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(SHADERS_TEST_DIR, "LineTestFiles/defaults.tga"),
         (DebugTools::CompareImageToFile{_manager}));
 }
@@ -1515,7 +1514,7 @@ template<LineGL2D::Flag flag> void LineGLTest::renderLineCapsJoins2D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(image.pixels<Color4ub>()),
+        image.pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({SHADERS_TEST_DIR, "LineTestFiles", data.expected}),
         /* Minor differences on NVidia vs Mesa Intel vs SwiftShader */
         (DebugTools::CompareImageToFile{_manager, 119.0f, 0.111f}));
@@ -1577,11 +1576,9 @@ void LineGLTest::renderLineCapsJoins2DReversed() {
        !(_manager.loadState("TgaImporter") & PluginManager::LoadState::Loaded))
         CORRADE_SKIP("AnyImageImporter / TgaImporter plugins not found.");
 
-    Image2D image = _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm});
-
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(image.pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({SHADERS_TEST_DIR, "LineTestFiles", data.expected}),
         /* Minor differences on NVidia vs Mesa Intel vs SwiftShader */
         /** @todo sync this with render2D() once the overlaps are fixed */
@@ -1639,11 +1636,9 @@ void LineGLTest::renderLineCapsJoins2DTransformed() {
        !(_manager.loadState("TgaImporter") & PluginManager::LoadState::Loaded))
         CORRADE_SKIP("AnyImageImporter / TgaImporter plugins not found.");
 
-    Image2D image = _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm});
-
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(image.pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({SHADERS_TEST_DIR, "LineTestFiles", data.expected}),
         /* Minor differences on NVidia vs Mesa Intel vs SwiftShader */
         (DebugTools::CompareImageToFile{_manager, 119.0f, 0.112f}));
@@ -1844,11 +1839,9 @@ template<LineGL3D::Flag flag> void LineGLTest::renderCube3D() {
        !(_manager.loadState("TgaImporter") & PluginManager::LoadState::Loaded))
         CORRADE_SKIP("AnyImageImporter / TgaImporter plugins not found.");
 
-    Image2D image = _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm});
-
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(image.pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({SHADERS_TEST_DIR, "LineTestFiles", data.expected}),
         /* Minor differences on NVidia vs Mesa Intel vs SwiftShader */
         (DebugTools::CompareImageToFile{_manager, 119.0f, 0.102f}));
@@ -1883,7 +1876,7 @@ void LineGLTest::renderPerspective3D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(SHADERS_TEST_DIR, "LineTestFiles/perspective3D.tga"),
         /* Minor differences on SwiftShader */
         (DebugTools::CompareImageToFile{_manager, 6.0f, 0.025f}));
@@ -1994,7 +1987,7 @@ template<class T, LineGL2D::Flag flag> void LineGLTest::renderVertexColor2D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(SHADERS_TEST_DIR, "LineTestFiles/vertex-color.tga"),
         /* Minor differences on NVidia vs Mesa Intel vs SwiftShader */
         (DebugTools::CompareImageToFile{_manager, 1.34f, 0.028f}));
@@ -2108,7 +2101,7 @@ template<class T, LineGL3D::Flag flag> void LineGLTest::renderVertexColor3D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(SHADERS_TEST_DIR, "LineTestFiles/vertex-color.tga"),
         /* Minor differences on NVidia vs Mesa Intel vs SwiftShader */
         (DebugTools::CompareImageToFile{_manager, 1.34f, 0.028f}));
@@ -2462,7 +2455,7 @@ template<LineGL2D::Flag flag> void LineGLTest::renderInstanced2D() {
        - Third up center, magenta with a yellow base color, so red */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(SHADERS_TEST_DIR, "LineTestFiles/instanced.tga"),
         /* Minor differences on NVidia vs Mesa Intel vs SwiftShader */
         (DebugTools::CompareImageToFile{_manager, 17.0f, 0.107f}));
@@ -2618,7 +2611,7 @@ template<LineGL3D::Flag flag> void LineGLTest::renderInstanced3D() {
        - Third up center, magenta with a yellow base color, so red */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(SHADERS_TEST_DIR, "LineTestFiles/instanced.tga"),
         /* Minor differences on NVidia vs Mesa Intel vs SwiftShader */
         (DebugTools::CompareImageToFile{_manager, 17.0f, 0.107f}));
@@ -2852,7 +2845,7 @@ void LineGLTest::renderMulti2D() {
        - Point up center, red */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(SHADERS_TEST_DIR, "LineTestFiles/multidraw.tga"),
         /* Minor differences on NVidia vs Mesa Intel, also on ARM Mali */
         (DebugTools::CompareImageToFile{_manager, 0.67f, 0.011f}));
@@ -3083,7 +3076,7 @@ void LineGLTest::renderMulti3D() {
        - Point up center, red */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(SHADERS_TEST_DIR, "LineTestFiles/multidraw.tga"),
         /* Minor differences on NVidia vs Mesa Intel, also on ARM Mali */
         (DebugTools::CompareImageToFile{_manager, 0.67f, 0.011f}));

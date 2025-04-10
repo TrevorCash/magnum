@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -68,12 +69,22 @@ template<template<class> class Derived, class T> class Unit {
         /** @brief Explicit conversion to underlying type */
         constexpr explicit operator T() const { return _value; }
 
-        /** @brief Equality comparison */
+        /**
+         * @brief Equality comparison
+         *
+         * Done using @ref TypeTraits::equals(), i.e. with fuzzy compare for
+         * floating-point types.
+         */
         constexpr bool operator==(Unit<Derived, T> other) const {
             return TypeTraits<T>::equals(_value, other._value);
         }
 
-        /** @brief Non-equality comparison */
+        /**
+         * @brief Non-equality comparison
+         *
+         * Done using @ref TypeTraits::equals(), i.e. with fuzzy compare for
+         * floating-point types.
+         */
         constexpr bool operator!=(Unit<Derived, T> other) const {
             return !operator==(other);
         }
@@ -144,6 +155,71 @@ template<template<class> class Derived, class T> class Unit {
             return Unit<Derived, T>(_value*number);
         }
 
+        /**
+         * @brief Multiply a number with a value
+         *
+         * Same as @ref operator*(T) const.
+         */
+        constexpr friend Unit<Derived, T> operator*(
+            #ifdef DOXYGEN_GENERATING_OUTPUT
+            T
+            #else
+            typename std::common_type<T>::type
+            #endif
+            number, Unit<Derived, T> value)
+        {
+            return Unit<Derived, T>{value._value*number};
+        }
+
+        /**
+         * @brief Multiply an integral value with a floating-point number and assign
+         * @m_since_latest
+         *
+         * Similar to @ref operator*=(T), except that the multiplication is
+         * done in floating-point.
+         */
+        template<class FloatingPoint
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , class Integral = T, typename std::enable_if<std::is_integral<Integral>::value && std::is_floating_point<FloatingPoint>::value, int>::type = 0
+            #endif
+        > Unit<Derived, T>& operator*=(FloatingPoint number) {
+            _value = T(_value*number);
+            return *this;
+        }
+
+        /**
+         * @brief Multiply an integral value with a floating-point number
+         * @m_since_latest
+         *
+         * Similar to @ref operator*(T) const, except that the multiplication
+         * is done in floating-point.
+        */
+        /* Note that this one isn't correctly picked up on MSVC 2015, there's
+           an out-of-class overload wrapped in CORRADE_MSVC2015_COMPATIBILITY
+           which is (and the two don't conflict, apparently, so both are
+           present) */
+        template<class FloatingPoint, class Integral = T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_integral<Integral>::value && std::is_floating_point<FloatingPoint>::value, int>::type = 0
+            #endif
+        > constexpr Unit<Derived, T> operator*(FloatingPoint number) const {
+            return Unit<Derived, T>{T(_value*number)};
+        }
+
+        /**
+         * @brief Multiply a floating-point number with an integral value
+         * @m_since_latest
+         *
+         * Same as @ref operator*(FloatingPoint) const.
+         */
+        template<class FloatingPoint
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , class Integral = T, typename std::enable_if<std::is_integral<Integral>::value && std::is_floating_point<FloatingPoint>::value, int>::type = 0
+            #endif
+        > friend constexpr Unit<Derived, T> operator*(FloatingPoint number, const Unit<Derived, T>& value) {
+            return Unit<Derived, T>{T(value._value*number)};
+        }
+
         /** @brief Divide with a number and assign */
         Unit<Derived, T>& operator/=(T number) {
             _value /= number;
@@ -155,21 +231,84 @@ template<template<class> class Derived, class T> class Unit {
             return Unit<Derived, T>(_value/number);
         }
 
+        /**
+         * @brief Divide an integral value with a floating-point number and assign
+         * @m_since_latest
+         *
+         * Similar to @ref operator/=(T), except that the division is done in
+         * floating-point.
+         */
+        template<class FloatingPoint
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , class Integral = T, typename std::enable_if<std::is_integral<Integral>::value && std::is_floating_point<FloatingPoint>::value, int>::type = 0
+            #endif
+        > Unit<Derived, T>& operator/=(FloatingPoint number) {
+            _value = T(_value/number);
+            return *this;
+        }
+
+        /**
+         * @brief Divide an integral value with a floating-point number
+         * @m_since_latest
+         *
+         * Similar to @ref operator/(T) const, except that the division is done
+         * in floating-point.
+        */
+        template<class FloatingPoint
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , class Integral = T, typename std::enable_if<std::is_integral<Integral>::value && std::is_floating_point<FloatingPoint>::value, int>::type = 0
+            #endif
+        > constexpr Unit<Derived, T> operator/(FloatingPoint number) const {
+            return Unit<Derived, T>{T(_value/number)};
+        }
+
         /** @brief Ratio of two values */
         constexpr T operator/(Unit<Derived, T> other) const {
             return _value/other._value;
+        }
+
+        /**
+         * @brief Do modulo of a value and assign
+         * @m_since_latest
+         *
+         * Enabled only for integral types.
+         */
+        #ifndef DOXYGEN_GENERATING_OUTPUT
+        template<class Integral = T, typename std::enable_if<std::is_integral<Integral>::value, int>::type = 0>
+        #endif
+        Unit<Derived, T>& operator%=(Unit<Derived, T> other) {
+            _value %= other._value;
+            return *this;
+        }
+
+        /**
+         * @brief Modulo of a value
+         * @m_since_latest
+         *
+         * Enabled only for integral types.
+         */
+        #ifndef DOXYGEN_GENERATING_OUTPUT
+        template<class Integral = T, typename std::enable_if<std::is_integral<Integral>::value, int>::type = 0>
+        #endif
+        constexpr Unit<Derived, T> operator%(Unit<Derived, T> other) const {
+            return Unit<Derived, T>{_value%other._value};
         }
 
     private:
         T _value;
 };
 
-/** @relates Unit
-@brief Multiply number with value
-*/
-template<template<class> class Derived, class T> constexpr Unit<Derived, T> operator*(typename std::common_type<T>::type number, const Unit<Derived, T>& value) {
+#ifdef CORRADE_MSVC2015_COMPATIBILITY
+/* MSVC 2015 doesn't correctly pick up the in-class inline friend that does
+   this, resulting in float*Unit<int> expressions being wrongly executed as
+   int*Unit<int> due to an implicit conversion fallback. This overload is
+   picked up correctly (and doesn't conflict with the in-class one). See
+   UnitTest::multiplyDivideIntegral() for regression tests, the same issue and
+   a matching workaround is done in Vector as well. */
+template<template<class> class Derived, class FloatingPoint, class Integral, typename std::enable_if<std::is_integral<Integral>::value && std::is_floating_point<FloatingPoint>::value, int>::type = 0> constexpr Unit<Derived, Integral> operator*(FloatingPoint number, const Unit<Derived, Integral>& value) {
     return value*number;
 }
+#endif
 
 }}
 

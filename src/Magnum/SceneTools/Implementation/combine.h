@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -330,11 +331,11 @@ inline Trade::SceneData combineFields(const Trade::SceneMappingType mappingType,
             /** @todo this needs Utility::copy() for bits, which is HARD */
             const Containers::MutableStridedBitArrayView2D dst = itemViews[itemViewMappings[i].second()].bits;
             const std::size_t arraySize = field.fieldArraySize() ? field.fieldArraySize() : 1;
-            for(std::size_t i = 0, iMax = field.size(); i != iMax; ++i) {
-                const Containers::StridedBitArrayView1D srcI = src[i];
-                const Containers::MutableStridedBitArrayView1D dstI = dst[i];
-                for(std::size_t j = 0; j != arraySize; ++j)
-                    dstI.set(j, srcI[j]);
+            for(std::size_t j = 0, iMax = field.size(); j != iMax; ++j) {
+                const Containers::StridedBitArrayView1D srcI = src[j];
+                const Containers::MutableStridedBitArrayView1D dstI = dst[j];
+                for(std::size_t k = 0; k != arraySize; ++k)
+                    dstI.set(k, srcI[k]);
             }
         } else {
             const Containers::StridedArrayView1D<const void> src = field.fieldData();

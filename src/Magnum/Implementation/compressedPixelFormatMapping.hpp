@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,7 +24,7 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-/* each entry is width, height, depth, size in bytes */
+/* each entry is width, height, depth, size in bits */
 #ifdef _c
 /* https://www.khronos.org/registry/DataFormat/specs/1.1/dataformat.1.1.html#_bc1_with_no_alpha */
 _c(Bc1RGBUnorm, 4, 4, 1, 64)

@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
 #   copy of this software and associated documentation files (the "Software"),
@@ -29,6 +30,13 @@ set(CMAKE_FOLDER "Magnum/Test")
 
 find_package(Corrade REQUIRED PluginManager)
 
+corrade_add_test(BritishTest BritishTest.cpp LIBRARIES Magnum)
+# Just to have the GL headers pulled in correctly. Shouldn't be needed in most
+# cases as the headers are self-contained in MagnumExternal, but some platforms
+# such as iOS may disagree.
+if(MAGNUM_TARGET_GL)
+    target_link_libraries(BritishTest PRIVATE MagnumGL)
+endif()
 corrade_add_test(ConverterUtilitiesTest ConverterUtilitiesTest.cpp LIBRARIES Magnum Corrade::PluginManager)
 corrade_add_test(FileCallbackTest FileCallbackTest.cpp LIBRARIES Magnum)
 corrade_add_test(ImageTest ImageTest.cpp LIBRARIES MagnumTestLib)

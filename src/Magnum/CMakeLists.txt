@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
 #   copy of this software and associated documentation files (the "Software"),
@@ -76,9 +77,9 @@ if(Git_FOUND)
         set(MAGNUM_VERSION_COMMIT " ${MAGNUM_VERSION_COMMIT}")
         set(MAGNUM_VERSION_HASH ${CMAKE_MATCH_4})
     elseif(_MAGNUM_VERSION_RESULT EQUAL 0)
-        message(WARNING "Can't match Git version from ${MAGNUM_VERSION_STRING}")
+        message(WARNING "Can't match Git version from ${MAGNUM_VERSION_STRING}, generating a fallback version.h instead")
     else()
-        message(WARNING "Can't match Git version: ${_MAGNUM_VERSION_ERROR}")
+        message(WARNING "Can't match Git version, generating a fallback version.h instead: ${_MAGNUM_VERSION_ERROR}")
     endif()
 endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.h.cmake
@@ -150,6 +151,7 @@ set(MagnumMath_SRCS
     Math/Color.cpp
     Math/Half.cpp
     Math/Packing.cpp
+    Math/Time.cpp
     Math/instantiation.cpp)
 
 set(MagnumMath_GracefulAssert_SRCS
@@ -290,7 +292,7 @@ if(MAGNUM_BUILD_TESTS)
         DEBUG_POSTFIX "-d"
         # Differs from CMAKE_FOLDER
         FOLDER "Magnum/Math")
-    target_link_libraries(MagnumMathTestLib Corrade::Utility)
+    target_link_libraries(MagnumMathTestLib PUBLIC Corrade::Utility)
 
     # Library with graceful assert for testing
     add_library(MagnumTestLib ${SHARED_OR_STATIC} ${EXCLUDE_FROM_ALL_IF_TEST_TARGET}

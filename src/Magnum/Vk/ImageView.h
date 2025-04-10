@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -53,7 +54,7 @@ Similarly to @ref Image, a view is created by passing one of the
 subclass as @ref ImageCreateInfo, but other combinations are possible as well
 --- see docs of each subclass for more information.
 
-@snippet MagnumVk.cpp ImageView-creation
+@snippet Vk.cpp ImageView-creation
 
 While it would be *technically* possible to infer a view type from the
 originating @ref Image and thus avoid having to specify the type twice, the

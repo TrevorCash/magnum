@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -32,10 +33,6 @@
 #include "Magnum/Magnum.h"
 #include "Magnum/GL/OpenGL.h"
 #include "Magnum/GL/visibility.h"
-
-#ifdef MAGNUM_BUILD_DEPRECATED
-#include <Corrade/Utility/Macros.h>
-#endif
 
 namespace Magnum { namespace GL {
 
@@ -951,14 +948,6 @@ enum class TextureFormat: GLenum {
      * @requires_gl Packed 8bit types are not available in OpenGL ES or WebGL.
      */
     R3G3B2 = GL_R3_G3_B2,
-
-    #ifdef MAGNUM_BUILD_DEPRECATED
-    /** RGB, normalized unsigned, red and green component 3bit, blue 2bit.
-     * @m_deprecated_since{2019,10} This one had a misleading typo in the name,
-     *      use @ref TextureFormat::R3G3B2 instead.
-     */
-    R3B3G2 CORRADE_DEPRECATED_ENUM("use R3G3B2 instead") = R3G3B2,
-    #endif
 
     /**
      * RGB, each component normalized unsigned 4bit.
@@ -2707,9 +2696,10 @@ MAGNUM_GL_EXPORT TextureFormat textureFormat(Magnum::CompressedPixelFormat forma
 @brief Convert OpenGL texture format to a generic pixel format
 @m_since_latest
 
-Returns @ref Containers::NullOpt if given format is compressed or if it doesn't
-match any generic pixel format. Otherwise the returned value will result in the
-same @p format when passed back to @ref textureFormat(Magnum::PixelFormat).
+Returns @relativeref{Corrade,Containers::NullOpt} if given format is compressed
+or if it doesn't match any generic pixel format. Otherwise the returned value
+will result in the same @p format when passed back to
+@ref textureFormat(Magnum::PixelFormat).
 
 Unlike mapping *from* a generic pixel format, the inverse operation is done
 with an @f$ \mathcal{O}(n) @f$ complexity.
@@ -2721,10 +2711,10 @@ MAGNUM_GL_EXPORT Containers::Optional<Magnum::PixelFormat> genericPixelFormat(Te
 @brief Convert OpenGL compressed texture format to a generic compressed pixel format
 @m_since_latest
 
-Returns @ref Containers::NullOpt if given format is not compressed or if it
-doesn't match any generic compressed pixel format. Otherwise the returned value
-will result in the same @p format when passed back to
-@ref textureFormat(Magnum::CompressedPixelFormat).
+Returns @relativeref{Corrade,Containers::NullOpt} if given format is not
+compressed or if it doesn't match any generic compressed pixel format.
+Otherwise the returned value will result in the same @p format when passed back
+to @ref textureFormat(Magnum::CompressedPixelFormat).
 
 An exception is ASTC float and normalized formats --- those map to the same
 OpenGL format, e.g. @ref Magnum::CompressedPixelFormat::Astc4x4RGBAUnorm and

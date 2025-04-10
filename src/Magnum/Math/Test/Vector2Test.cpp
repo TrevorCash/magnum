@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Vector3.h" /* Vector3 used in Vector2Test::cross() */
 #include "Magnum/Math/StrictWeakOrdering.h"
@@ -60,7 +61,10 @@ struct Vector2Test: TestSuite::Tester {
     void constructDefault();
     void constructNoInit();
     void constructOneValue();
+    void constructArray();
+    void constructArrayRvalue();
     void constructConversion();
+    void constructBit();
     void constructCopy();
     void convert();
 
@@ -70,6 +74,8 @@ struct Vector2Test: TestSuite::Tester {
     void scales();
     void perpendicular();
     void aspectRatio();
+
+    void multiplyDivideIntegral();
 
     void strictWeakOrdering();
 
@@ -84,7 +90,10 @@ Vector2Test::Vector2Test() {
               &Vector2Test::constructDefault,
               &Vector2Test::constructNoInit,
               &Vector2Test::constructOneValue,
+              &Vector2Test::constructArray,
+              &Vector2Test::constructArrayRvalue,
               &Vector2Test::constructConversion,
+              &Vector2Test::constructBit,
               &Vector2Test::constructCopy,
               &Vector2Test::convert,
 
@@ -94,6 +103,8 @@ Vector2Test::Vector2Test() {
               &Vector2Test::scales,
               &Vector2Test::perpendicular,
               &Vector2Test::aspectRatio,
+
+              &Vector2Test::multiplyDivideIntegral,
 
               &Vector2Test::strictWeakOrdering,
 
@@ -150,6 +161,48 @@ void Vector2Test::constructOneValue() {
     CORRADE_VERIFY(std::is_nothrow_constructible<Vector2, Float>::value);
 }
 
+void Vector2Test::constructArray() {
+    float data[]{1.3f, 2.7f};
+    Vector2 a{data};
+    CORRADE_COMPARE(a, (Vector2{1.3f, 2.7f}));
+
+    constexpr float cdata[]{1.3f, 2.7f};
+    constexpr Vector2 ca{cdata};
+    CORRADE_COMPARE(ca, (Vector2{1.3f, 2.7f}));
+
+    /* Implicit conversion is not allowed */
+    CORRADE_VERIFY(!std::is_convertible<float[2], Vector2>::value);
+
+    CORRADE_VERIFY(std::is_nothrow_constructible<Vector2, float[2]>::value);
+
+    /* See VectorTest::constructArray() for details */
+    #if 0
+    float data1[]{1.3f};
+    float data4[]{1.3f, 2.7f, -15.0f, 7.0f};
+    Vector2 b{data1};
+    Vector2 c{data4};
+    #endif
+}
+
+void Vector2Test::constructArrayRvalue() {
+    /* Silly but why not. Could theoretically help with some fancier types
+       that'd otherwise require explicit typing with the variadic
+       constructor. */
+    Vector2 a{{1.3f, 2.7f}};
+    CORRADE_COMPARE(a, (Vector2{1.3f, 2.7f}));
+
+    constexpr Vector2 ca{{1.3f, 2.7f}};
+    CORRADE_COMPARE(ca, (Vector2{1.3f, 2.7f}));
+
+    /* See VectorTest::constructArrayRvalue() for details. In case of a
+       two-component vector, doing Vector2{{1.3f}} isn't an error, as it picks
+       the one-value overload, and possibly only warns about "braces around
+       scalar initializer". */
+    #if 0
+    Vector2 c{{1.3f, 2.7f, -15.0f, 7.0f}};
+    #endif
+}
+
 void Vector2Test::constructConversion() {
     constexpr Vector2 a(1.5f, 2.5f);
     constexpr Vector2i b(a);
@@ -159,6 +212,20 @@ void Vector2Test::constructConversion() {
     CORRADE_VERIFY(!std::is_convertible<Vector2, Vector2i>::value);
 
     CORRADE_VERIFY(std::is_nothrow_constructible<Vector2, Vector2i>::value);
+}
+
+void Vector2Test::constructBit() {
+    BitVector2 a{'\x1'}; /* 0b01 */
+    CORRADE_COMPARE(Vector2{a}, (Vector2{1.0f, 0.0f}));
+
+    constexpr BitVector2 ca{'\x1'}; /* 0b01 */
+    constexpr Vector2 cb{ca};
+    CORRADE_COMPARE(cb, (Vector2{1.0f, 0.0f}));
+
+    /* Implicit conversion is not allowed */
+    CORRADE_VERIFY(!std::is_convertible<BitVector2, Vector2>::value);
+
+    CORRADE_VERIFY(std::is_nothrow_constructible<Vector2, BitVector2>::value);
 }
 
 void Vector2Test::constructCopy() {
@@ -249,6 +316,30 @@ void Vector2Test::aspectRatio() {
     CORRADE_COMPARE(Vector2(3.0f, 4.0f).aspectRatio(), 0.75f);
 }
 
+void Vector2Test::multiplyDivideIntegral() {
+    const Vector2i vector{32, -6};
+    const Vector2i multiplied{-48, 9};
+
+    CORRADE_COMPARE(vector*-1.5f, multiplied);
+    /* On MSVC 2015 this picks an int*Vector2i overload, leading to a wrong
+       result, unless MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION() is used */
+    CORRADE_COMPARE(-1.5f*vector, multiplied);
+
+    constexpr Vector2i cvector{32, -6};
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* No idea? */
+    constexpr
+    #endif
+    Vector2i ca1 = cvector*-1.5f;
+    /* On MSVC 2015 this picks an int*Vector2i overload, leading to a wrong
+       result, unless MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION() is used */
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* No idea? */
+    constexpr
+    #endif
+    Vector2i ca2 = -1.5f*cvector;
+    CORRADE_COMPARE(ca1, multiplied);
+    CORRADE_COMPARE(ca2, multiplied);
+}
+
 void Vector2Test::strictWeakOrdering() {
     StrictWeakOrdering o;
     const Vector2 v2a{1.0f, 2.0f};
@@ -272,9 +363,9 @@ void Vector2Test::swizzleType() {
 }
 
 void Vector2Test::debug() {
-    std::ostringstream o;
-    Debug(&o) << Vector2(0.5f, 15.0f);
-    CORRADE_COMPARE(o.str(), "Vector(0.5, 15)\n");
+    Containers::String out;
+    Debug{&out} << Vector2(0.5f, 15.0f);
+    CORRADE_COMPARE(out, "Vector(0.5, 15)\n");
 }
 
 }}}}

@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -25,106 +26,34 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#ifdef MAGNUM_BUILD_DEPRECATED
 /** @file
- * @brief Class @ref Magnum::Text::GlyphCache
+ * @brief Typedef @ref Magnum::Text::GlyphCache
+ * @m_deprecated_since_latest Use @ref Magnum/Text/GlyphCacheGL.h
+ *      and the @relativeref{Magnum::Text,GlyphCacheGL} class
+ *      instead.
  */
+#endif
 
 #include "Magnum/configure.h"
 
-#ifdef MAGNUM_TARGET_GL
-#include "Magnum/GL/Texture.h"
-#include "Magnum/Text/AbstractGlyphCache.h"
+#ifdef MAGNUM_BUILD_DEPRECATED
+#include <Corrade/Utility/Macros.h>
+
+#include "Magnum/Text/GlyphCacheGL.h"
+
+CORRADE_DEPRECATED_FILE("use Magnum/Text/GlyphCacheGL.h and the GlyphCacheGL class instead")
 
 namespace Magnum { namespace Text {
 
-/**
-@brief Glyph cache
-
-Contains font glyphs rendered into a texture atlas.
-
-@section Text-GlyphCache-usage Usage
-
-Create the @ref GlyphCache object with sufficient size and then call
-@ref AbstractFont::createGlyphCache() to fill it with glyphs.
-
-@snippet MagnumText-gl.cpp GlyphCache-usage
-
-See the @ref Renderer class for information about text rendering. The
-@ref AbstractGlyphCache base class has more information about general glyph
-cache usage.
-
-@todo Some way for Font to negotiate or check internal texture format
-@todo Default glyph 0 with rect 0 0 0 0 will result in negative dimensions when
-    nonzero padding is removed
-
-@note This class is available only if Magnum is compiled with
-    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
-    for more information.
-*/
-class MAGNUM_TEXT_EXPORT GlyphCache: public AbstractGlyphCache {
-    public:
-        /**
-         * @brief Constructor
-         * @param internalFormat    Internal texture format
-         * @param originalSize      Unscaled glyph cache texture size in pixels
-         * @param size              Actual glyph cache texture size in pixels
-         * @param padding           Padding around every glyph in pixels
-         *
-         * All glyphs parameters are saved relative to @p originalSize,
-         * although the actual glyph cache texture has @p size. Glyph
-         * @p padding can be used to account for e.g. glyph shadows.
-         */
-        explicit GlyphCache(GL::TextureFormat internalFormat, const Vector2i& originalSize, const Vector2i& size, const Vector2i& padding);
-
-        /**
-         * @brief Constructor
-         *
-         * Same as calling the above with @p originalSize and @p size being set
-         * to the same value.
-         */
-        explicit GlyphCache(GL::TextureFormat internalFormat, const Vector2i& size, const Vector2i& padding = {});
-
-        /**
-         * @brief Constructor
-         *
-         * Sets the internal texture format to single-channel. On OpenGL ES
-         * 3.0+ and WebGL 2 uses @ref GL::TextureFormat::R8. On desktop OpenGL
-         * requires @gl_extension{ARB,texture_rg} (also part of OpenGL 3.0). On
-         * ES2 and WebGL 1 unconditionally uses @ref GL::TextureFormat::Luminance.
-         * This is done for consistency with @ref GL::pixelFormat(), which
-         * unconditionally returns @ref GL::PixelFormat::Luminance for
-         * @ref PixelFormat::R8Unorm. See
-         * @ref GlyphCache(GL::TextureFormat, const Vector2i&, const Vector2i&)
-         * for an alternative.
-         */
-        explicit GlyphCache(const Vector2i& originalSize, const Vector2i& size, const Vector2i& padding);
-
-        /**
-         * @brief Constructor
-         *
-         * Same as calling the above with @p originalSize and @p size being set
-         * to the same value.
-         */
-        explicit GlyphCache(const Vector2i& size, const Vector2i& padding = {});
-
-        /** @brief Cache texture */
-        GL::Texture2D& texture() { return _texture; }
-
-    #ifdef DOXYGEN_GENERATING_OUTPUT
-    private:
-    #else
-    protected:
-    #endif
-        GL::Texture2D _texture;
-
-    private:
-        MAGNUM_TEXT_LOCAL GlyphCacheFeatures doFeatures() const override;
-        MAGNUM_TEXT_LOCAL void doSetImage(const Vector2i& offset, const ImageView2D& image) override;
-};
+/** @brief @copybrief GlyphCacheGL
+ * @m_deprecated_since_latest Use @ref GlyphCacheGL instead.
+ */
+typedef CORRADE_DEPRECATED("use GlyphCacheGL instead") GlyphCacheGL GlyphCache;
 
 }}
 #else
-#error this header is available only in the OpenGL build
+#error use Magnum/Text/GlyphCacheGL.h and the GlyphCacheGL class instead
 #endif
 
 #endif

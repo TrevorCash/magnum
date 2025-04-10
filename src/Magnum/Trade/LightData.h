@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -95,6 +96,12 @@ MAGNUM_TRADE_EXPORT Debug& operator<<(Debug& debug, LightType value);
 /**
 @brief Light data
 
+Provides access to light properties. Populated instances of this class are
+returned from @ref AbstractImporter::light() and
+can be passed to @ref AbstractSceneConverter::add(const LightData&, Containers::StringView).
+Similarly to other @ref Trade types, the internal representation is fixed upon
+construction and doesn't allow any modification afterwards.
+
 @section Trade-LightData-usage Usage
 
 The class exposes light parameters in a way that makes sense as a whole,
@@ -111,20 +118,20 @@ parameters and let the class set the rest implicitly. For example, a
 @ref attenuation() implicitly set to @cpp {1.0f, 0.0f, 1.0f} @ce and cone
 angles to @cpp 360.0_degf @ce:
 
-@snippet MagnumTrade.cpp LightData-populating-range
+@snippet Trade.cpp LightData-populating-range
 
 Or, a @ref LightType::Spot light constructed from a constant / linear /
 quadratic attenuation will have @ref range() implicitly set to
 @ref Constants::inf():
 
-@snippet MagnumTrade.cpp LightData-populating-attenuation
+@snippet Trade.cpp LightData-populating-attenuation
 
 And a @ref LightType::Directional light that doesn't attenuate can be
 constructed without either, causing @ref attenuation() to be
 @cpp {1.0f, 0.0f, 0.0f} @ce and @ref range() @ref Constants::inf(), cancelling
 out the attenuation equation:
 
-@snippet MagnumTrade.cpp LightData-populating-none
+@snippet Trade.cpp LightData-populating-none
 
 @section Trade-LightData-attenuation Attenuation calculation
 
@@ -171,8 +178,6 @@ To follow physically-based principles in lighting calculation, intensity is
 assumed to be in in *candela* (lm/sr) for @ref LightType::Point and
 @ref LightType::Spot, and in *lux* (lm/m<sup>2</sup>) for
 @ref LightType::Directional. Distance @f$ d @f$ is in meters.
-
-@see @ref AbstractImporter::light()
 */
 class MAGNUM_TRADE_EXPORT LightData {
     public:

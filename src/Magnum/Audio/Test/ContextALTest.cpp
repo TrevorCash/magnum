@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2015 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,8 +25,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/ArrayView.h>
+#include <Corrade/Containers/Pair.h>
+#include <Corrade/Containers/Reference.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
 
@@ -73,7 +76,7 @@ void ContextALTest::constructDefault() {
     CORRADE_VERIFY(!Context::hasCurrent());
 
     {
-        Context context{arguments().first, arguments().second};
+        Context context{arguments().first(), arguments().second()};
         CORRADE_VERIFY(Context::hasCurrent());
         CORRADE_COMPARE(&Context::current(), &context);
 
@@ -109,7 +112,7 @@ void ContextALTest::constructConfiguration() {
                 .setMonoSourceCount(5)
                 .setStereoSourceCount(4)
                 .setRefreshRate(25),
-            arguments().first, arguments().second
+            arguments().first(), arguments().second()
         };
         CORRADE_VERIFY(Context::hasCurrent());
         CORRADE_COMPARE(&Context::current(), &context);
@@ -129,17 +132,17 @@ void ContextALTest::constructConfiguration() {
             CORRADE_COMPARE(context.stereoSourceCount(), 4);
             CORRADE_COMPARE_AS(context.refreshRate(), 25,
                 TestSuite::Compare::GreaterOrEqual);
-        }
 
-        /* HRTF gets enabled only if the extension is supported */
-        if(context.isExtensionSupported<Extensions::ALC::SOFT::HRTF>()) {
-            CORRADE_COMPARE(context.hrtfStatus(), Context::HrtfStatus::Enabled);
-            CORRADE_VERIFY(!context.hrtfSpecifierString().empty());
-        } else if(context.isExtensionSupported<Extensions::ALC::SOFTX::HRTF>()) {
-            CORRADE_COMPARE(context.hrtfStatus(), Context::HrtfStatus::Enabled);
-            CORRADE_VERIFY(context.hrtfSpecifierString().empty());
-        } else {
-            CORRADE_COMPARE(context.hrtfStatus(), Context::HrtfStatus::Disabled);
+            /* HRTF gets enabled only if the extension is supported */
+            if(context.isExtensionSupported<Extensions::ALC::SOFT::HRTF>()) {
+                CORRADE_COMPARE(context.hrtfStatus(), Context::HrtfStatus::Enabled);
+                CORRADE_VERIFY(!context.hrtfSpecifierString().empty());
+            } else if(context.isExtensionSupported<Extensions::ALC::SOFTX::HRTF>()) {
+                CORRADE_COMPARE(context.hrtfStatus(), Context::HrtfStatus::Enabled);
+                CORRADE_VERIFY(context.hrtfSpecifierString().empty());
+            } else {
+                CORRADE_COMPARE(context.hrtfStatus(), Context::HrtfStatus::Disabled);
+            }
         }
     }
 
@@ -150,7 +153,7 @@ void ContextALTest::constructDeviceNotFound() {
     CORRADE_VERIFY(!Context::hasCurrent());
 
     {
-        Context context{NoCreate, arguments().first, arguments().second};
+        Context context{NoCreate, arguments().first(), arguments().second()};
         {
             #ifdef CORRADE_TARGET_APPLE
             CORRADE_EXPECT_FAIL_IF(context.vendorString() == "Apple Computer Inc.",
@@ -191,11 +194,11 @@ void ContextALTest::quietLog() {
 
     const char* argv[] = { "", "--magnum-log", testCaseInstanceId() ? "quiet" : "default" };
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     /* MSVC 2015 and 2017 needs the int cast otherwise C2398 */
     Context context{int(Containers::arraySize(argv)), argv};
-    CORRADE_COMPARE(out.str().empty(), bool(testCaseInstanceId()));
+    CORRADE_COMPARE(!out, bool(testCaseInstanceId()));
 }
 
 void ContextALTest::ignoreUnrelatedOptions() {

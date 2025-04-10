@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -47,6 +48,8 @@ struct UnitTest: TestSuite::Tester {
     void promotedNegated();
     void addSubtract();
     void multiplyDivide();
+    void multiplyDivideIntegral();
+    void modulo();
 };
 
 UnitTest::UnitTest() {
@@ -61,9 +64,13 @@ UnitTest::UnitTest() {
 
               &UnitTest::promotedNegated,
               &UnitTest::addSubtract,
-              &UnitTest::multiplyDivide});
+              &UnitTest::multiplyDivide,
+              &UnitTest::multiplyDivideIntegral,
+              &UnitTest::modulo});
 }
 
+/* What's a typedef and not a using differs from the typedefs in root Magnum
+   namespace, or is not present there at all */
 template<class> struct Sec_;
 typedef Unit<Sec_, Float> Sec;
 typedef Unit<Sec_, Int> Seci;
@@ -72,10 +79,16 @@ using Magnum::Constants;
 inline Debug& operator<<(Debug& debug, Sec value) {
     return debug << Float(value);
 }
+inline Debug& operator<<(Debug& debug, Seci value) {
+    return debug << Int(value);
+}
 
 void UnitTest::construct() {
-    constexpr Sec a(25.0f);
+    Sec a{25.0f};
     CORRADE_COMPARE(Float(a), 25.0f);
+
+    constexpr Sec ca(25.0f);
+    CORRADE_COMPARE(Float(ca), 25.0f);
 
     /* Implicit conversion is not allowed */
     CORRADE_VERIFY(!std::is_convertible<Float, Sec>::value);
@@ -87,8 +100,13 @@ void UnitTest::construct() {
 void UnitTest::constructDefault() {
     constexpr Sec a;
     constexpr Sec b{ZeroInit};
-    CORRADE_COMPARE(a, Sec(0.0f));
-    CORRADE_COMPARE(b, Sec(0.0f));
+    CORRADE_COMPARE(a, Sec{0.0f});
+    CORRADE_COMPARE(b, Sec{0.0f});
+
+    Sec ca;
+    Sec cb{ZeroInit};
+    CORRADE_COMPARE(ca, Sec{0.0f});
+    CORRADE_COMPARE(cb, Sec{0.0f});
 
     CORRADE_VERIFY(std::is_nothrow_default_constructible<Sec>::value);
     CORRADE_VERIFY(std::is_nothrow_constructible<Sec, ZeroInitT>::value);
@@ -117,9 +135,13 @@ void UnitTest::constructNoInit() {
 }
 
 void UnitTest::constructConversion() {
-    constexpr Seci a(25);
-    constexpr Sec b(a);
-    CORRADE_COMPARE(b, Sec(25.0f));
+    Seci a{25};
+    Sec b{a};
+    CORRADE_COMPARE(b, Sec{25.0f});
+
+    constexpr Seci ca{25};
+    constexpr Sec cb{ca};
+    CORRADE_COMPARE(cb, Sec{25.0f});
 
     /* Implicit conversion is not allowed */
     CORRADE_VERIFY(!std::is_convertible<Sec, Seci>::value);
@@ -128,10 +150,13 @@ void UnitTest::constructConversion() {
 }
 
 void UnitTest::constructCopy() {
-    constexpr Sec a{25.0f};
-
-    constexpr Sec b{a};
+    Sec a{25.0f};
+    Sec b{a};
     CORRADE_COMPARE(b, a);
+
+    constexpr Sec ca{25.0f};
+    constexpr Sec cb{ca};
+    CORRADE_COMPARE(cb, ca);
 
     #ifndef CORRADE_NO_STD_IS_TRIVIALLY_TRAITS
     CORRADE_VERIFY(std::is_trivially_copy_constructible<Sec>::value);
@@ -145,32 +170,47 @@ void UnitTest::compare() {
     CORRADE_VERIFY(Sec(25.0f + TypeTraits<Float>::epsilon()/2.0f) == Sec(25.0f));
     CORRADE_VERIFY(Sec(25.0f + TypeTraits<Float>::epsilon()*75.0f) != Sec(25.0f));
 
-    constexpr bool c = Sec(3.0f) < Sec(3.0f);
-    constexpr bool d = Sec(3.0f) <= Sec(3.0f);
-    constexpr bool e = Sec(3.0f) >= Sec(3.0f);
-    constexpr bool f = Sec(3.0f) > Sec(3.0f);
-    CORRADE_VERIFY(!c);
-    CORRADE_VERIFY(d);
-    CORRADE_VERIFY(e);
-    CORRADE_VERIFY(!f);
+    CORRADE_VERIFY(!(Sec{3.0f} < Sec{3.0f}));
+    CORRADE_VERIFY(Sec{3.0f} <= Sec{3.0f});
+    CORRADE_VERIFY(Sec{3.0f} >= Sec{3.0f});
+    CORRADE_VERIFY(!(Sec{3.0f} > Sec{3.0f}));
 
-    constexpr bool h = Sec(2.0f) < Sec(3.0f);
-    constexpr bool i = Sec(2.0f) <= Sec(3.0f);
-    constexpr bool j = Sec(3.0f) >= Sec(2.0f);
-    constexpr bool k = Sec(3.0f) > Sec(2.0f);
-    CORRADE_VERIFY(h);
-    CORRADE_VERIFY(i);
-    CORRADE_VERIFY(j);
-    CORRADE_VERIFY(k);
+    CORRADE_VERIFY(Sec{2.0f} < Sec{3.0f});
+    CORRADE_VERIFY(Sec{2.0f} <= Sec{3.0f});
+    CORRADE_VERIFY(Sec{3.0f} >= Sec{2.0f});
+    CORRADE_VERIFY(Sec{3.0f} > Sec{2.0f});
 
-    constexpr bool l = Sec(3.0f) < Sec(2.0f);
-    constexpr bool m = Sec(3.0f) <= Sec(2.0f);
-    constexpr bool n = Sec(2.0f) >= Sec(3.0f);
-    constexpr bool o = Sec(2.0f) > Sec(3.0f);
-    CORRADE_VERIFY(!l);
-    CORRADE_VERIFY(!m);
-    CORRADE_VERIFY(!n);
-    CORRADE_VERIFY(!o);
+    CORRADE_VERIFY(!(Sec{3.0f} < Sec{2.0f}));
+    CORRADE_VERIFY(!(Sec{3.0f} <= Sec{2.0f}));
+    CORRADE_VERIFY(!(Sec{2.0f} >= Sec{3.0f}));
+    CORRADE_VERIFY(!(Sec{2.0f} > Sec{3.0f}));
+
+    constexpr bool cc = Sec{3.0f} < Sec{3.0f};
+    constexpr bool cd = Sec{3.0f} <= Sec{3.0f};
+    constexpr bool ce = Sec{3.0f} >= Sec{3.0f};
+    constexpr bool cf = Sec{3.0f} > Sec{3.0f};
+    CORRADE_VERIFY(!cc);
+    CORRADE_VERIFY(cd);
+    CORRADE_VERIFY(ce);
+    CORRADE_VERIFY(!cf);
+
+    constexpr bool ch = Sec{2.0f} < Sec{3.0f};
+    constexpr bool ci = Sec{2.0f} <= Sec{3.0f};
+    constexpr bool cj = Sec{3.0f} >= Sec{2.0f};
+    constexpr bool ck = Sec{3.0f} > Sec{2.0f};
+    CORRADE_VERIFY(ch);
+    CORRADE_VERIFY(ci);
+    CORRADE_VERIFY(cj);
+    CORRADE_VERIFY(ck);
+
+    constexpr bool cl = Sec{3.0f} < Sec{2.0f};
+    constexpr bool cm = Sec{3.0f} <= Sec{2.0f};
+    constexpr bool cn = Sec{2.0f} >= Sec{3.0f};
+    constexpr bool co = Sec{2.0f} > Sec{3.0f};
+    CORRADE_VERIFY(!cl);
+    CORRADE_VERIFY(!cm);
+    CORRADE_VERIFY(!cn);
+    CORRADE_VERIFY(!co);
 }
 
 void UnitTest::compareNaN() {
@@ -179,22 +219,23 @@ void UnitTest::compareNaN() {
 }
 
 void UnitTest::promotedNegated() {
-    constexpr Sec a(25.0f);
-    constexpr Sec b(+a);
-    constexpr Sec c(-a);
-    CORRADE_COMPARE(b, Sec(+25.0f));
-    CORRADE_COMPARE(c, Sec(-25.0f));
+    Sec a{25.0f};
+    CORRADE_COMPARE(+a, Sec{+25.0f});
+    CORRADE_COMPARE(-a, Sec{-25.0f});
+
+    constexpr Sec ca{25.0f};
+    constexpr Sec cb{+ca};
+    constexpr Sec cc{-ca};
+    CORRADE_COMPARE(cb, Sec{+25.0f});
+    CORRADE_COMPARE(cc, Sec{-25.0f});
 }
 
 void UnitTest::addSubtract() {
-    constexpr Sec a(3.0f);
-    constexpr Sec b(-4.0f);
-    constexpr Sec c(-1.0f);
-
-    constexpr Sec d = a + b;
-    constexpr Sec e = c - a;
-    CORRADE_COMPARE(d, c);
-    CORRADE_COMPARE(e, b);
+    Sec a{3.0f};
+    Sec b{-4.0f};
+    Sec c{-1.0f};
+    CORRADE_COMPARE(a + b, c);
+    CORRADE_COMPARE(c - a, b);
 
     Sec f = a;
     f += b;
@@ -202,21 +243,24 @@ void UnitTest::addSubtract() {
     g -= a;
     CORRADE_COMPARE(f, c);
     CORRADE_COMPARE(g, b);
+
+    constexpr Sec ca{3.0f};
+    constexpr Sec cb{-4.0f};
+    constexpr Sec cc{-1.0f};
+
+    constexpr Sec cd = ca + cb;
+    constexpr Sec ce = cc - ca;
+    CORRADE_COMPARE(cd, cc);
+    CORRADE_COMPARE(ce, cb);
 }
 
 void UnitTest::multiplyDivide() {
-    constexpr Sec a(3.0f);
-    constexpr Sec b(-4.5f);
-
-    constexpr Sec c = a*-1.5f;
-    constexpr Sec d = -1.5f*a;
-    constexpr Sec e = b/-1.5f;
-    CORRADE_COMPARE(c, b);
-    CORRADE_COMPARE(d, b);
-    CORRADE_COMPARE(e, a);
-
-    constexpr Float f = b/a;
-    CORRADE_COMPARE(f, -1.5f);
+    Sec a{3.0f};
+    Sec b{-4.5f};
+    CORRADE_COMPARE(a*-1.5f, b);
+    CORRADE_COMPARE(-1.5f*a, b);
+    CORRADE_COMPARE(b/-1.5f, a);
+    CORRADE_COMPARE(b/a, -1.5f);
 
     Sec g = a;
     g *= -1.5f;
@@ -224,6 +268,55 @@ void UnitTest::multiplyDivide() {
     h /= -1.5f;
     CORRADE_COMPARE(g, b);
     CORRADE_COMPARE(h, a);
+
+    constexpr Sec ca{3.0f};
+    constexpr Sec cb{-4.5f};
+    constexpr Sec cc = ca*-1.5f;
+    constexpr Sec cd = -1.5f*ca;
+    constexpr Sec ce = cb/-1.5f;
+    CORRADE_COMPARE(cc, cb);
+    CORRADE_COMPARE(cd, cb);
+    CORRADE_COMPARE(ce, ca);
+
+    constexpr Float cf = cb/ca;
+    CORRADE_COMPARE(cf, -1.5f);
+}
+
+void UnitTest::multiplyDivideIntegral() {
+    CORRADE_COMPARE(Seci{100}*1.25f, Seci{125});
+    CORRADE_COMPARE(Seci{100}/0.8f, Seci{125});
+
+    Seci a{100};
+    Seci b{125};
+    a *= 1.25f;
+    b /= 1.25f;
+    CORRADE_COMPARE(a, Seci{125});
+    CORRADE_COMPARE(b, Seci{100});
+
+    constexpr Seci ca{100};
+    constexpr Seci cb = ca*1.25f;
+    constexpr Seci cc = ca/0.8f;
+    CORRADE_COMPARE(cb, Seci{125});
+    CORRADE_COMPARE(cc, Seci{125});
+}
+
+void UnitTest::modulo() {
+    CORRADE_COMPARE(Seci{255}%Seci{64}, Seci{63});
+    CORRADE_COMPARE(Seci{-6}%Seci{-4}, Seci{-2});
+
+    Seci a{255};
+    Seci b{-6};
+    a %= Seci{64};
+    b %= Seci{-4};
+    CORRADE_COMPARE(a, Seci{63});
+    CORRADE_COMPARE(b, Seci{-2});
+
+    constexpr Seci ca{255};
+    constexpr Seci cb{-6};
+    constexpr Seci cc = ca % Seci{64};
+    constexpr Seci cd = cb % Seci{-4};
+    CORRADE_COMPARE(cc, Seci{63});
+    CORRADE_COMPARE(cd, Seci{-2});
 }
 
 }}}}

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020, 2021 Erik Wijmans <etw@gatech.edu>
     Copyright © 2021 Konstantinos Chatzilygeroudis <costashatz@gmail.com>
 
@@ -337,10 +338,8 @@ WindowlessEglContext::WindowlessEglContext(const Configuration& configuration, G
            the `-s USE_WEBGL2=1` flag anyway, so it doesn't matter that we ask
            for ES2 on WebGL 2 as well. */
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        #elif defined(MAGNUM_TARGET_GLES3)
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
         #else
-        #error unsupported OpenGL edition
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
         #endif
         EGL_NONE
     };
@@ -376,10 +375,8 @@ WindowlessEglContext::WindowlessEglContext(const Configuration& configuration, G
                anyway, so it doesn't matter that we ask for ES2 on WebGL 2 as
                well. https://github.com/emscripten-core/emscripten/pull/7858 */
             2,
-            #elif defined(MAGNUM_TARGET_GLES3)
-            3,
             #else
-            #error unsupported OpenGL ES version
+            3,
             #endif
             #else
             3,
@@ -685,10 +682,6 @@ WindowlessEglContext::Configuration::Configuration()
     addFlags(Flag::ForwardCompatible);
     #endif
 }
-
-#ifndef DOXYGEN_GENERATING_OUTPUT
-WindowlessEglApplication::WindowlessEglApplication(const Arguments& arguments): WindowlessEglApplication{arguments, Configuration{}} {}
-#endif
 
 WindowlessEglApplication::WindowlessEglApplication(const Arguments& arguments, const Configuration& configuration): WindowlessEglApplication{arguments, NoCreate} {
     createContext(configuration);

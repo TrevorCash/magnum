@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -263,9 +264,7 @@ vector of corresponding channel count and then the per-pixel delta is
 calculated as simple sum of per-channel deltas (where @f$ \boldsymbol{a} @f$ is
 the actual pixel value, @f$ \boldsymbol{e} @f$ expected pixel value and @f$ c @f$
 is channel count), with max and mean delta being taken over the whole picture. @f[
-
     \Delta_{\boldsymbol{p}} = \sum\limits_{i=1}^c \dfrac{a_i - e_i}{c}
-
 @f]
 
 The two parameters passed to the @ref CompareImage(Float, Float) constructor
@@ -319,14 +318,14 @@ This type is commonly returned from @ref ImageView::pixels() and allows you to
 do arbitrary operations on the viewed data --- for example, comparing pixel
 data flipped upside down:
 
-@snippet MagnumDebugTools.cpp CompareImage-pixels-flip
+@snippet DebugTools.cpp CompareImage-pixels-flip
 
 For a different scenario, imagine you're comparing data read from a framebuffer
 to a ground truth image. On many systems, internal framebuffer storage has to
-be four-component; however your if your ground truth image is just
-three-component you can cast the pixel data to just a three-component type:
+be four-component; however your if your ground truth image is three-component
+you can slice the pixel data to just the RGB channels:
 
-@snippet MagnumDebugTools-gl.cpp CompareImage-pixels-rgb
+@snippet DebugTools-gl.cpp CompareImage-pixels-rgb
 
 The pixel views are expected to be cast to one of Magnum scalar or vector
 types. The format is then autodetected from the passed type. For types that map
@@ -376,7 +375,7 @@ class CompareImage {
 Similar to @ref CompareImage, but comparing images loaded from files. Example
 usage:
 
-@snippet MagnumDebugTools.cpp CompareImageFile
+@snippet DebugTools.cpp CompareImageFile
 
 By default, the comparator uses a local instance of
 @ref Corrade::PluginManager::Manager to load image files. This might be
@@ -384,7 +383,7 @@ problematic if the code being tested also uses a plugin manager instance or if
 you need to use a different plugin directory, for example. For such cases it's
 possible to supply an external instance:
 
-@snippet MagnumDebugTools.cpp CompareImageFile-manager
+@snippet DebugTools.cpp CompareImageFile-manager
 
 The comparator uses the @ref Trade::AnyImageImporter "AnyImageImporter" plugin,
 which in turn delegates the import to some importer plugin matching the image
@@ -393,7 +392,7 @@ concrete importer plugin(s) need to be available, otherwise the comparison
 fails. An alternative way is manually skipping the test if the plugins are not
 available:
 
-@snippet MagnumDebugTools.cpp CompareImageFile-skip
+@snippet DebugTools.cpp CompareImageFile-skip
 
 See also @ref CompareImageToFile and @ref CompareFileToImage for comparing
 in-memory images to image files and vice versa.
@@ -492,7 +491,7 @@ A combination of @ref CompareImage and @ref CompareImageFile, which allows to
 compare an in-memory image to a image file. See their documentation for more
 information. Example usage:
 
-@snippet MagnumDebugTools.cpp CompareImageToFile
+@snippet DebugTools.cpp CompareImageToFile
 
 @see @ref CompareFileToImage
 */
@@ -564,7 +563,7 @@ A combination of @ref CompareImage and @ref CompareImageFile, which allows to
 compare an image file to an in-memory image. See their documentation for more
 information. Example usage:
 
-@snippet MagnumDebugTools.cpp CompareFileToImage
+@snippet DebugTools.cpp CompareFileToImage
 
 @see @ref CompareImageToFile
 */

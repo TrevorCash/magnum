@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -34,11 +35,13 @@
 #include <Corrade/Utility/String.h> /* parseNumberSequence() */
 
 #include "Magnum/MaterialTools/PhongToPbrMetallicRoughness.h"
+#include "Magnum/MaterialTools/RemoveDuplicates.h"
 #include "Magnum/MeshTools/Concatenate.h"
 #include "Magnum/MeshTools/Copy.h"
 #include "Magnum/MeshTools/RemoveDuplicates.h"
 #include "Magnum/MeshTools/Transform.h"
 #include "Magnum/SceneTools/Hierarchy.h"
+#include "Magnum/SceneTools/Map.h"
 #include "Magnum/Trade/AbstractImporter.h"
 #include "Magnum/Trade/MeshData.h"
 #include "Magnum/Trade/AbstractImageConverter.h"
@@ -146,7 +149,7 @@ magnum-sceneconverter --info-converter -C GltfSceneConverter -c copyright="Me & 
 Processing a glTF file and removing duplicates in all its meshes:
 
 @code{.sh}
-magnum-sceneconverter scene.gltf --remove-duplicates scene.deduplicated.gltf
+magnum-sceneconverter scene.gltf --remove-duplicate-vertices scene.deduplicated.gltf
 @endcode
 
 Processing a glTF file, resizing all its images to 512x512 with
@@ -183,6 +186,7 @@ magnum-sceneconverter [-h|--help] [-I|--importer PLUGIN]
     [--prefer alias:plugin1,plugin2,…]... [--set plugin:key=val,key2=val2,…]...
     [--map] [--only-mesh-attributes N1,N2-N3…] [--remove-duplicate-vertices]
     [--remove-duplicate-vertices-fuzzy EPSILON] [--phong-to-pbr]
+    [--remove-duplicate-materials]
     [-i|--importer-options key=val,key2=val2,…]
     [-c|--converter-options key=val,key2=val2,…]...
     [-p|--image-converter-options key=val,key2=val2,…]...
@@ -216,8 +220,9 @@ Arguments:
 -   `--map` --- memory-map the input for zero-copy import (works only for
     standalone files)
 -   `--only-mesh-attributes N1,N2-N3…` --- include only mesh attributes of
-    given IDs in the output. See @ref Utility::String::parseNumberSequence()
-    for syntax description.
+    given IDs in the output. See
+    @relativeref{Corrade,Utility::String::parseNumberSequence()} for syntax
+    description.
 -   `--remove-duplicate-vertices` --- remove duplicate vertices using
     @ref MeshTools::removeDuplicates(const Trade::MeshData&) in all meshes
     after import
@@ -226,6 +231,8 @@ Arguments:
     in all meshes after import
 -   `--phong-to-pbr` --- convert Phong materials to PBR metallic/roughness
     using @ref MaterialTools::phongToPbrMetallicRoughness()
+-   `--remove-duplicate-materials` --- remove duplicate materials using
+    @ref MaterialTools::removeDuplicatesInPlace()
 -   `-i`, `--importer-options key=val,key2=val2,…` --- configuration options to
     pass to the importer
 -   `-c`, `--converter-options key=val,key2=val2,…` --- configuration options
@@ -307,8 +314,9 @@ feature for given image dimensions, all mesh converters in the chain have to
 support the ConvertMesh feature. If no `-P` / `-M` is specified, the imported
 images / meshes are passed directly to the scene converter.
 
-The `--remove-duplicate-vertices` and `--phong-to-pbr` operations are performed
-on meshes and materials before passing them to any converter.
+The `--remove-duplicate-vertices`, `--phong-to-pbr` and
+`--remove-duplicate-materials` operations are performed on meshes and materials
+before passing them to any converter.
 
 If `--concatenate-meshes` is given, all meshes of the input file are
 first concatenated into a single mesh using @ref MeshTools::concatenate(), with
@@ -430,6 +438,7 @@ int main(int argc, char** argv) {
         .addBooleanOption("remove-duplicate-vertices").setHelp("remove-duplicate-vertices", "remove duplicate vertices in all meshes after import")
         .addOption("remove-duplicate-vertices-fuzzy").setHelp("remove-duplicate-vertices-fuzzy", "remove duplicate vertices with fuzzy comparison in all meshes after import", "EPSILON")
         .addBooleanOption("phong-to-pbr").setHelp("phong-to-pbr", "convert Phong materials to PBR metallic/roughness")
+        .addBooleanOption("remove-duplicate-materials").setHelp("remove-duplicate-materials", "remove duplicate materials")
         .addOption('i', "importer-options").setHelp("importer-options", "configuration options to pass to the importer", "key=val,key2=val2,…")
         .addArrayOption('c', "converter-options").setHelp("converter-options", "configuration options to pass to the converter(s)", "key=val,key2=val2,…")
         .addArrayOption('p', "image-converter-options").setHelp("image-converter-options", "configuration options to pass to the image converter(s)", "key=val,key2=val2,…")
@@ -508,8 +517,9 @@ feature for given image dimensions, all mesh converters in the chain have to
 support the ConvertMesh feature. If no -P / -M is specified, the imported
 images / meshes are passed directly to the scene converter.
 
-The --remove-duplicate-vertices and --phong-to-pbr operations are performed on
-meshes and materials before passing them to any converter.
+The --remove-duplicate-vertices, --phong-to-pbr and
+--remove-duplicate-materials operations are performed on meshes and materials
+before passing them to any converter.
 
 If --concatenate-meshes is given, all meshes of the input file are first
 concatenated into a single mesh, with the scene hierarchy transformation baked
@@ -576,7 +586,7 @@ well, the IDs reference attributes of the first mesh.)")
     PluginManager::Manager<Trade::AbstractImporter> importerManager{
         #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
         args.value("plugin-dir").empty() ? Containers::String{} :
-        Utility::Path::join(args.value("plugin-dir"), Utility::Path::split(Trade::AbstractImporter::pluginSearchPaths().back()).second())
+        Utility::Path::join(args.value("plugin-dir"), Utility::Path::filename(Trade::AbstractImporter::pluginSearchPaths().back()))
         #endif
     };
 
@@ -586,7 +596,7 @@ well, the IDs reference attributes of the first mesh.)")
     PluginManager::Manager<Trade::AbstractImageConverter> imageConverterManager{
         #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
         args.value("plugin-dir").empty() ? Containers::String{} :
-        Utility::Path::join(args.value("plugin-dir"), Utility::Path::split(Trade::AbstractImageConverter::pluginSearchPaths().back()).second())
+        Utility::Path::join(args.value("plugin-dir"), Utility::Path::filename(Trade::AbstractImageConverter::pluginSearchPaths().back()))
         #endif
     };
 
@@ -594,7 +604,7 @@ well, the IDs reference attributes of the first mesh.)")
     PluginManager::Manager<Trade::AbstractSceneConverter> converterManager{
         #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
         args.value("plugin-dir").empty() ? Containers::String{} :
-        Utility::Path::join(args.value("plugin-dir"), Utility::Path::split(Trade::AbstractSceneConverter::pluginSearchPaths().back()).second())
+        Utility::Path::join(args.value("plugin-dir"), Utility::Path::filename(Trade::AbstractSceneConverter::pluginSearchPaths().back()))
         #endif
     };
     converterManager.registerExternalManager(imageConverterManager);
@@ -783,6 +793,28 @@ well, the IDs reference attributes of the first mesh.)")
     /* Wow, C++, you suck. This implicitly initializes to random shit?! */
     std::chrono::high_resolution_clock::duration conversionTime{};
 
+    /* Import all scenes, in case something later needs to modify them. There's
+       currently no other operations done on those. */
+    Containers::Array<Trade::SceneData> scenes;
+    if(args.isSet("remove-duplicate-materials")) {
+        arrayReserve(scenes, importer->sceneCount());
+
+        for(UnsignedInt i = 0; i != importer->sceneCount(); ++i) {
+            Containers::Optional<Trade::SceneData> scene;
+            {
+                Trade::Implementation::Duration d{importConversionTime};
+                if(!(scene = importer->scene(i))) {
+                    Error{} << "Cannot import scene" << i;
+                    return 1;
+                }
+            }
+
+            /* There's currently no operations done on scenes directly */
+
+            arrayAppend(scenes, *Utility::move(scene));
+        }
+    }
+
     /* Take a single mesh or concatenate all meshes together, if requested.
        After that, the importer is changed to one that contains just a single
        mesh... */
@@ -821,9 +853,11 @@ well, the IDs reference attributes of the first mesh.)")
             if(importer->defaultScene() != -1 || importer->sceneCount()) {
                 Containers::Optional<Trade::SceneData> scene;
                 {
-                    /** @todo make it possible to choose the scene, or possibly
-                        fail if there are multiple scenes but no default one
-                        and require the user to pick? */
+                    /** @todo once the required SceneTools APIs exist, rework
+                        this to concatenate only what actually makes sense (and
+                        thus preserve the (multi-)scene hierarchy, with the
+                        original behavior only being achievable if everything
+                        except meshes and scene hierarchy is filtered away */
                     const UnsignedInt defaultScene = importer->defaultScene() == -1 ? 0 : importer->defaultScene();
                     Trade::Implementation::Duration d{importConversionTime};
                     if(!(scene = importer->scene(defaultScene))) {
@@ -1097,7 +1131,9 @@ well, the IDs reference attributes of the first mesh.)")
        any, materials are supplied manually to the converter from the array
        below. */
     Containers::Array<Trade::MaterialData> materials;
-    if(args.isSet("phong-to-pbr")) {
+    if(args.isSet("phong-to-pbr") ||
+       args.isSet("remove-duplicate-materials"))
+    {
         arrayReserve(materials, importer->materialCount());
 
         for(UnsignedInt i = 0; i != importer->materialCount(); ++i) {
@@ -1118,11 +1154,38 @@ well, the IDs reference attributes of the first mesh.)")
                 Trade::Implementation::Duration d{conversionTime};
                 /** @todo make the flags configurable as well? then the below
                     assert can actually fire, convert to a runtime error */
-                material = MaterialTools::phongToPbrMetallicRoughness(*material, MaterialTools::PhongToPbrMetallicRoughnessFlag::DropUnconvertableAttributes);
+                material = MaterialTools::phongToPbrMetallicRoughness(*material, MaterialTools::PhongToPbrMetallicRoughnessFlag::DropUnconvertibleAttributes);
                 CORRADE_INTERNAL_ASSERT(material);
             }
 
             arrayAppend(materials, *Utility::move(material));
+        }
+
+        /* Duplicate removal */
+        if(args.isSet("remove-duplicate-materials")) {
+            Trade::Implementation::Duration d{conversionTime};
+
+            Containers::Pair<Containers::Array<UnsignedInt>, std::size_t> mapping = MaterialTools::removeDuplicatesInPlace(materials);
+            if(args.isSet("verbose"))
+                Debug{} << "Duplicate material removal:" << materials.size() << "->" << mapping.second() << "materials";
+
+            arrayRemoveSuffix(materials, materials.size() - mapping.second());
+
+            /* Remap scene material references. The scenes should have been
+               imported for --remove-duplicate-materials above already. */
+            CORRADE_INTERNAL_ASSERT(scenes.size() == importer->sceneCount());
+            for(Trade::SceneData& scene: scenes) {
+                if(const Containers::Optional<UnsignedInt> materialFieldId = scene.findFieldId(Trade::SceneField::MeshMaterial)) {
+                    /** @todo handle a case with immutable scene data, once it
+                        exists (PrimitiveImporter is closest, but it doesn't
+                        have materials so it never enters this branch) */
+
+                    /* Deduplication makes the material index range smaller, so
+                       we can map them in-place without having to worry that
+                       the new indices won't fit into existing packed types */
+                    SceneTools::mapIndexFieldInPlace(scene, *materialFieldId, mapping.first());
+                }
+            }
         }
     }
 
@@ -1193,6 +1256,8 @@ well, the IDs reference attributes of the first mesh.)")
         /** @todo make it possible to filter this on the command line, once the
             converters receive this for SceneData, MaterialData and TextureData
             as well */
+        /** @todo and then also test all branching on Names in direct image,
+            mesh, material and scene import */
         Trade::SceneContents contents = ~Trade::SceneContents{};
 
         /* If there are any loose images from previous conversion steps, add
@@ -1326,11 +1391,11 @@ well, the IDs reference attributes of the first mesh.)")
 
             if(!(Trade::sceneContentsFor(*converter) & Trade::SceneContent::Materials)) {
                 Warning{} << "Ignoring" << materials.size() << "materials not supported by the converter";
-            } else for(UnsignedInt i = 0; i != materials.size(); ++i) {
+            } else for(UnsignedInt j = 0; j != materials.size(); ++j) {
                 Trade::Implementation::Duration d{conversionTime};
 
-                if(!converter->add(materials[i], contents & Trade::SceneContent::Names ? importer->materialName(i) : Containers::String{})) {
-                    Error{} << "Cannot add material" << i;
+                if(!converter->add(materials[j], contents & Trade::SceneContent::Names ? importer->materialName(j) : Containers::String{})) {
+                    Error{} << "Cannot add material" << j;
                     return 1;
                 }
             }
@@ -1348,6 +1413,58 @@ well, the IDs reference attributes of the first mesh.)")
                 that each change the output to verify the old materials don't
                 get reused in the next step again */
             materials = {};
+        }
+
+        /* If there are any loose scenes from previous conversion steps, add
+           them directly, and clear the array so the next iteration (if any)
+           takes them from the importer instead */
+        if(scenes) {
+            /* Scenes may reference almost everything else except skins an
+               animations (which reference scenes instead), thus we need to add
+               all that first */
+            {
+                const Trade::SceneContents sceneDependencies = contents &
+                    ~(Trade::SceneContent::Skins2D|
+                      Trade::SceneContent::Skins3D|
+                      Trade::SceneContent::Scenes|
+                      Trade::SceneContent::Animations);
+
+                Trade::Implementation::Duration d{importConversionTime};
+                if(!converter->addSupportedImporterContents(*importer, sceneDependencies)) {
+                    Error{} << "Cannot add scene dependencies";
+                    return 5;
+                }
+
+                /* Ensure these are not added by addSupportedImporterContents()
+                   again below, except for names -- those should be added as
+                   long as they were in the contents originally. */
+                contents &= ~(sceneDependencies & ~Trade::SceneContent::Names);
+            }
+
+            if(!(Trade::sceneContentsFor(*converter) & Trade::SceneContent::Scenes)) {
+                Warning{} << "Ignoring" << scenes.size() << "scenes not supported by the converter";
+            } else for(UnsignedInt j = 0; j != scenes.size(); ++j) {
+                Trade::Implementation::Duration d{conversionTime};
+
+                if(!converter->add(scenes[j], contents & Trade::SceneContent::Names ? importer->sceneName(j) : Containers::String{})) {
+                    Error{} << "Cannot add scene" << j;
+                    return 1;
+                }
+            }
+
+            /* Ensure the scenes are not added by
+               addSupportedImporterContents() below. Do this also in case the
+               converter actually doesn't support scene addition, as it would
+               otherwise cause two warnings about the same "not supported"
+               thing being printed. */
+            contents &= ~Trade::SceneContent::Scenes;
+
+            /* Delete the list to avoid adding them again for the next
+               converter (at which point they would be stale) */
+            /** @todo this line is untested, needs two chained conversion steps
+                that each change the output to verify the old scenes don't get
+                reused in the next step again */
+            scenes = {};
         }
 
         {

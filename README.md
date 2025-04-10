@@ -1,4 +1,4 @@
-Magnum — *Lightweight and modular C++11/C++14 graphics middleware for games and data visualization*
+Magnum — *Lightweight and modular C++11 graphics middleware for games and data visualization*
 
 Looking for an open-source library that gives you graphics abstraction and
 platform independence on major desktop, mobile and web platforms? Do you want
@@ -10,7 +10,6 @@ commercial purposes.
 [![Build Status](https://circleci.com/gh/mosra/magnum.svg?style=shield)](https://circleci.com/gh/mosra/magnum)
 [![Build Status](https://ci.appveyor.com/api/projects/status/5b477m034cfaskse/branch/master?svg=true)](https://ci.appveyor.com/project/mosra/magnum/branch/master)
 [![Coverage Status](https://codecov.io/gh/mosra/magnum/branch/master/graph/badge.svg)](https://codecov.io/gh/mosra/magnum)
-[![Hunter Package](https://img.shields.io/badge/hunter-magnum-lightgrey.svg)](https://hunter.readthedocs.io/en/latest/packages/pkg/magnum.html)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 -   Project homepage — https://magnum.graphics/
@@ -145,8 +144,7 @@ possible.
 -   Gitter community chat — https://gitter.im/mosra/magnum
 -   E-mail — info@magnum.graphics
 -   Google Groups mailing list — magnum-engine@googlegroups.com ([archive](https://groups.google.com/forum/#!forum/magnum-engine))
--   Twitter — https://twitter.com/czmosra and the
-    [#MagnumEngine](https://twitter.com/hashtag/MagnumEngine) hashtag
+-   Bluesky — https://bsky.app/profile/mosra.cz
 
 See also the Magnum Project [Contact & Support page](https://magnum.graphics/contact/)
 for further information.
@@ -154,8 +152,11 @@ for further information.
 CREDITS
 =======
 
-See the [CREDITS.md](CREDITS.md) file for details. Big thanks to everyone
-involved!
+[Detailed contributor list](https://doc.magnum.graphics/magnum/credits-contributors.html)
+is maintained in the documentation. Big thanks to everyone involved!
+
+There's also a list of [third party components](https://doc.magnum.graphics/magnum/credits-third-party.html)
+that affect public use of the project.
 
 LICENSE
 =======

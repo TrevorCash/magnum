@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -125,21 +126,13 @@ Enabled by default in a static build. On Windows see also the
 #define MAGNUM_BUILD_STATIC_UNIQUE_GLOBALS
 #undef MAGNUM_BUILD_STATIC_UNIQUE_GLOBALS
 
-#ifdef MAGNUM_BUILD_DEPRECATED
-/** @brief Multi-threaded build
- * @m_deprecated_since{2019,10} Use @ref CORRADE_BUILD_MULTITHREADED instead.
- */
-#define MAGNUM_BUILD_MULTITHREADED
-#undef MAGNUM_BUILD_MULTITHREADED
-#endif
-
 /**
 @brief OpenGL interoperability
 
 Defined if the engine is built with OpenGL interoperability enabled --- extra
 APIs in various libraries interacting with the @ref Magnum::GL "GL" library.
 Enabled by default in case the @ref Magnum::GL "GL" library is built.
-@see @ref MAGNUM_TARGET_GLES2, @ref MAGNUM_TARGET_GLES3,
+@see @ref MAGNUM_TARGET_GLES, @ref MAGNUM_TARGET_GLES2,
     @ref MAGNUM_TARGET_EGL, @ref building, @ref cmake
 */
 #define MAGNUM_TARGET_GL
@@ -149,47 +142,45 @@ Enabled by default in case the @ref Magnum::GL "GL" library is built.
 @brief OpenGL ES target
 
 Defined if the engine is built for OpenGL ES 3.0 or OpenGL ES 2.0.
-@see @ref MAGNUM_TARGET_GLES2, @ref MAGNUM_TARGET_GLES3,
-    @ref MAGNUM_TARGET_EGL, @ref building, @ref cmake
+@see @ref MAGNUM_TARGET_GLES2, @ref MAGNUM_TARGET_EGL, @ref building,
+    @ref cmake
 */
 #define MAGNUM_TARGET_GLES
 #undef MAGNUM_TARGET_GLES
 
 /**
-@brief OpenGL ES 2.0 target
+@brief WebGL target
 
-Defined if the engine is built for OpenGL ES 2.0. Implies also
-@ref MAGNUM_TARGET_GLES.
-@see @ref MAGNUM_TARGET_GLES3, @ref MAGNUM_TARGET_EGL, @ref building,
-    @ref cmake
+Defined if the engine is built for WebGL (using Emscripten). WebGL 1 is nearly
+equivalent to OpenGL ES 2.0 and WebGL 2 to OpenGL ES 3.0, thus in most cases
+you don't need to treat it differently, but there are some specific
+restrictions and differences [compared to OpenGL ES 2.0](http://www.khronos.org/registry/webgl/specs/latest/1.0/#6)
+and to [OpenGL ES 3.0](https://registry.khronos.org/webgl/specs/latest/2.0/#5)
+which you might want to be aware of. Implies also @ref MAGNUM_TARGET_GLES.
+@see @ref MAGNUM_TARGET_GLES2 @ref CORRADE_TARGET_EMSCRIPTEN, @ref building, @ref cmake
+*/
+#define MAGNUM_TARGET_WEBGL
+#undef MAGNUM_TARGET_WEBGL
+
+/**
+@brief OpenGL ES 2.0 / WebGL 1.0 target
+
+Defined if the engine is built for OpenGL ES 2.0 / WebGL 1.0 instead of OpenGL
+ES 3.0+ / WebGL 2. Implies also @ref MAGNUM_TARGET_GLES.
+@see @ref MAGNUM_TARGET_EGL, @ref building, @ref cmake
 */
 #define MAGNUM_TARGET_GLES2
 #undef MAGNUM_TARGET_GLES2
 
+#ifdef MAGNUM_BUILD_DEPRECATED
 /**
-@brief OpenGL ES 3.0 target
-
-Defined if the engine is built for OpenGL ES 3.0. Implies also
-@ref MAGNUM_TARGET_GLES.
-@see @ref MAGNUM_TARGET_GLES2, @ref MAGNUM_TARGET_EGL, @ref building,
-    @ref cmake
+@brief OpenGL ES 3.0+ / WebGL 2.0 target
+@m_deprecated_since_latest This macro is simply an inverse of
+    @ref MAGNUM_TARGET_GLES2, use that one instead.
 */
 #define MAGNUM_TARGET_GLES3
 #undef MAGNUM_TARGET_GLES3
-
-/**
-@brief WebGL target
-
-Defined if the engine is built for WebGL (using Emscripten). WebGL is nearly
-equivalent to OpenGL ES 2.0, thus in most cases you don't need to treat it
-differently, but there are some
-[specific restrictions and features](http://www.khronos.org/registry/webgl/specs/latest/1.0/#6)
-which you might want to be aware of. Implies also @ref MAGNUM_TARGET_GLES and
-@ref MAGNUM_TARGET_GLES2.
-@see @ref CORRADE_TARGET_EMSCRIPTEN, @ref building, @ref cmake
-*/
-#define MAGNUM_TARGET_WEBGL
-#undef MAGNUM_TARGET_WEBGL
+#endif
 
 /**
 @brief EGL target
@@ -528,6 +519,98 @@ typedef Math::Color4<UnsignedByte> Color4ub;
 typedef Math::Color4<UnsignedShort> Color4us;
 
 /**
+@brief Float matrix with 2 columns and 1 row
+@m_since_latest
+*/
+typedef Math::Matrix2x1<Float> Matrix2x1;
+
+/**
+@brief 2x2 float matrix
+
+Equivalent to GLSL @glsl mat2x2 @ce.
+@m_keyword{mat2x2,GLSL mat2x2,}
+*/
+typedef Math::Matrix2x2<Float> Matrix2x2;
+
+/**
+@brief Float matrix with 2 columns and 3 rows
+
+Equivalent to GLSL @glsl mat2x3 @ce.
+@m_keyword{mat2x3,GLSL mat2x3,}
+*/
+typedef Math::Matrix2x3<Float> Matrix2x3;
+
+/**
+@brief Float matrix with 2 columns and 4 rows
+
+Equivalent to GLSL @glsl mat2x4 @ce.
+@m_keyword{mat2x4,GLSL mat2x4,}
+*/
+typedef Math::Matrix2x4<Float> Matrix2x4;
+
+/**
+@brief Float matrix with 3 columns and 1 row
+@m_since_latest
+*/
+typedef Math::Matrix3x1<Float> Matrix3x1;
+
+/**
+@brief Float matrix with 3 columns and 2 rows
+
+Equivalent to GLSL @glsl mat3x2 @ce.
+@m_keyword{mat3x2,GLSL mat3x2,}
+*/
+typedef Math::Matrix3x2<Float> Matrix3x2;
+
+/**
+@brief 3x3 float matrix
+
+Equivalent to GLSL @glsl mat3x3 @ce. Note that this is different from
+@ref Matrix3, which contains additional functions for transformations in 2D.
+@m_keyword{mat3x3,GLSL mat3x3,}
+*/
+typedef Math::Matrix3x3<Float> Matrix3x3;
+
+/**
+@brief Float matrix with 3 columns and 4 rows
+
+Equivalent to GLSL @glsl mat3x4 @ce.
+@m_keyword{mat3x4,GLSL mat3x4,}
+*/
+typedef Math::Matrix3x4<Float> Matrix3x4;
+
+/**
+@brief Float matrix with 4 columns and 1 row
+@m_since_latest
+*/
+typedef Math::Matrix4x1<Float> Matrix4x1;
+
+/**
+@brief Float matrix with 4 columns and 2 rows
+
+Equivalent to GLSL @glsl mat2x4 @ce.
+@m_keyword{mat2x4,GLSL mat2x4,}
+*/
+typedef Math::Matrix4x2<Float> Matrix4x2;
+
+/**
+@brief Float matrix with 4 columns and 3 rows
+
+Equivalent to GLSL @glsl mat4x3 @ce.
+@m_keyword{mat4x3,GLSL mat4x3,}
+*/
+typedef Math::Matrix4x3<Float> Matrix4x3;
+
+/**
+@brief 4x4 float matrix
+
+Equivalent to GLSL @glsl mat4x4 @ce. Note that this is different from
+@ref Matrix4, which contains additional functions for transformations in 3D.
+@m_keyword{mat4x4,GLSL mat4x4,}
+*/
+typedef Math::Matrix4x4<Float> Matrix4x4;
+
+/**
 @brief 3x3 float transformation matrix
 
 Equivalent to GLSL @glsl mat3 @ce.
@@ -546,84 +629,10 @@ Equivalent to GLSL @glsl mat4 @ce.
 typedef Math::Matrix4<Float> Matrix4;
 
 /**
-@brief 2x2 float matrix
-
-Equivalent to GLSL @glsl mat2x2 @ce.
-@m_keyword{mat2x2,GLSL mat2x2,}
-*/
-typedef Math::Matrix2x2<Float> Matrix2x2;
-
-/**
-@brief 3x3 float matrix
-
-Equivalent to GLSL @glsl mat3x3 @ce. Note that this is different from
-@ref Matrix3, which contains additional functions for transformations in 2D.
-@m_keyword{mat3x3,GLSL mat3x3,}
-*/
-typedef Math::Matrix3x3<Float> Matrix3x3;
-
-/**
-@brief 4x4 float matrix
-
-Equivalent to GLSL @glsl mat4x4 @ce. Note that this is different from
-@ref Matrix4, which contains additional functions for transformations in 3D.
-@m_keyword{mat4x4,GLSL mat4x4,}
-*/
-typedef Math::Matrix4x4<Float> Matrix4x4;
-
-/**
-@brief Float matrix with 2 columns and 3 rows
-
-Equivalent to GLSL @glsl mat2x3 @ce.
-@m_keyword{mat2x3,GLSL mat2x3,}
-*/
-typedef Math::Matrix2x3<Float> Matrix2x3;
-
-/**
-@brief Float matrix with 3 columns and 2 rows
-
-Equivalent to GLSL @glsl mat3x2 @ce.
-@m_keyword{mat3x2,GLSL mat3x2,}
-*/
-typedef Math::Matrix3x2<Float> Matrix3x2;
-
-/**
-@brief Float matrix with 2 columns and 4 rows
-
-Equivalent to GLSL @glsl mat2x4 @ce.
-@m_keyword{mat2x4,GLSL mat2x4,}
-*/
-typedef Math::Matrix2x4<Float> Matrix2x4;
-
-/**
-@brief Float matrix with 4 columns and 2 rows
-
-Equivalent to GLSL @glsl mat2x4 @ce.
-@m_keyword{mat2x4,GLSL mat2x4,}
-*/
-typedef Math::Matrix4x2<Float> Matrix4x2;
-
-/**
-@brief Float matrix with 3 columns and 4 rows
-
-Equivalent to GLSL @glsl mat3x4 @ce.
-@m_keyword{mat3x4,GLSL mat3x4,}
-*/
-typedef Math::Matrix3x4<Float> Matrix3x4;
-
-/**
-@brief Float matrix with 4 columns and 3 rows
-
-Equivalent to GLSL @glsl mat4x3 @ce.
-@m_keyword{mat4x3,GLSL mat4x3,}
-*/
-typedef Math::Matrix4x3<Float> Matrix4x3;
-
-/**
 @brief Signed byte matrix with 2 columns and 2 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 8-bit types. For
+Storage only, in order to support matrices packed into 8-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 
@@ -637,7 +646,7 @@ typedef Math::Matrix2x2<Byte> Matrix2x2b;
 @brief Signed byte matrix with 2 columns and 3 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 8-bit types. For
+Storage only, in order to support matrices packed into 8-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 
@@ -651,7 +660,7 @@ typedef Math::Matrix2x3<Byte> Matrix2x3b;
 @brief Signed byte matrix with 2 columns and 4 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 8-bit types. For
+Storage only, in order to support matrices packed into 8-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 */
@@ -661,7 +670,7 @@ typedef Math::Matrix2x4<Byte> Matrix2x4b;
 @brief Signed byte matrix with 3 columns and 2 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 8-bit types. For
+Storage only, in order to support matrices packed into 8-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 
@@ -675,7 +684,7 @@ typedef Math::Matrix3x2<Byte> Matrix3x2b;
 @brief Signed byte matrix with 3 columns and 3 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 8-bit types. For
+Storage only, in order to support matrices packed into 8-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 
@@ -689,7 +698,7 @@ typedef Math::Matrix3x3<Byte> Matrix3x3b;
 @brief Signed byte matrix with 3 columns and 4 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 8-bit types. For
+Storage only, in order to support matrices packed into 8-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 */
@@ -699,7 +708,7 @@ typedef Math::Matrix3x4<Byte> Matrix3x4b;
 @brief Signed byte matrix with 4 columns and 2 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 8-bit types. For
+Storage only, in order to support matrices packed into 8-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 
@@ -713,7 +722,7 @@ typedef Math::Matrix4x2<Byte> Matrix4x2b;
 @brief Signed byte matrix with 4 columns and 3 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 8-bit types. For
+Storage only, in order to support matrices packed into 8-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 
@@ -727,7 +736,7 @@ typedef Math::Matrix4x3<Byte> Matrix4x3b;
 @brief Signed byte matrix with 4 columns and 4 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 8-bit types. For
+Storage only, in order to support matrices packed into 8-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 */
@@ -737,7 +746,7 @@ typedef Math::Matrix4x4<Byte> Matrix4x4b;
 @brief Signed short matrix with 2 columns and 2 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 16-bit types. For
+Storage only, in order to support matrices packed into 16-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 */
@@ -747,7 +756,7 @@ typedef Math::Matrix2x2<Short> Matrix2x2s;
 @brief Signed short matrix with 2 columns and 3 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 16-bit types. For
+Storage only, in order to support matrices packed into 16-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 
@@ -761,7 +770,7 @@ typedef Math::Matrix2x3<Short> Matrix2x3s;
 @brief Signed short matrix with 2 columns and 4 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 16-bit types. For
+Storage only, in order to support matrices packed into 16-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 */
@@ -771,7 +780,7 @@ typedef Math::Matrix2x4<Short> Matrix2x4s;
 @brief Signed short matrix with 3 columns and 2 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 16-bit types. For
+Storage only, in order to support matrices packed into 16-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 */
@@ -781,7 +790,7 @@ typedef Math::Matrix3x2<Short> Matrix3x2s;
 @brief Signed short matrix with 3 columns and 3 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 16-bit types. For
+Storage only, in order to support matrices packed into 16-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 
@@ -795,7 +804,7 @@ typedef Math::Matrix3x3<Short> Matrix3x3s;
 @brief Signed short matrix with 3 columns and 4 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 16-bit types. For
+Storage only, in order to support matrices packed into 16-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 */
@@ -805,7 +814,7 @@ typedef Math::Matrix3x4<Short> Matrix3x4s;
 @brief Signed short matrix with 4 columns and 2 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 16-bit types. For
+Storage only, in order to support matrices packed into 16-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 */
@@ -815,7 +824,7 @@ typedef Math::Matrix4x2<Short> Matrix4x2s;
 @brief Signed short matrix with 4 columns and 3 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 16-bit types. For
+Storage only, in order to support matrices packed into 16-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 
@@ -829,7 +838,7 @@ typedef Math::Matrix4x3<Short> Matrix4x3s;
 @brief Signed short matrix with 4 columns and 4 rows
 @m_since{2020,06}
 
-Storage only, in ordet to support matrices packed into 16-bit types. For
+Storage only, in order to support matrices packed into 16-bit types. For
 performing arithmetic on this type use @ref Math::unpack() / @ref Math::unpackInto() to convert to a float type first and then @ref Math::pack()
 / @ref Math::packInto() back again.
 */
@@ -921,6 +930,18 @@ typedef Math::Range3D<Int> Range3Di;
 
 /** @brief Float frustum */
 typedef Math::Frustum<Float> Frustum;
+
+/**
+@brief 64-bit signed integer nanoseconds
+@m_since_latest
+*/
+typedef Math::Nanoseconds<Long> Nanoseconds;
+
+/**
+@brief 32-bit float seconds
+@m_since_latest
+*/
+typedef Math::Seconds<Float> Seconds;
 
 /* Since 1.8.17, the original short-hand group closing doesn't work anymore.
    FFS. */
@@ -1124,12 +1145,48 @@ Equivalent to GLSL @glsl dmat4 @ce.
 typedef Math::Matrix4<Double> Matrix4d;
 
 /**
+@brief Double matrix with 2 columns and 1 row
+@m_since_latest
+*/
+typedef Math::Matrix2x1<Double> Matrix2x1d;
+
+/**
 @brief 2x2 double matrix
 
 Equivalent to GLSL @glsl dmat2x2 @ce.
 @m_keyword{dmat2x2,GLSL dmat2x2,}
 */
 typedef Math::Matrix2x2<Double> Matrix2x2d;
+
+/**
+@brief Double matrix with 2 columns and 3 rows
+
+Equivalent to GLSL @glsl dmat2x3 @ce.
+@m_keyword{dmat2x3,GLSL dmat2x3,}
+*/
+typedef Math::Matrix2x3<Double> Matrix2x3d;
+
+/**
+@brief Double matrix with 2 columns and 4 rows
+
+Equivalent to GLSL @glsl dmat2x4 @ce.
+@m_keyword{dmat2x4,GLSL dmat2x4,}
+*/
+typedef Math::Matrix2x4<Double> Matrix2x4d;
+
+/**
+@brief Double matrix with 3 columns and 1 row
+@m_since_latest
+*/
+typedef Math::Matrix3x1<Double> Matrix3x1d;
+
+/**
+@brief Double matrix with 3 columns and 2 rows
+
+Equivalent to GLSL @glsl dmat3x2 @ce.
+@m_keyword{dmat3x2,GLSL dmat3x2,}
+*/
+typedef Math::Matrix3x2<Double> Matrix3x2d;
 
 /**
 @brief 3x3 double matrix
@@ -1141,37 +1198,18 @@ Equivalent to GLSL @glsl dmat3x3 @ce. Note that this is different from
 typedef Math::Matrix3x3<Double> Matrix3x3d;
 
 /**
-@brief 4x4 double matrix
+@brief Double matrix with 3 columns and 4 rows
 
-Equivalent to GLSL @glsl dmat4x4 @ce. Note that this is different from
-@ref Matrix4d, which contains additional functions for transformations in 3D.
-@m_keyword{dmat4x4,GLSL dmat4x4,}
+Equivalent to GLSL @glsl dmat3x4 @ce.
+@m_keyword{dmat3x4,GLSL dmat3x4,}
 */
-typedef Math::Matrix4x4<Double> Matrix4x4d;
+typedef Math::Matrix3x4<Double> Matrix3x4d;
 
 /**
-@brief Double matrix with 2 columns and 3 rows
-
-Equivalent to GLSL @glsl dmat2x3 @ce.
-@m_keyword{dmat2x3,GLSL dmat2x3,}
+@brief Double matrix with 4 columns and 1 row
+@m_since_latest
 */
-typedef Math::Matrix2x3<Double> Matrix2x3d;
-
-/**
-@brief Double matrix with 3 columns and 2 rows
-
-Equivalent to GLSL @glsl dmat3x2 @ce.
-@m_keyword{dmat3x2,GLSL dmat3x2,}
-*/
-typedef Math::Matrix3x2<Double> Matrix3x2d;
-
-/**
-@brief Double matrix with 2 columns and 4 rows
-
-Equivalent to GLSL @glsl dmat2x4 @ce.
-@m_keyword{dmat2x4,GLSL dmat2x4,}
-*/
-typedef Math::Matrix2x4<Double> Matrix2x4d;
+typedef Math::Matrix4x1<Double> Matrix4x1d;
 
 /**
 @brief Double matrix with 4 columns and 2 rows
@@ -1182,20 +1220,21 @@ Equivalent to GLSL @glsl dmat4x2 @ce.
 typedef Math::Matrix4x2<Double> Matrix4x2d;
 
 /**
-@brief Double matrix with 3 columns and 4 rows
-
-Equivalent to GLSL @glsl dmat3x4 @ce.
-@m_keyword{dmat3x4,GLSL dmat3x4,}
-*/
-typedef Math::Matrix3x4<Double> Matrix3x4d;
-
-/**
 @brief Double matrix with 4 columns and 3 rows
 
 Equivalent to GLSL @glsl dmat4x3 @ce.
 @m_keyword{dmat4x3,GLSL dmat4x3,}
 */
 typedef Math::Matrix4x3<Double> Matrix4x3d;
+
+/**
+@brief 4x4 double matrix
+
+Equivalent to GLSL @glsl dmat4x4 @ce. Note that this is different from
+@ref Matrix4d, which contains additional functions for transformations in 3D.
+@m_keyword{dmat4x4,GLSL dmat4x4,}
+*/
+typedef Math::Matrix4x4<Double> Matrix4x4d;
 
 /** @brief Double two-dimensional quadratic Bézier curve */
 typedef Math::QuadraticBezier2D<Double> QuadraticBezier2Dd;

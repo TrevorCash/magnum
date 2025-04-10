@@ -2,8 +2,10 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2018 Jonathan Hale <squareys@googlemail.com>
+    Copyright © 2024 Igal Alkon <igal.alkon@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -65,13 +67,15 @@ The easiest way to install Magnum is to use one of the ready-made packages for
 your platform of choice. See @ref building-manual if you want to have more
 control and @ref building-cross for cross-compiling to other platforms.
 
--   @ref building-packages-hunter
--   @ref building-packages-vcpkg
 -   @ref building-packages-arch
 -   @ref building-packages-msys
 -   @ref building-packages-deb
 -   @ref building-packages-gentoo
+-   @ref building-packages-rpm
 -   @ref building-packages-brew
+-   @ref building-packages-cpm
+-   @ref building-packages-vcpkg
+-   @ref building-packages-hunter
 
 The engine itself is kept as small as possible with only minimal dependencies.
 In order to use extra functionality, often depending on external libraries, you
@@ -82,12 +86,245 @@ physics libraries is provided by @ref building-integration "Integration librarie
 and other extra features are in the @ref building-extras "Extra libraries".
 Various examples are provided by the @ref building-examples "Example repository".
 
-@subsection building-packages-hunter Hunter package
+@subsection building-packages-arch ArchLinux packages
 
-Starting from version 2019.01, stable releases of Magnum are available in the
-[Hunter](https://hunter.readthedocs.io) CMake-driven package manager. See the
-[magnum package documentation](https://hunter.readthedocs.io/en/latest/packages/pkg/magnum.html)
-for details.
+Package for the latest stable release is maintained in the `community` repo.
+Installing is as simple as this:
+
+@code{.sh}
+sudo pacman -S magnum
+@endcode
+
+In `package/archlinux/magnum-git` there is a package for Git development build.
+The package is also in AUR as
+[magnum-git](https://aur.archlinux.org/packages/magnum-git/). It depends on the
+@ref building-corrade-packages-arch "Corrade ArchLinux package".
+
+There are also quite a few development packages for native builds, OpenGL ES
+builds, cross-compilation for Emscripten, Android and MinGW or various
+sanitizer/coverage builds. See the PKGBUILD files in the `package/archlinux`
+directory. They allow you to build and install the package directly from the
+source tree. Example usage:
+
+@code{.sh}
+git clone https://github.com/mosra/magnum && cd magnum
+cd package/archlinux
+makepkg -fp PKGBUILD # or any other PKGBUILD file
+@endcode
+
+In most cases the development PKGBUILDs also contain a @cb{.sh} check() @ce
+function which will run all unit tests before packaging. That might sometimes
+fail or take too long, pass `--nocheck` to `makepkg` to skip that.
+
+Once built, install the package using `pacman`:
+
+@code{.sh}
+sudo pacman -U magnum-*.pkg.tar.zst
+@endcode
+
+Edit the PKGBUILDs if you want to pass additional flags to CMake or
+@ref building-features "enable / disable additional features".
+
+There are also ArchLinux packages for @ref building-plugins-packages-arch "Magnum Plugins",
+@ref building-extras-packages-arch "Magnum Extras",
+@ref building-integration-packages-arch "Magnum Integration" and
+@ref building-examples-packages-arch "Magnum Examples".
+
+@subsection building-packages-msys MSYS2 packages
+
+[MSYS2](https://www.msys2.org/) package for the latest stable release is
+maintained in the official repos. Installing is as simple as this:
+
+@code{.sh}
+pacman -S mingw-w64-x86_64-magnum # or mingw-w64-i686-magnum
+@endcode
+
+Similarly to ArchLinux, there is one package in the `package/msys/magnum`
+directory, which will download and package latest stable release; and then a
+development `PKGBUILD` in `package/msys`, allowing you to package and install
+the currently checked out source tree. Both depend on a corresponding
+@ref building-corrade-packages-msys "Corrade MSYS2 package". Example usage:
+
+@code{.sh}
+git clone https://github.com/mosra/magnum && cd magnum
+cd package/msys
+makepkg -fp PKGBUILD
+@endcode
+
+The above works in a 32/64bit MinGW shell, from a MSYS shell the equivalent
+command is
+
+@code{.sh}
+makepkg-mingw -fp PKGBUILD
+@endcode
+
+@m_class{m-noindent}
+
+which will build both a 32bit and a 64bit version. See the
+[MSYS2 Wiki](https://github.com/msys2/msys2/wiki/Creating-Packages) for more
+information.
+
+There are also MSYS2 packages for @ref building-plugins-packages-msys "Magnum Plugins"
+and @ref building-integration-packages-msys "Magnum Integration".
+
+@subsection building-packages-deb Packages for Debian, Ubuntu and derivatives
+
+The `package/debian/` directory contains all files needed for building Debian
+packages. You need the @ref building-corrade-packages-deb "Corrade Debian package"
+installed and in addition also the `dpkg-dev` and `debhelper` packages.
+Building is easy, just change directory to package root, link or copy
+`package/debian` directory there and run `dpkg-buildpackage`:
+
+@code{.sh}
+git clone https://github.com/mosra/magnum && cd magnum
+ln -s package/debian .
+dpkg-buildpackage --no-sign
+@endcode
+
+This will compile binary and development packages, which will then appear in a
+parent directory. Install them using `dpkg`:
+
+@code{.sh}
+sudo dpkg -i ../magnum*.deb
+@endcode
+
+If you want to pass additional flags to CMake or
+@ref building-features "enable / disable additional features", add them to
+`dh_auto_configure` at the bottom of `debian/rules`. Watch out, as
+indentation has to be done using tabs, not spaces.
+
+There are also Debian packages for @ref building-plugins-packages-deb "Magnum Plugins",
+@ref building-extras-packages-deb "Magnum Extras",
+@ref building-integration-packages-deb "Magnum Integration" and
+@ref building-examples-packages-deb "Magnum Examples".
+
+@subsection building-packages-gentoo Gentoo Linux ebuilds
+
+Gentoo Git ebuild is available in the `package/gentoo` directory. Get the
+@ref building-corrade-packages-gentoo "Corrade Gentoo package" first and then
+build and install Magnum like this:
+
+@code{.sh}
+git clone https://github.com/mosra/magnum && cd magnum
+cd package/gentoo
+sudo ebuild dev-libs/magnum/magnum-9999.ebuild manifest clean merge
+@endcode
+
+If you want to pass additional flags to CMake or
+@ref building-features "enable / disable additional features", add them to
+`mycmakeargs` in the `*.ebuild` file.
+
+There are also Gentoo packages for @ref building-plugins-packages-gentoo "Magnum Plugins",
+@ref building-extras-packages-gentoo "Magnum Extras",
+@ref building-integration-packages-gentoo "Magnum Integration" and
+@ref building-examples-packages-gentoo "Magnum Examples".
+
+@subsection building-packages-rpm Packages for Fedora, openSUSE and other RPM-based Linux distributions
+
+Spec files for RPM-based distributions are in the `package/rpm/` directory. In
+addition you will need to install the following dependencies in order to build
+the packages (assuming Fedora Linux):
+
+@code{.sh}
+sudo dnf install fedora-packager rpmdevtools
+@endcode
+
+After that, make sure you build and install the
+@ref building-corrade-packages-rpm "Corrade RPM package" first and then run the
+`build.sh` script. Internally it queries the Git version, makes a tarball, may
+ask you to install appropriate dependencies if not present already, and then
+builds the package.
+
+@code{.sh}
+./package/rpm/build.sh
+@endcode
+
+At the end, if everything succeeds, you'll have the newly built packages
+located in `~/rpmbuild/RPMS`. The script will print their names at the end.
+
+If you want to pass additional flags to CMake or
+@ref building-features "enable / disable additional features", edit the
+`*.spec` file.
+
+There are also RPM packages for @ref building-plugins-packages-rpm "Magnum Plugins",
+@ref building-extras-packages-rpm "Magnum Extras",
+@ref building-integration-packages-rpm "Magnum Integration" and
+@ref building-examples-packages-rpm "Magnum Examples".
+
+@subsection building-packages-brew Homebrew formulas for macOS
+
+macOS [Homebrew](https://brew.sh) formulas building the latest Git revision are
+in the `package/homebrew` directory. Either use the `*.rb` files directly or
+use the tap at https://github.com/mosra/homebrew-magnum. This will install the
+latest stable version of Magnum with all its dependencies:
+
+@code{.sh}
+brew install mosra/magnum/magnum
+@endcode
+
+But often you may want to install the latest Git revision of all Magnum
+projects instead:
+
+@code{.sh}
+brew install --HEAD mosra/magnum/corrade
+brew install --HEAD mosra/magnum/magnum
+
+# If already installed, use the following to upgrade, in the same order
+brew upgrade --fetch-HEAD mosra/magnum/corrade
+brew upgrade --fetch-HEAD mosra/magnum/magnum
+@endcode
+
+When installing from the `*.rb` files you need to install the
+@ref building-corrade-packages-brew "Corrade Homebrew package" first. If you
+want to pass additional flags to CMake or
+@ref building-features "enable / disable additional features", edit the `*.rb`
+file.
+
+There are also Homebrew packages for @ref building-plugins-packages-brew "Magnum Plugins",
+@ref building-extras-packages-brew "Magnum Extras",
+@ref building-integration-packages-brew "Magnum Integration" and
+@ref building-examples-packages-brew "Magnum Examples".
+
+@subsection building-packages-cpm CMake Package Manager / CPM
+
+If you're using [CPM](https://github.com/cpm-cmake/CPM.cmake), adding Magnum
+as a dependency can be done with the following, together with the
+@ref building-corrade-packages-cpm "Corrade CPM package". If you're fetching
+the `master` branch, it's recommended to disable `GIT_SHALLOW` to perform a
+full clone including all tags. If not, the build prints a warning about being
+unable to fetch a Git version for the `version.h` header, and will generate a
+fallback file instead.
+
+@code{.cmake}
+CPMAddPackage(
+    NAME corrade
+    GIT_REPOSITORY https://github.com/mosra/corrade.git
+    GIT_TAG master
+    GIT_SHALLOW NO)
+
+CPMAddPackage(
+    NAME magnum
+    GIT_REPOSITORY https://github.com/mosra/magnum.git
+    GIT_TAG master
+    GIT_SHALLOW NO)
+@endcode
+
+You'll most likely want to @ref building-features "enable / disable additional features", or perhaps pass additional flags to CMake, which can be done via
+`OPTIONS`. Note that certain features will require additional dependencies, see
+their documentation for more information.
+
+@code{.cmake}
+CPMAddPackage(
+    NAME magnum
+    ...
+    OPTIONS
+        "MAGNUM_WITH_ANYIMAGEIMPORTER ON"
+        "MAGNUM_WITH_SDL2APPLICATION ON")
+@endcode
+
+CPM can be used also for @ref building-plugins-packages-cpm "Magnum Plugins",
+@ref building-extras-packages-cpm "Magnum Extras" and
+@ref building-integration-packages-cpm "Magnum Integration".
 
 @subsection building-packages-vcpkg Vcpkg package
 
@@ -169,172 +406,12 @@ There is also a Vcpkg package for @ref building-plugins-packages-vcpkg "Magnum P
 @ref building-integration-packages-vcpkg "Magnum Integration" and
 @ref building-extras-packages-vcpkg "Magnum Extras".
 
-@subsection building-packages-arch ArchLinux packages
+@subsection building-packages-hunter Hunter package
 
-Package for the latest stable release is maintained in the `community` repo.
-Installing is as simple as this:
-
-@code{.sh}
-sudo pacman -S magnum
-@endcode
-
-In `package/archlinux/magnum-git` there is a package for Git development build.
-The package is also in AUR as
-[magnum-git](https://aur.archlinux.org/packages/magnum-git/). It depends on the
-@ref building-corrade-packages-arch "Corrade ArchLinux package".
-
-There are also quite a few development packages for native builds, OpenGL ES
-builds, cross-compilation for Emscripten, Android and MinGW or various
-sanitizer/coverage builds. See the PKGBUILD files in the `package/archlinux`
-directory. They allow you to build and install the package directly from the
-source tree. Example usage:
-
-@code{.sh}
-git clone https://github.com/mosra/magnum && cd magnum
-cd package/archlinux
-makepkg -fp PKGBUILD # or any other PKGBUILD file
-@endcode
-
-In most cases the development PKGBUILDs also contain a @cb{.sh} check() @ce
-function which will run all unit tests before packaging. That might sometimes
-fail or take too long, pass `--nocheck` to `makepkg` to skip that.
-
-Once built, install the package using `pacman`:
-
-@code{.sh}
-sudo pacman -U magnum-*.pkg.tar.zst
-@endcode
-
-Edit the PKGBUILDs if you want to pass additional flags to CMake or
-@ref building-features "enable / disable additional features".
-
-There are also ArchLinux packages for @ref building-plugins-packages-arch "Magnum Plugins",
-@ref building-integration-packages-arch "Magnum Integration",
-@ref building-extras-packages-arch "Magnum Extras" and
-@ref building-examples-packages-arch "Magnum Examples".
-
-@subsection building-packages-msys MSYS2 packages
-
-[MSYS2](https://www.msys2.org/) package for the latest stable release is
-maintained in the official repos. Installing is as simple as this:
-
-@code{.sh}
-pacman -S mingw-w64-x86_64-magnum # or mingw-w64-i686-magnum
-@endcode
-
-Similarly to ArchLinux, there is one package in the `package/msys/magnum`
-directory, which will download and package latest stable release; and then a
-development `PKGBUILD` in `package/msys`, allowing you to package and install
-the currently checked out source tree. Both depend on a corresponding
-@ref building-corrade-packages-msys "Corrade MSYS2 package". Example usage:
-
-@code{.sh}
-git clone https://github.com/mosra/magnum && cd magnum
-cd package/msys
-makepkg -fp PKGBUILD
-@endcode
-
-The above works in a 32/64bit MinGW shell, from a MSYS shell the equivalent
-command is
-
-@code{.sh}
-makepkg-mingw -fp PKGBUILD
-@endcode
-
-@m_class{m-noindent}
-
-which will build both a 32bit and a 64bit version. See the
-[MSYS2 Wiki](https://github.com/msys2/msys2/wiki/Creating-Packages) for more
-information.
-
-There are also MSYS2 packages for @ref building-plugins-packages-msys "Magnum Plugins"
-and @ref building-integration-packages-msys "Magnum Integration".
-
-@subsection building-packages-deb Packages for Debian, Ubuntu and derivatives
-
-The `package/debian/` directory contains all files needed for building Debian
-packages. You need the @ref building-corrade-packages-deb "Corrade Debian package"
-installed and in addition also the `dpkg-dev` and `debhelper` packages.
-Building is easy, just change directory to package root, link or copy
-`package/debian` directory there and run `dpkg-buildpackage`:
-
-@code{.sh}
-git clone https://github.com/mosra/magnum && cd magnum
-ln -s package/debian .
-dpkg-buildpackage --no-sign
-@endcode
-
-This will compile binary and development packages, which will then appear in a
-parent directory. Install them using `dpkg`:
-
-@code{.sh}
-sudo dpkg -i ../magnum*.deb
-@endcode
-
-If you want to pass additional flags to CMake or
-@ref building-features "enable / disable additional features", add them to
-`dh_auto_configure` at the bottom of `debian/rules`. Watch out, as
-indentation has to be done using tabs, not spaces.
-
-There are also Debian packages for @ref building-plugins-packages-deb "Magnum Plugins",
-@ref building-integration-packages-deb "Magnum Integration",
-@ref building-extras-packages-deb "Magnum Extras" and
-@ref building-examples-packages-deb "Magnum Examples".
-
-@subsection building-packages-gentoo Gentoo Linux ebuilds
-
-Gentoo Git ebuild is available in the `package/gentoo` directory. Get the
-@ref building-corrade-packages-gentoo "Corrade Gentoo package" first and then
-build and install Magnum like this:
-
-@code{.sh}
-git clone https://github.com/mosra/magnum && cd magnum
-cd package/gentoo
-sudo ebuild dev-libs/magnum/magnum-9999.ebuild manifest clean merge
-@endcode
-
-If you want to pass additional flags to CMake or
-@ref building-features "enable / disable additional features", add them to
-`mycmakeargs` in the `*.ebuild` file.
-
-There are also Gentoo packages for @ref building-plugins-packages-gentoo "Magnum Plugins",
-@ref building-integration-packages-gentoo "Magnum Integration",
-@ref building-extras-packages-gentoo "Magnum Extras" and
-@ref building-examples-packages-gentoo "Magnum Examples".
-
-@subsection building-packages-brew Homebrew formulas for macOS
-
-macOS [Homebrew](https://brew.sh) formulas building the latest Git revision are
-in the `package/homebrew` directory. Either use the `*.rb` files directly or
-use the tap at https://github.com/mosra/homebrew-magnum. This will install the
-latest stable version of Magnum with all its dependencies:
-
-@code{.sh}
-brew install mosra/magnum/magnum
-@endcode
-
-But often you may want to install the latest Git revision of all Magnum
-projects instead:
-
-@code{.sh}
-brew install --HEAD mosra/magnum/corrade
-brew install --HEAD mosra/magnum/magnum
-
-# If already installed, use the following to upgrade, in the same order
-brew upgrade --fetch-HEAD mosra/magnum/corrade
-brew upgrade --fetch-HEAD mosra/magnum/magnum
-@endcode
-
-When installing from the `*.rb` files you need to install the
-@ref building-corrade-packages-brew "Corrade Homebrew package" first. If you
-want to pass additional flags to CMake or
-@ref building-features "enable / disable additional features", edit the `*.rb`
-file.
-
-There are also Homebrew packages for @ref building-plugins-packages-brew "Magnum Plugins",
-@ref building-integration-packages-brew "Magnum Integration",
-@ref building-extras-packages-brew "Magnum Extras" and
-@ref building-examples-packages-brew "Magnum Examples".
+Starting from version 2019.01, stable releases of Magnum are available in the
+[Hunter](https://hunter.readthedocs.io) CMake-driven package manager. See the
+[magnum package documentation](https://hunter.readthedocs.io/en/latest/packages/pkg/magnum.html)
+for details.
 
 @section building-manual Manual build
 
@@ -486,8 +563,7 @@ can specify which parts will be built and which not:
 -   `MAGNUM_WITH_AUDIO` --- Build the @ref Audio library. Depends on
     [OpenAL](https://www.openal.org/), not enabled by default.
 -   `MAGNUM_WITH_DEBUGTOOLS` --- Build the @ref DebugTools library.
--   `MAGNUM_WITH_GL` --- Build the @ref GL library. Enabled automatically if
-    `MAGNUM_WITH_SHADERS` is enabled.
+-   `MAGNUM_WITH_GL` --- Build the @ref GL library
 -   `MAGNUM_WITH_MATERIALTOOLS` --- Build the @ref MaterialTools library.
     Enables also building of the @ref Trade library.
 -   `MAGNUM_WITH_MESHTOOLS` --- Build the @ref MeshTools library. Enables also
@@ -497,8 +573,7 @@ can specify which parts will be built and which not:
 -   `MAGNUM_WITH_SCENEGRAPH` --- Build the @ref SceneGraph library
 -   `MAGNUM_WITH_SCENETOOLS` --- Build the @ref SceneTools library. Enables
     also building of the @ref Trade library.
--   `MAGNUM_WITH_SHADERS` --- Build the @ref Shaders library. Enables also
-    building of the @ref GL library.
+-   `MAGNUM_WITH_SHADERS` --- Build the @ref Shaders library
 -   `MAGNUM_WITH_SHADERTOOLS` --- Build the @ref ShaderTools library
 -   `MAGNUM_WITH_TEXT` --- Build the @ref Text library. Enables also building
     of the @ref TextureTools library.

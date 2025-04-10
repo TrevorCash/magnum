@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Format.h>
 
 #include "Magnum/Shaders/LineGL.h"
@@ -125,42 +124,42 @@ template<UnsignedInt dimensions> void LineGL_Test::constructCopy() {
 }
 
 void LineGL_Test::debugFlag() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << LineGL3D::Flag::VertexColor << LineGL3D::Flag(0xf00d);
-    CORRADE_COMPARE(out.str(), "Shaders::LineGL::Flag::VertexColor Shaders::LineGL::Flag(0xf00d)\n");
+    CORRADE_COMPARE(out, "Shaders::LineGL::Flag::VertexColor Shaders::LineGL::Flag(0xf00d)\n");
 }
 
 void LineGL_Test::debugFlags() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << (LineGL3D::Flag::VertexColor|LineGL3D::Flag::InstancedTransformation) << LineGL3D::Flags{};
-    CORRADE_COMPARE(out.str(), "Shaders::LineGL::Flag::VertexColor|Shaders::LineGL::Flag::InstancedTransformation Shaders::LineGL::Flags{}\n");
+    CORRADE_COMPARE(out, "Shaders::LineGL::Flag::VertexColor|Shaders::LineGL::Flag::InstancedTransformation Shaders::LineGL::Flags{}\n");
 }
 
 void LineGL_Test::debugFlagsSupersets() {
     /* InstancedObjectId is a superset of ObjectId so only one should be
        printed */
     {
-        std::ostringstream out;
+        Containers::String out;
         Debug{&out} << (LineGL3D::Flag::ObjectId|LineGL3D::Flag::InstancedObjectId);
-        CORRADE_COMPARE(out.str(), "Shaders::LineGL::Flag::InstancedObjectId\n");
+        CORRADE_COMPARE(out, "Shaders::LineGL::Flag::InstancedObjectId\n");
     }
 
     /* MultiDraw and ShaderStorageBuffers are a superset of UniformBuffers so
        only one should be printed, but if there are both then both should be */
     {
-        std::ostringstream out;
+        Containers::String out;
         Debug{&out} << (LineGL3D::Flag::MultiDraw|LineGL3D::Flag::UniformBuffers);
-        CORRADE_COMPARE(out.str(), "Shaders::LineGL::Flag::MultiDraw\n");
+        CORRADE_COMPARE(out, "Shaders::LineGL::Flag::MultiDraw\n");
     }
     #ifndef MAGNUM_TARGET_WEBGL
     {
-        std::ostringstream out;
+        Containers::String out;
         Debug{&out} << (LineGL2D::Flag::ShaderStorageBuffers|LineGL2D::Flag::UniformBuffers);
-        CORRADE_COMPARE(out.str(), "Shaders::LineGL::Flag::ShaderStorageBuffers\n");
+        CORRADE_COMPARE(out, "Shaders::LineGL::Flag::ShaderStorageBuffers\n");
     } {
-        std::ostringstream out;
+        Containers::String out;
         Debug{&out} << (LineGL2D::Flag::MultiDraw|LineGL2D::Flag::ShaderStorageBuffers|LineGL2D::Flag::UniformBuffers);
-        CORRADE_COMPARE(out.str(), "Shaders::LineGL::Flag::MultiDraw|Shaders::LineGL::Flag::ShaderStorageBuffers\n");
+        CORRADE_COMPARE(out, "Shaders::LineGL::Flag::MultiDraw|Shaders::LineGL::Flag::ShaderStorageBuffers\n");
     }
     #endif
 }

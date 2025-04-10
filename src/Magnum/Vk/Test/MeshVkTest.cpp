@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,13 +24,11 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/String.h>
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Utility/Algorithms.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/ImageView.h"
@@ -328,9 +327,9 @@ void MeshVkTest::cmdDrawIndexed() {
         Containers::Array<char, MemoryMapDeleter> data = buffer.dedicatedMemory().map();
         /** @todo ffs fucking casts!!! */
         Utility::copy(Containers::stridedArrayView(QuadData).slice(&Quad::position),
-            Containers::arrayCast<Vector3>(data.slice(32, 32 + 12*4)));
+            Containers::arrayCast<Vector3>(data.sliceSize(32, 12*4)));
         Utility::copy(Containers::arrayCast<const char>(QuadIndexData),
-            Containers::stridedArrayView(data).exceptPrefix(32 + 12*4));
+            Containers::stridedArrayView(data).sliceSize(32 + 12*4, 12));
         mesh.addVertexBuffer(0, buffer, 32)
             .setIndexBuffer(Utility::move(buffer), 32 + 12*4, MeshIndexType::UnsignedShort)
             .setCount(6);
@@ -667,10 +666,10 @@ void MeshVkTest::cmdDrawNoCountSet() {
         )
        .bindPipeline(pipeline);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     cmd.draw(mesh);
-    CORRADE_COMPARE(out.str(), "Vk::CommandBuffer::draw(): Mesh::setCount() was never called, probably a mistake?\n");
+    CORRADE_COMPARE(out, "Vk::CommandBuffer::draw(): Mesh::setCount() was never called, probably a mistake?\n");
 }
 
 void MeshVkTest::cmdDrawDynamicPrimitive() {
@@ -876,10 +875,10 @@ void MeshVkTest::cmdDrawDynamicStrideInsufficientImplementation() {
         )
        .bindPipeline(fakeDynamicStatePipeline);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     cmd.draw(mesh);
-    CORRADE_COMPARE(out.str(), "Vk::CommandBuffer::draw(): dynamic strides supplied for an implementation without extended dynamic state\n");
+    CORRADE_COMPARE(out, "Vk::CommandBuffer::draw(): dynamic strides supplied for an implementation without extended dynamic state\n");
 }
 
 }}}}

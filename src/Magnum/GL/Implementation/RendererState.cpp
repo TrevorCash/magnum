@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -30,6 +31,16 @@
 #include "Magnum/PixelStorage.h"
 #include "Magnum/GL/Context.h"
 #include "Magnum/GL/Extensions.h"
+
+/* The __EMSCRIPTEN_major__ etc macros used to be passed implicitly, version
+   3.1.4 moved them to a version header and version 3.1.23 dropped the
+   backwards compatibility. To work consistently on all versions, including the
+   header only if the version macros aren't present.
+   https://github.com/emscripten-core/emscripten/commit/f99af02045357d3d8b12e63793cef36dfde4530a
+   https://github.com/emscripten-core/emscripten/commit/f76ddc702e4956aeedb658c49790cc352f892e4c */
+#if defined(CORRADE_TARGET_EMSCRIPTEN) && !defined(__EMSCRIPTEN_major__)
+#include <emscripten/version.h>
+#endif
 
 namespace Magnum { namespace GL { namespace Implementation {
 
@@ -204,6 +215,29 @@ RendererState::RendererState(Context& context, ContextState& contextState, Conta
         #endif
     }
     #endif
+    #endif
+
+    #ifdef MAGNUM_TARGET_GLES
+    #ifndef MAGNUM_TARGET_WEBGL
+    if(context.isExtensionSupported<Extensions::NV::polygon_mode>()) {
+        extensions[Extensions::NV::polygon_mode::Index] =
+                   Extensions::NV::polygon_mode::string();
+        polygonModeImplementation = glPolygonModeNV;
+    } else if(context.isExtensionSupported<Extensions::ANGLE::polygon_mode>()) {
+        extensions[Extensions::ANGLE::polygon_mode::Index] =
+                   Extensions::ANGLE::polygon_mode::string();
+        polygonModeImplementation = glPolygonModeANGLE;
+    } else
+    #elif __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 30166
+    if(context.isExtensionSupported<Extensions::WEBGL::polygon_mode>()) {
+        extensions[Extensions::WEBGL::polygon_mode::Index] =
+                   Extensions::WEBGL::polygon_mode::string();
+        polygonModeImplementation = glPolygonModeWEBGL;
+    } else
+    #endif
+    {
+        polygonModeImplementation = nullptr;
+    }
     #endif
 
     #ifndef MAGNUM_TARGET_GLES

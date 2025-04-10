@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,7 +25,6 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pair.h>
 #include <Corrade/Containers/StridedArrayView.h>
@@ -33,14 +33,9 @@
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
 #include <Corrade/Utility/Algorithms.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 #include <Corrade/Utility/System.h>
-
-#ifdef CORRADE_TARGET_APPLE
-#include <Corrade/Containers/Pair.h>
-#endif
 
 #include "Magnum/Image.h"
 #include "Magnum/ImageView.h"
@@ -723,7 +718,7 @@ const struct {
     Vector4 position;
     Color3 specularColor, lightSpecularColor;
     Float intensity;
-    Float range;
+    Containers::Optional<Float> range; /* Constants::inf() if not set */
     Containers::Array<Containers::Pair<Vector2i, Color3ub>> picks;
 } RenderLightsData[] {
     {"directional", "light-directional.tga",
@@ -745,7 +740,13 @@ const struct {
         {10.0f, -15.0f, 5.0f, 0.0f}, Color3{1.0f}, Color3{1.0f},
         1.0f, Constants::inf(), {}},
     /* Range should have no effect either, especially zero range should not
-       cause any NaNs */
+       cause any NaNs. Default or explicit infinity shouldn't either. */
+    {"directional, range left at (infinity) default", "light-directional.tga",
+        {1.0f, -1.5f, 0.5f, 0.0f}, Color3{1.0f}, Color3{1.0f},
+        1.0f, {}, {}},
+    {"directional, range=inf", "light-directional.tga",
+        {1.0f, -1.5f, 0.5f, 0.0f}, Color3{1.0f}, Color3{1.0f},
+        1.0f, Constants::inf(), {}},
     {"directional, range=0.1", "light-directional.tga",
         {1.0f, -1.5f, 0.5f, 0.0f}, Color3{1.0f}, Color3{1.0f},
         1.0f, 1.0f, {}},
@@ -817,6 +818,13 @@ const struct {
     {"point, intensity=10, range=1.0", "light-point-intensity10-range1.0.tga",
         {0.75f, -0.75f, -0.75f, 1.0f}, Color3{1.0f}, Color3{1.0f},
         10.0f, 1.0f, {}},
+    /* These two should produce the same result */
+    {"point, range left at (infinity) default", "light-point.tga",
+        {0.75f, -0.75f, -0.75f, 1.0f}, Color3{1.0f}, Color3{1.0f},
+        1.0f, {}, {}},
+    {"point, range=inf", "light-point.tga",
+        {0.75f, -0.75f, -0.75f, 1.0f}, Color3{1.0f}, Color3{1.0f},
+        1.0f, Constants::inf(), {}},
     /* Range ends right at the surface, so no contribution */
     {"point, range=0.75", "light-none.tga",
         {0.75f, -0.75f, -0.75f, 1.0f}, Color3{1.0f}, Color3{1.0f},
@@ -1070,15 +1078,15 @@ constexpr struct {
         "multidraw-textured.tga", {},
         PhongGL::Flag::TextureTransformation|PhongGL::Flag::DiffuseTexture,
         2, 2, 1, 1, true, 16,
-        /* Minor differences on ARM Mali */
-        4.67f, 0.02f},
+        /* Minor differences on ARM Mali, on NVidia */
+        7.0f, 0.02f},
     {"bind with offset, texture array",
         "multidraw-textured.tga", {},
         PhongGL::Flag::TextureTransformation|PhongGL::Flag::DiffuseTexture|PhongGL::Flag::TextureArrays,
         2, 2, 1, 1, true, 16,
         /* Some difference at the UV edge (texture is wrapping in the 2D case
            while the 2D array has a black area around) */
-        50.34f, 0.141f},
+        50.34f, 0.146f},
     #ifndef MAGNUM_TARGET_WEBGL
     {"bind with offset, texture array, shader storage",
         "multidraw-textured.tga", {},
@@ -1086,7 +1094,7 @@ constexpr struct {
         0, 2, 0, 0, true, 16,
         /* Some difference at the UV edge (texture is wrapping in the 2D case
            while the 2D array has a black area around) */
-        50.34f, 0.131f},
+        50.34f, 0.146f},
     #endif
     {"draw offset, colored",
         "multidraw.tga", {},
@@ -1122,15 +1130,15 @@ constexpr struct {
         "multidraw-textured.tga", {},
         PhongGL::Flag::TextureTransformation|PhongGL::Flag::DiffuseTexture,
         4, 4, 2, 3, false, 1,
-        /* Minor differences on ARM Mali */
-        4.67f, 0.02f},
+        /* Minor differences on ARM Mali, on NVidia */
+        7.0f, 0.02f},
     {"draw offset, texture array",
         "multidraw-textured.tga", {},
         PhongGL::Flag::TextureTransformation|PhongGL::Flag::DiffuseTexture|PhongGL::Flag::TextureArrays,
         4, 4, 2, 3, false, 1,
         /* Some difference at the UV edge (texture is wrapping in the 2D case
            while the 2D array has a black area around) */
-        50.34f, 0.141f},
+        50.34f, 0.146f},
     #ifndef MAGNUM_TARGET_WEBGL
     {"draw offset, texture array, shader storage",
         "multidraw-textured.tga", {},
@@ -1138,7 +1146,7 @@ constexpr struct {
         0, 2, 0, 0, false, 1,
         /* Some difference at the UV edge (texture is wrapping in the 2D case
            while the 2D array has a black area around) */
-        50.34f, 0.141f},
+        50.34f, 0.146f},
     #endif
     {"multidraw, colored",
         "multidraw.tga", {},
@@ -1545,7 +1553,7 @@ PhongGLTest::PhongGLTest() {
         && std::getenv("SIMULATOR_UDID")
         #endif
     ) {
-        _testDir = Utility::Path::split(*Utility::Path::executableLocation()).first();
+        _testDir = Utility::Path::path(*Utility::Path::executableLocation());
     } else
     #endif
     {
@@ -1835,7 +1843,7 @@ void PhongGLTest::constructInvalid() {
 
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     PhongGL{PhongGL::Configuration{}
         .setFlags(data.flags)
@@ -1844,7 +1852,7 @@ void PhongGLTest::constructInvalid() {
         .setJointCount(data.jointCount, data.perVertexJointCount, data.secondaryPerVertexJointCount)
         #endif
     };
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Shaders::PhongGL: {}\n", data.message));
 }
 
@@ -1860,7 +1868,7 @@ void PhongGLTest::constructUniformBuffersInvalid() {
         CORRADE_SKIP(GL::Extensions::ARB::uniform_buffer_object::string() << "is not supported.");
     #endif
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     PhongGL{PhongGL::Configuration{}
         .setFlags(data.flags)
@@ -1868,7 +1876,7 @@ void PhongGLTest::constructUniformBuffersInvalid() {
         .setJointCount(data.jointCount, data.perVertexJointCount, data.secondaryPerVertexJointCount)
         .setMaterialCount(data.materialCount)
         .setDrawCount(data.drawCount)};
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Shaders::PhongGL: {}\n", data.message));
 }
 #endif
@@ -1887,12 +1895,12 @@ void PhongGLTest::setPerVertexJointCountInvalid() {
         .setFlags(PhongGL::Flag::DynamicPerVertexJointCount)
         .setJointCount(16, 3, 2)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     a.setPerVertexJointCount(3, 2);
     b.setPerVertexJointCount(4);
     b.setPerVertexJointCount(3, 3);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setPerVertexJointCount(): the shader was not created with dynamic per-vertex joint count enabled\n"
         "Shaders::PhongGL::setPerVertexJointCount(): expected at most 3 per-vertex joints, got 4\n"
         "Shaders::PhongGL::setPerVertexJointCount(): expected at most 2 secondary per-vertex joints, got 3\n");
@@ -1911,7 +1919,7 @@ void PhongGLTest::setUniformUniformBuffersEnabled() {
     PhongGL shader{PhongGL::Configuration{}
         .setFlags(PhongGL::Flag::UniformBuffers)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader
         /* setPerVertexJointCount() works on both UBOs and classic */
@@ -1938,7 +1946,7 @@ void PhongGLTest::setUniformUniformBuffersEnabled() {
         .setJointMatrices({})
         .setJointMatrix(0, {})
         .setPerInstanceJointCount(0);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setAmbientColor(): the shader was created with uniform buffers enabled\n"
         "Shaders::PhongGL::setDiffuseColor(): the shader was created with uniform buffers enabled\n"
         "Shaders::PhongGL::setNormalTextureScale(): the shader was created with uniform buffers enabled\n"
@@ -1970,7 +1978,7 @@ void PhongGLTest::bindBufferUniformBuffersNotEnabled() {
     GL::Buffer buffer;
     PhongGL shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindProjectionBuffer(buffer)
           .bindProjectionBuffer(buffer, 0, 16)
@@ -1987,7 +1995,7 @@ void PhongGLTest::bindBufferUniformBuffersNotEnabled() {
           .bindJointBuffer(buffer)
           .bindJointBuffer(buffer, 0, 16)
           .setDrawOffset(0);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::bindProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::PhongGL::bindProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::PhongGL::bindTransformationBuffer(): the shader was not created with uniform buffers enabled\n"
@@ -2021,7 +2029,7 @@ void PhongGLTest::bindTexturesInvalid() {
     PhongGL shader{PhongGL::Configuration{}
         .setFlags(data.flags)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindAmbientTexture(texture)
           .bindDiffuseTexture(texture)
@@ -2032,7 +2040,7 @@ void PhongGLTest::bindTexturesInvalid() {
           #endif
           .bindTextures(&texture, &texture, &texture, &texture);
 
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 
 #ifndef MAGNUM_TARGET_GLES2
@@ -2051,14 +2059,14 @@ void PhongGLTest::bindTextureArraysInvalid() {
     PhongGL shader{PhongGL::Configuration{}
         .setFlags(data.flags)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindAmbientTexture(textureArray)
           .bindDiffuseTexture(textureArray)
           .bindSpecularTexture(textureArray)
           .bindNormalTexture(textureArray)
           .bindObjectIdTexture(textureArray);
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 #endif
 
@@ -2067,10 +2075,10 @@ void PhongGLTest::setAlphaMaskNotEnabled() {
 
     PhongGL shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setAlphaMask(0.75f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setAlphaMask(): the shader was not created with alpha mask enabled\n");
 }
 
@@ -2081,14 +2089,14 @@ void PhongGLTest::setSpecularDisabled() {
     PhongGL shader{PhongGL::Configuration{}
         .setFlags(PhongGL::Flag::NoSpecular)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setSpecularColor({})
         .setShininess({})
         /* {{}} makes GCC 4.8 warn about zero as null pointer constant */
         .setLightSpecularColors({Color3{}})
         .setLightSpecularColor(0, {});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setSpecularColor(): the shader was created with specular disabled\n"
         "Shaders::PhongGL::setShininess(): the shader was created with specular disabled\n"
         "Shaders::PhongGL::setLightSpecularColors(): the shader was created with specular disabled\n"
@@ -2100,10 +2108,10 @@ void PhongGLTest::setTextureMatrixNotEnabled() {
 
     PhongGL shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setTextureMatrix({});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setTextureMatrix(): the shader was not created with texture transformation enabled\n");
 }
 
@@ -2112,10 +2120,10 @@ void PhongGLTest::setNormalTextureScaleNotEnabled() {
 
     PhongGL shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setNormalTextureScale({});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setNormalTextureScale(): the shader was not created with normal texture enabled\n");
 }
 
@@ -2125,10 +2133,10 @@ void PhongGLTest::setTextureLayerNotArray() {
 
     PhongGL shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setTextureLayer(37);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setTextureLayer(): the shader was not created with texture arrays enabled\n");
 }
 #endif
@@ -2146,11 +2154,11 @@ void PhongGLTest::bindTextureTransformBufferNotEnabled() {
     PhongGL shader{PhongGL::Configuration{}
         .setFlags(PhongGL::Flag::UniformBuffers)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindTextureTransformationBuffer(buffer)
           .bindTextureTransformationBuffer(buffer, 0, 16);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::bindTextureTransformationBuffer(): the shader was not created with texture transformation enabled\n"
         "Shaders::PhongGL::bindTextureTransformationBuffer(): the shader was not created with texture transformation enabled\n");
 }
@@ -2162,10 +2170,10 @@ void PhongGLTest::setObjectIdNotEnabled() {
 
     PhongGL shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setObjectId(33376);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setObjectId(): the shader was not created with object ID enabled\n");
 }
 #endif
@@ -2176,7 +2184,7 @@ void PhongGLTest::setWrongLightCountOrId() {
     PhongGL shader{PhongGL::Configuration{}
         .setLightCount(5)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader
         .setLightColors({Color3{}})
@@ -2185,7 +2193,7 @@ void PhongGLTest::setWrongLightCountOrId() {
         .setLightColor(5, Color3{})
         .setLightPosition(5, Vector4{})
         .setLightRange(5, 0.0f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setLightColors(): expected 5 items but got 1\n"
         "Shaders::PhongGL::setLightPositions(): expected 5 items but got 1\n"
         "Shaders::PhongGL::setLightRanges(): expected 5 items but got 1\n"
@@ -2201,13 +2209,13 @@ void PhongGLTest::setWrongJointCountOrId() {
     PhongGL shader{PhongGL::Configuration{}
         .setJointCount(5, 1)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* Calling setJointMatrices() with less items is fine, tested in
        renderSkinning() */
     shader.setJointMatrices({{}, {}, {}, {}, {}, {}})
         .setJointMatrix(5, Matrix4{});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setJointMatrices(): expected at most 5 items but got 6\n"
         "Shaders::PhongGL::setJointMatrix(): joint ID 5 is out of range for 5 joints\n");
 }
@@ -2228,10 +2236,10 @@ void PhongGLTest::setWrongDrawOffset() {
         .setMaterialCount(2)
         .setDrawCount(5)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setDrawOffset(5);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::PhongGL::setDrawOffset(): draw offset 5 is out of range for 5 draws\n");
 }
 #endif
@@ -2378,7 +2386,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderDefaults() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "PhongTestFiles/defaults.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -2510,15 +2518,16 @@ template<PhongGL::Flag flag> void PhongGLTest::renderColored() {
 
     #if !(defined(MAGNUM_TARGET_GLES2) && defined(MAGNUM_TARGET_WEBGL))
     /* SwiftShader has some minor rounding differences (max = 1). ARM Mali G71
-       and Apple A8 has bigger rounding differences. */
-    const Float maxThreshold = 8.34f, meanThreshold = 0.100f;
+       and Apple A8 has bigger rounding differences. NVidia as well, more on
+       ES2. */
+    const Float maxThreshold = 12.67f, meanThreshold = 0.121f;
     #else
     /* WebGL 1 doesn't have 8bit renderbuffer storage, so it's way worse */
     const Float maxThreshold = 15.34f, meanThreshold = 3.33f;
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "PhongTestFiles/colored.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -2732,15 +2741,16 @@ template<PhongGL::Flag flag> void PhongGLTest::renderSinglePixelTextured() {
 
     #if !(defined(MAGNUM_TARGET_GLES2) && defined(MAGNUM_TARGET_WEBGL))
     /* SwiftShader has some minor rounding differences (max = 1). ARM Mali G71
-       and Apple A8 has bigger rounding differences. */
-    const Float maxThreshold = 7.67f, meanThreshold = 0.100f;
+       and Apple A8 has bigger rounding differences. NVidia as well, more on
+       ES2. */
+    const Float maxThreshold = 12.67f, meanThreshold = 0.125f;
     #else
     /* WebGL 1 doesn't have 8bit renderbuffer storage, so it's way worse */
     const Float maxThreshold = 15.34f, meanThreshold = 3.33f;
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "PhongTestFiles/colored.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -3003,7 +3013,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderTextured() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "PhongTestFiles", data.expected}),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -3203,7 +3213,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderTexturedNormal() {
     Image2D actual = _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm});
     Containers::StridedArrayView2D<Color3ub> pixels =
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(actual.pixels<Color4ub>());
+        actual.pixels<Color4ub>().slice(&Color4ub::rgb);
 
     /* Rotate pixels back to upright position so we can compare with the 0°
        file and ensure the tangent calculation is transformation invariant */
@@ -3374,7 +3384,7 @@ template<class T, PhongGL::Flag flag> void PhongGLTest::renderVertexColor() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "PhongTestFiles/vertexColor.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -3511,7 +3521,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderShininess() {
         #endif
         CORRADE_COMPARE_WITH(
             /* Dropping the alpha channel, as it's always 1.0 */
-            Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+            _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
             Utility::Path::join({_testDir, "PhongTestFiles", data.expected}),
             (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
     }
@@ -3533,7 +3543,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderShininess() {
     ) {
         CORRADE_COMPARE_WITH(
             /* Dropping the alpha channel, as it's always 1.0 */
-            Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+            _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
             Utility::Path::join({_testDir, "PhongTestFiles", "shininess0-overflow.tga"}),
             /* The threshold = 0.001 case has a slight reddish tone on
                SwiftShader; ARM Mali has one pixel off */
@@ -3725,7 +3735,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderAlpha() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, data.expected),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -3900,11 +3910,11 @@ template<PhongGL::Flag flag> void PhongGLTest::renderObjectId() {
 
     /* Color output should have no difference -- same as in colored() */
     /* SwiftShader has some minor rounding differences (max = 1). ARM Mali G71
-       and Apple A8 has bigger rounding differences. */
-    const Float maxThreshold = 8.34f, meanThreshold = 0.100f;
+       and Apple A8 has bigger rounding differences. NVidia as well. */
+    const Float maxThreshold = 12.67f, meanThreshold = 0.113f;
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "PhongTestFiles/colored.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 
@@ -3984,12 +3994,17 @@ template<PhongGL::Flag flag> void PhongGLTest::renderLights() {
             .setLightPositions({data.position})
             .setLightColors({0xff8080_rgbf*data.intensity})
             .setLightSpecularColors({data.lightSpecularColor})
-            .setLightRanges({data.range})
             .setShininess(60.0f)
             .setTransformationMatrix(transformation)
             .setNormalMatrix(transformation.normalMatrix())
-            .setProjectionMatrix(Matrix4::perspectiveProjection(80.0_degf, 1.0f, 0.1f, 20.0f))
-            .draw(plane);
+            .setProjectionMatrix(Matrix4::perspectiveProjection(80.0_degf, 1.0f, 0.1f, 20.0f));
+        /* Also testing a case where it's left at the default infinity value
+           embedded in the shader code or passed directly during construction
+           --- it should not cause any difference compared to passing
+           Constants::inf(). */
+        if(data.range)
+            shader.setLightRanges({*data.range});
+        shader.draw(plane);
     }
     #ifndef MAGNUM_TARGET_GLES2
     else if(flag == PhongGL::Flag::UniformBuffers
@@ -4009,12 +4024,15 @@ template<PhongGL::Flag flag> void PhongGLTest::renderLights() {
         GL::Buffer drawUniform{GL::Buffer::TargetHint::Uniform, {
             PhongDrawUniform{}.setNormalMatrix(transformation.normalMatrix())
         }};
+        PhongLightUniform lightUniformData;
+        lightUniformData
+            .setPosition({data.position})
+            .setColor(0xff8080_rgbf*data.intensity)
+            .setSpecularColor(data.lightSpecularColor);
+        if(data.range)
+            lightUniformData.setRange(*data.range);
         GL::Buffer lightUniform{GL::Buffer::TargetHint::Uniform, {
-            PhongLightUniform{}
-                .setPosition({data.position})
-                .setColor(0xff8080_rgbf*data.intensity)
-                .setSpecularColor(data.lightSpecularColor)
-                .setRange(data.range),
+            lightUniformData
         }};
         GL::Buffer materialUniform{GL::Buffer::TargetHint::Uniform, {
             PhongMaterialUniform{}
@@ -4035,7 +4053,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderLights() {
 
     MAGNUM_VERIFY_NO_GL_ERROR();
 
-    const Image2D image = _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm});
+    Image2D image = _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm});
 
     /* Analytical output check. Comment this out when image comparison fails
        for easier debugging. */
@@ -4050,17 +4068,12 @@ template<PhongGL::Flag flag> void PhongGLTest::renderLights() {
        !(_manager.loadState("TgaImporter") & PluginManager::LoadState::Loaded))
         CORRADE_SKIP("AnyImageImporter / TgaImporter plugins not found.");
 
-    #if !(defined(MAGNUM_TARGET_GLES2) && defined(MAGNUM_TARGET_WEBGL))
-    const Float maxThreshold = 3.0f, meanThreshold = 0.02f;
-    #else
-    /* WebGL 1 doesn't have 8bit renderbuffer storage, so it's way worse */
-    const Float maxThreshold = 3.0f, meanThreshold = 0.02f;
-    #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<const Color3ub>(image.pixels<Color4ub>()),
+        image.pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "PhongTestFiles", data.file}),
-        (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
+        /* Minor differences on ES2 and on NVidia */
+        (DebugTools::CompareImageToFile{_manager, 3.0f, 0.27f}));
 }
 
 void PhongGLTest::renderLightsSetOneByOne() {
@@ -4104,7 +4117,7 @@ void PhongGLTest::renderLightsSetOneByOne() {
     }
     #endif
 
-    const Image2D image = _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm});
+    Image2D image = _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm});
 
     if(!(_manager.loadState("AnyImageImporter") & PluginManager::LoadState::Loaded) ||
        !(_manager.loadState("TgaImporter") & PluginManager::LoadState::Loaded))
@@ -4118,7 +4131,7 @@ void PhongGLTest::renderLightsSetOneByOne() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<const Color3ub>(image.pixels<Color4ub>()),
+        image.pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "PhongTestFiles/light-point-range1.5.tga"}),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -4161,7 +4174,7 @@ void PhongGLTest::renderLowLightAngle() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "PhongTestFiles/low-light-angle.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -4245,15 +4258,15 @@ void PhongGLTest::renderLightCulling() {
 
     #if !(defined(MAGNUM_TARGET_GLES2) && defined(MAGNUM_TARGET_WEBGL))
     /* SwiftShader has some minor rounding differences (max = 1). ARM Mali G71
-       and Apple A8 has bigger rounding differences. */
-    const Float maxThreshold = 8.34f, meanThreshold = 0.100f;
+       and Apple A8 has bigger rounding differences. NVidia as well. */
+    const Float maxThreshold = 12.67f, meanThreshold = 0.113f;
     #else
     /* WebGL 1 doesn't have 8bit renderbuffer storage, so it's way worse */
     const Float maxThreshold = 15.34f, meanThreshold = 3.33f;
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "PhongTestFiles/colored.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -4439,7 +4452,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderZeroLights() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         /* Should be equivalent to masked Flat3D */
         Utility::Path::join(_testDir, "FlatTestFiles/textured3D-alpha-mask0.5.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
@@ -4539,7 +4552,7 @@ void PhongGLTest::renderDoubleSided() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "PhongTestFiles/double-sided.tga"),
         (DebugTools::CompareImageToFile{_manager, 1.34f, 0.04f}));
 }
@@ -4702,7 +4715,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderSkinning() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "TestFiles", data.expected}),
         (DebugTools::CompareImageToFile{_manager}));
 }
@@ -5130,7 +5143,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderInstanced() {
     MAGNUM_VERIFY_NO_GL_ERROR();
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "PhongTestFiles", data.expected}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 
@@ -5304,7 +5317,7 @@ template<PhongGL::Flag flag> void PhongGLTest::renderInstancedSkinning() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "TestFiles/skinning-instanced.tga"),
         (DebugTools::CompareImageToFile{_manager}));
 }
@@ -5400,12 +5413,16 @@ void PhongGLTest::renderMulti() {
                     .setSkip({image->size().x()/4, image->size().y()/2, 0}),
                 image->format(), image->size()/2, image->data()};
 
+            Vector3i size{image->size().x(), image->size().y()/2, 3};
+
             diffuseArray = GL::Texture2DArray{};
             diffuseArray.setMinificationFilter(GL::SamplerFilter::Linear)
                 .setMagnificationFilter(GL::SamplerFilter::Linear)
                 .setWrapping(GL::SamplerWrapping::ClampToEdge)
                 /* Each slice has half the height */
-                .setStorage(1, TextureFormatRGB, {image->size().x(), image->size().y()/2, 3})
+                .setStorage(1, TextureFormatRGB, size)
+                /* Clear to all zeros for reproducible output */
+                .setSubImage(0, {}, Image3D{PixelFormat::RGB8Unorm, size, Containers::Array<char>{ValueInit, std::size_t(size.product()*3)}})
                 .setSubImage(0, {0, 0, 0}, first)
                 /* Put the second image on the right half to test that the
                    per-instance offset is used together with the layer */
@@ -5707,7 +5724,7 @@ void PhongGLTest::renderMulti() {
     MAGNUM_VERIFY_NO_GL_ERROR();
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "PhongTestFiles", data.expected}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 
@@ -5978,7 +5995,7 @@ void PhongGLTest::renderMultiSkinning() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "TestFiles/skinning-multi.tga"),
         (DebugTools::CompareImageToFile{_manager}));
 }

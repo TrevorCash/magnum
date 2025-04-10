@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -100,7 +101,7 @@ enum class MeshAttribute: UnsignedShort {
      * tangent basis. Reconstructing the @ref MeshAttribute::Bitangent can be
      * then done like this:
      *
-     * @snippet MagnumTrade.cpp MeshAttribute-bitangent-from-tangent
+     * @snippet Trade.cpp MeshAttribute-bitangent-from-tangent
      *
      * When used as a morph target attribute, the handedness shouldn't change
      * compared to the base attribute. It's not checked or enforced in any way
@@ -281,7 +282,7 @@ introduction.
 The most straightforward usage is constructing the instance from a view on the
 index array. The @ref MeshIndexType gets inferred from the view type:
 
-@snippet MagnumTrade.cpp MeshIndexData-usage
+@snippet Trade.cpp MeshIndexData-usage
 
 Alternatively, you can pass a typeless @cpp const void @ce view and supply
 @ref MeshIndexType explicitly, or a contiguous 2D view and let the class detect
@@ -312,7 +313,7 @@ class MAGNUM_TRADE_EXPORT MeshIndexData {
          * @ref MeshIndexData(std::nullptr_t) constructor.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<class T, class = typename std::enable_if<std::is_convertible<T, Containers::ArrayView<const void>>::value>::type> explicit MeshIndexData(MeshIndexType type, T&& data) noexcept;
+        template<class T, typename std::enable_if<std::is_convertible<T, Containers::ArrayView<const void>>::value, int>::type = 0> explicit MeshIndexData(MeshIndexType type, T&& data) noexcept;
         #else
         explicit MeshIndexData(MeshIndexType type, Containers::ArrayView<const void> data) noexcept;
         #endif
@@ -413,7 +414,7 @@ The most straightforward usage is constructing an instance from a pair of a
 @ref MeshAttribute and a strided view. The @ref VertexFormat gets inferred from
 the view type:
 
-@snippet MagnumTrade.cpp MeshAttributeData-usage
+@snippet Trade.cpp MeshAttributeData-usage
 
 Alternatively, you can pass a typeless @cpp const void @ce or a 2D view and
 supply @ref VertexFormat explicitly.
@@ -428,7 +429,7 @@ pointer patching during data serialization, but also for example when vertex
 layout is static (and thus can be defined at compile time), but the actual data
 is allocated / populated at runtime.
 
-@snippet MagnumTrade.cpp MeshAttributeData-usage-offset-only
+@snippet Trade.cpp MeshAttributeData-usage-offset-only
 
 See @ref Trade-MeshData-populating-non-owned "the corresponding MeshData documentation"
 for a complete usage example. Offset-only attributes return @cpp true @ce for
@@ -446,7 +447,7 @@ implementation-specific formats as well. Formats that don't have a generic
 however note that most APIs and @ref MeshTools functions can't work with those
 as their size or contents can't be known:
 
-@snippet MagnumTrade.cpp MeshAttributeData-custom-vertex-format
+@snippet Trade.cpp MeshAttributeData-custom-vertex-format
 
 @see @ref MeshIndexData
 */
@@ -474,11 +475,23 @@ class MAGNUM_TRADE_EXPORT MeshAttributeData {
          * Expects that @p data stride fits into a signed 16-bit value, that
          * vertex count fits into 32 bits, and for builtin attributes that
          * @p format corresponds to @p name, @p arraySize is either zero for
-         * non-array attributes or non-zero for array attributes. The stride
-         * can be zero or negative, but note that such data layouts are not
-         * commonly supported by GPU APIs.
+         * non-array attributes or non-zero for array attributes. The
+         * @p morphTargetId is expected to be greater or equal to @cpp -1 @ce
+         * and less than @cpp 128 @ce and has to be @cpp -1 @ce for builtin
+         * attributes that can't be morph targets. The stride can be zero or
+         * negative, but note that such data layouts are not commonly supported
+         * by GPU APIs.
          */
         explicit MeshAttributeData(MeshAttribute name, VertexFormat format, const Containers::StridedArrayView1D<const void>& data, UnsignedShort arraySize = 0, Int morphTargetId = -1) noexcept;
+        #ifndef DOXYGEN_GENERATING_OUTPUT
+        /* These two are here to direct StridedArrayView1D<[const ]char> to the
+           1D overload, because that's likely what one wants. The 2D conversion
+           adds a dimension at the front, which would make the attribute have
+           just a single vertex with likely a sparse second dimension, causing
+           an immediate assert. */
+        explicit MeshAttributeData(MeshAttribute name, VertexFormat format, const Containers::StridedArrayView1D<char>& data, UnsignedShort arraySize = 0, Int morphTargetId = -1) noexcept: MeshAttributeData{name, format, Containers::StridedArrayView1D<const void>{data}, arraySize, morphTargetId} {}
+        explicit MeshAttributeData(MeshAttribute name, VertexFormat format, const Containers::StridedArrayView1D<const char>& data, UnsignedShort arraySize = 0, Int morphTargetId = -1) noexcept: MeshAttributeData{name, format, Containers::StridedArrayView1D<const void>{data}, arraySize, morphTargetId} {}
+        #endif
 
         /**
          * @brief Constructor
@@ -494,9 +507,11 @@ class MAGNUM_TRADE_EXPORT MeshAttributeData {
          * size matches @p format and @p arraySize, and for builtin attributes
          * that @p format corresponds to @p name and @p arraySize is either
          * zero for non-array attributes or non-zero for array attributes. The
-         * stride is expected to fit into a signed 16-bit value. It can be zero
-         * or negative, but note that such data layouts are not commonly
-         * supported by GPU APIs.
+         * @p morphTargetId is expected to be greater or equal to @cpp -1 @ce
+         * and less than @cpp 128 @ce and has to be @cpp -1 @ce for builtin
+         * attributes that can't be morph targets. The stride is expected to
+         * fit into a signed 16-bit value. It can be zero or negative, but note
+         * that such data layouts are not commonly supported by GPU APIs.
          */
         explicit MeshAttributeData(MeshAttribute name, VertexFormat format, const Containers::StridedArrayView2D<const char>& data, UnsignedShort arraySize = 0, Int morphTargetId = -1) noexcept;
 
@@ -508,7 +523,7 @@ class MAGNUM_TRADE_EXPORT MeshAttributeData {
            offset-only constructor (where 0 passed to offset would match with
            std::nullptr_t). 0 as null pointer constant was deprecated in C++11
            already, WHY IS THIS STILL A PROBLEM?! */
-        template<class U, class = typename std::enable_if<std::is_convertible<U, std::nullptr_t>::value && !std::is_convertible<U, std::size_t>::value>::type> explicit MeshAttributeData(MeshAttribute name, VertexFormat format, U, UnsignedShort arraySize = 0, Int morphTargetId = -1) noexcept: MeshAttributeData{nullptr, name, format, nullptr, arraySize, morphTargetId} {}
+        template<class U, typename std::enable_if<std::is_convertible<U, std::nullptr_t>::value && !std::is_convertible<U, std::size_t>::value, int>::type = 0> explicit MeshAttributeData(MeshAttribute name, VertexFormat format, U, UnsignedShort arraySize = 0, Int morphTargetId = -1) noexcept: MeshAttributeData{nullptr, name, format, nullptr, arraySize, morphTargetId} {}
         #endif
 
         /**
@@ -591,9 +606,11 @@ class MAGNUM_TRADE_EXPORT MeshAttributeData {
          *
          * For builtin attributes expects that @p arraySize is zero for
          * non-array attributes and non-zero for array attributes. The
-         * @p stride is expected to fit into a signed 16-bit value. It can be
-         * zero or negative, but note that such data layouts are not commonly
-         * supported by GPU APIs.
+         * @p morphTargetId is expected to be greater or equal to @cpp -1 @ce
+         * and less than @cpp 128 @ce and has to be @cpp -1 @ce for builtin
+         * attributes that can't be morph targets. The @p stride is expected to
+         * fit into a signed 16-bit value. It can be zero or negative, but note
+         * that such data layouts are not commonly supported by GPU APIs.
          *
          * Additionally, for even more flexibility, the @p vertexCount can be
          * overridden at @ref MeshData construction time, however all attributes
@@ -759,21 +776,25 @@ Containers::Array<MeshAttributeData> MAGNUM_TRADE_EXPORT meshAttributeDataNonOwn
 Provides access to mesh vertex and index data, together with additional
 information such as primitive type. Populated instances of this class are
 returned from @ref AbstractImporter::mesh(), from particular functions in
-the @ref Primitives library as well as from various @ref MeshTools algorithms.
+the @ref Primitives library, can be passed to
+@ref AbstractSceneConverter::convert(const MeshData&),
+@ref AbstractSceneConverter::add(const MeshData&, Containers::StringView) and
+related APIs, as well as used in various @ref MeshTools algorithms. Like with
+other @ref Trade types, the internal representation is fixed upon construction
+and allows only optional in-place modification of the index and vertex data
+itself, but not of the overall structure.
 
-@section Trade-MeshData-usage-compile Quick usage with MeshTools::compile()
+@section Trade-MeshData-gpu-opengl Populating an OpenGL mesh
 
-If all you want is to create a @ref GL::Mesh that can be rendered by builtin
-shaders, a simple yet efficient way is to use @ref MeshTools::compile():
+If the goal is creating a @ref GL::Mesh instance to be rendered by builtin
+shaders, the most straightforward way is to use @ref MeshTools::compile(). This
+one-liner uploads the data and configures the mesh for all builtin attributes
+listed in the @ref MeshAttribute enum that are present in it:
 
-@snippet MagnumTrade.cpp MeshData-usage-compile
+@snippet Trade.cpp MeshData-gpu-opengl
 
-This one-liner uploads the data and configures the mesh for all attributes
-known by Magnum that are present in it. It's however rather opaque and doesn't
-give you any opportunity to do anything with the mesh data before they get sent
-to the GPU. It also won't be able to deal with any custom attributes that the
-mesh contains. Continue below to see how to achieve a similar effect with
-lower-level APIs.
+This works also with any custom shader that follows the attribute binding
+defined in @ref Shaders::GenericGL.
 
 @m_class{m-note m-success}
 
@@ -781,66 +802,88 @@ lower-level APIs.
     A generic mesh setup using the high-level utility is used in the
     @ref examples-primitives and @ref examples-viewer examples.
 
-@section Trade-MeshData-usage Basic usage
+@section Trade-MeshData-gpu-direct Setting GPU mesh properties directly
 
-The second simplest usage is accessing attributes through the convenience
-functions @ref positions2DAsArray(), @ref positions3DAsArray(),
-@ref tangentsAsArray(), @ref bitangentsAsArray(), @ref normalsAsArray(),
-@ref tangentsAsArray(), @ref textureCoordinates2DAsArray(),
-@ref colorsAsArray(), @ref jointIdsAsArray(), @ref weightsAsArray() and
-@ref objectIdsAsArray(). You're expected to check for attribute presence first
-with either @ref hasAttribute() (or @ref attributeCount(MeshAttribute, Int) const, as there can be multiple sets of texture coordinates, for example). If
-you are creating a @ref GL::Mesh, the usual path forward is then to
-@ref MeshTools::interleave() attributes of interest, upload them to a
-@ref GL::Buffer and configure attribute binding for the mesh.
+If you need more control, for example in presence of custom attributes, if
+you have a custom shader that doesn't follow the attribute binding defined in
+@ref Shaders::GenericGL, or if you want to use the mesh with a 3rd party
+renderer, you can access the index and attribute data and properties directly.
+The @ref MeshData class internally stores a contiguous blob of data, which you
+can directly upload, and then use the associated metadata to let the GPU know
+of the format and layout. The following is again creating an OpenGL mesh, but a
+similar workflow would be for Vulkan or any other GPU API:
 
-The mesh can be also indexed, in which case the index buffer is exposed through
-@ref indicesAsArray().
+@snippet Trade.cpp MeshData-gpu-opengl-direct
 
-@snippet MagnumTrade.cpp MeshData-usage
-
-@section Trade-MeshData-usage-advanced Advanced usage
-
-The @ref positions2DAsArray(), ... functions shown above always return a
-newly-allocated @relativeref{Corrade,Containers::Array} instance in a
-well-defined canonical type. While that's convenient and fine at a smaller
-scale, it can take significant amount of time for large models. Or maybe the
-imported data is already in a well-optimized layout and format that you want to
-preserve. The @ref MeshData class internally stores a contiguous blob of data,
-which you can directly upload, and then use provided metadata to let the GPU
-know of the format and layout. There's a lot of possible types of each
-attribute (floats, packed integers, ...), so @ref GL::DynamicAttribute accepts
-also a pair of @ref GL::Attribute defined by the shader and the actual
-@ref VertexFormat, figuring out the GL-specific properties such as component
-count or element data type for you:
-
-@snippet MagnumTrade.cpp MeshData-usage-advanced
-
-This approach is especially useful when dealing with custom attributes. See
-also @ref MeshTools::compile(const Trade::MeshData&, GL::Buffer&, GL::Buffer&)
+If using a shader that follows the @ref Shaders::GenericGL attribute binding
+and only has some custom attributes on top, you can use
+@ref MeshTools::compile(const Trade::MeshData&, GL::Buffer&, GL::Buffer&)
 for a combined way that gives you both the flexibility needed for custom
-attributes as well as the convenience for builtin attributes.
+attributes as well as the convenience for builtin attributes. See its
+documentation for an example.
 
-@section Trade-MeshData-usage-mutable Mutable data access
+@section Trade-MeshData-access Accessing mesh data
 
-The interfaces implicitly provide @cpp const @ce views on the contained index
-and vertex data through the @ref indexData(), @ref vertexData(),
-@ref indices() and @ref attribute() accessors. This is done because in general
-case the data can also refer to a memory-mapped file or constant memory. In
-cases when it's desirable to modify the data in-place, there's the
-@ref mutableIndexData(), @ref mutableVertexData(), @ref mutableIndices() and
-@ref mutableAttribute() set of functions. To use these, you need to check that
-the data are mutable using @ref indexDataFlags() or @ref vertexDataFlags()
-first, and if not then you may want to make a mutable copy first using
-@ref MeshTools::copy(). The following snippet applies a transformation to the
-mesh positions:
+When access to individual attributes from the CPU side is desired, for example
+to inspect the topology or to pass the data to a physics simulation, the
+simplest way is accessing attributes through the convenience
+@ref indicesAsArray(), @ref positions3DAsArray(), @ref normalsAsArray() etc.
+functions. Unless the mesh has a known layout, you're expected to check for
+index buffer and attribute presence first with @ref isIndexed() and
+@ref hasAttribute() (or, in case you need to access for example secondary
+texture coordinates, @ref attributeCount(MeshAttribute, Int) const). Apart from
+that, the convenience functions abstract away the internal layout of the mesh
+data, giving you always a contiguous array in a predictable type.
 
-@snippet MagnumTrade.cpp MeshData-usage-mutable
+@snippet Trade.cpp MeshData-access
 
-If the transformation includes a rotation or non-uniform scaling, you may want
-to do a similar operation with normals and tangents as well.
+If allocation is undesirable, the @ref indicesInto(), @ref positions3DInto()
+etc. variants take a target view where to put the output instead of returning a
+newly created array. The most efficient way is without copies or conversions
+however, by direct accessing the index and attribute data using @ref indices()
+and @ref attribute(). In that case you additionally need to be sure about the
+data types used or decide based on @ref indexType() and @ref attributeFormat().
+Replacing the above with with direct data access would look like this:
 
-@section Trade-MeshData-usage-morph-targets Morph targets
+@snippet Trade.cpp MeshData-access-direct
+
+There are also non-templated type-erased @ref indices() and @ref attribute()
+overloads returning @cpp void @ce views, useful for example when a dispatch
+based on the actual type is deferred to an external function. Compared to using
+the template versions you however lose the type safety checks implemented in
+@ref MeshData itself.
+
+@m_class{m-note m-success}
+
+@par
+    If you're loading a mesh from a file, the @ref magnum-sceneconverter "magnum-sceneconverter"
+    command-line utility can be used to conveniently inspect its layout and
+    used data formats before writing a code that processes it.
+
+@subsection Trade-MeshData-access-mutable Mutable data access
+
+In a general case, mesh index and vertex data can also refer to a memory-mapped
+file or constant memory and thus @ref indices() and @ref attribute() return
+@cpp const @ce views. When it's desirable to modify the data in-place, there's
+the @ref mutableIndexData(), @ref mutableVertexData(), @ref mutableIndices()
+and @ref mutableAttribute() set of functions. To use these, you need to
+additionally check that the data are mutable using @ref indexDataFlags() or
+@ref vertexDataFlags() first. Further continuing from the above, this snippet
+applies a transformation to the mesh positions in-place:
+
+@snippet Trade.cpp MeshData-access-mutable
+
+<b></b>
+
+@m_class{m-note m-success}
+
+@par
+    @ref MeshTools::transform3D() and other APIs in the @ref MeshTools
+    namespace provide a broad set of utilities for mesh transformation,
+    filtering and merging, operating on both whole @ref MeshData instances and
+    individual data views.
+
+@subsection Trade-MeshData-access-morph-targets Morph targets
 
 By default, named attribute access (either through the @ref positions3DAsArray()
 etc. convenience accesors or via @ref attribute(MeshAttribute, UnsignedInt, Int) const "attribute()"
@@ -848,7 +891,7 @@ and similar) searches only through the base attributes. Meshes that have morph
 targets can have the additional attributes accessed by passing a
 `morphTargetId` argument to these functions:
 
-@snippet MagnumTrade.cpp MeshData-usage-morph-targets
+@snippet Trade.cpp MeshData-access-morph-targets
 
 If a base attribute doesn't have a corresponding morph target attribute (which
 can be checked using @ref hasAttribute(MeshAttribute, Int) const with
@@ -885,10 +928,10 @@ advanced data layout features; and conversely all Magnum APIs *taking* a
 When passing mesh data to the GPU, the @ref MeshTools::compile() utility will
 check and expect that only GPU-compatible layout features are used. However,
 when configuring meshes directly like shown in the
-@ref Trade-MeshData-usage-advanced chapter above, you may want to check the
+@ref Trade-MeshData-gpu-direct chapter above, you may want to check the
 constraints explicitly before passing the values over.
 
-@snippet MagnumTrade.cpp MeshData-usage-special-layouts
+@snippet Trade.cpp MeshData-special-layouts
 
 In order to convert a mesh with a special data layout to something the GPU
 vertex pipeline is able to consume, @ref MeshTools::interleave(const Trade::MeshData&, Containers::ArrayView<const Trade::MeshAttributeData>, InterleaveFlags) "MeshTools::interleave()"
@@ -902,15 +945,23 @@ and how to handle it.
 
 @section Trade-MeshData-populating Populating an instance
 
-A @ref MeshData instance by default takes over the ownership of an
-@relativeref{Corrade,Containers::Array} containing the vertex / index data
-together with a @ref MeshIndexData instance and a list of
+If the goal is creating a @ref MeshData instance from individual attributes as
+opposed to getting it from an importer or as an output of another operation and
+making a copy of the data is acceptable, easiest is to pass them to the
+@ref MeshTools::interleave(MeshPrimitive, const Trade::MeshIndexData&, Containers::ArrayView<const Trade::MeshAttributeData>) "MeshTools::interleave()"
+helper and letting it handle all data massaging internally. See its
+documentation for a usage example.
+
+Otherwise, creating a @ref MeshData instance from scratch requires you to have
+all vertex data contained in a single chunk of memory. By default it takes over
+the ownership of an @relativeref{Corrade,Containers::Array} containing the
+vertex / index data together with a @ref MeshIndexData instance and a list of
 @ref MeshAttributeData describing various index and vertex properties. For
 example, an interleaved indexed mesh with 3D positions and RGBA colors would
 look like this --- and variants with just vertex data or just index data or
 neither are possible too:
 
-@snippet MagnumTrade.cpp MeshData-populating
+@snippet Trade.cpp MeshData-populating
 
 @subsection Trade-MeshData-populating-non-owned Non-owned instances and static vertex layouts
 
@@ -924,7 +975,7 @@ describing data mutability and ownership together with
 constructor. The following snippet is a variant of the above where the index
 data is constant and vertex data mutable, both referenced externally:
 
-@snippet MagnumTrade.cpp MeshData-populating-non-owned
+@snippet Trade.cpp MeshData-populating-non-owned
 
 There are also other constructor overloads allowing you to mix and match owned
 vertex data with non-owned index data and vice versa. The @ref MeshAttributeData
@@ -934,7 +985,7 @@ instead if desired. Finally, if the vertex layout is constant but the actual
 data is allocated / populated at runtime, the @ref MeshAttributeData instances
 can be defined in a global array as offset-only:
 
-@snippet MagnumTrade.cpp MeshData-populating-offset-only
+@snippet Trade.cpp MeshData-populating-offset-only
 
 See also the @ref Trade-MeshAttributeData-usage-offset-only "corresponding MeshAttributeData documentation for offset-only fields".
 
@@ -947,12 +998,12 @@ snippet below describes a custom per-face structure that exposes faces as
 higher-order polygons combining multiple triangles together ---in this case,
 each face has an array of 15 IDs, which is exposed as a 2D array:
 
-@snippet MagnumTrade.cpp MeshData-populating-custom
+@snippet Trade.cpp MeshData-populating-custom
 
 Later, the (array) attributes can be retrieved back using the same custom
 identifiers --- note the use of @cpp [] @ce to get back a 2D array again:
 
-@snippet MagnumTrade.cpp MeshData-populating-custom-retrieve
+@snippet Trade.cpp MeshData-populating-custom-retrieve
 
 When a custom attribute is exposed through @ref AbstractImporter, it's possible
 to map custom @ref MeshAttribute values to human-readable string names using
@@ -1606,7 +1657,7 @@ class MAGNUM_TRADE_EXPORT MeshData {
          *
          * If @p name isn't present or @p id is not smaller than
          * @ref attributeCount(MeshAttribute, Int) const, returns
-         * @ref Containers::NullOpt. The lookup is done in an
+         * @relativeref{Corrade,Containers::NullOpt}. The lookup is done in an
          * @f$ \mathcal{O}(n) @f$ complexity with @f$ n @f$ being the attribute
          * count.
          * @see @ref hasAttribute(), @ref attributeId()
@@ -1719,7 +1770,11 @@ class MAGNUM_TRADE_EXPORT MeshData {
          *      @ref isVertexFormatImplementationSpecific(),
          *      @ref attributeArraySize()
          */
-        template<class T, class = typename std::enable_if<!std::is_array<T>::value>::type> Containers::StridedArrayView1D<const T> attribute(UnsignedInt id) const;
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView1D<const T> attribute(UnsignedInt id) const;
 
         /**
          * @brief Data for given array attribute in a concrete type
@@ -1731,7 +1786,11 @@ class MAGNUM_TRADE_EXPORT MeshData {
          * @ref attributeArraySize() for given attribute. For non-array
          * attributes the second dimension has a size of @cpp 1 @ce.
          */
-        template<class T, class = typename std::enable_if<std::is_array<T>::value>::type> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> attribute(UnsignedInt id) const;
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> attribute(UnsignedInt id) const;
 
         /**
          * @brief Mutable data for given attribute in a concrete type
@@ -1740,7 +1799,11 @@ class MAGNUM_TRADE_EXPORT MeshData {
          * Expects that the mesh is mutable.
          * @see @ref vertexDataFlags()
          */
-        template<class T, class = typename std::enable_if<!std::is_array<T>::value>::type> Containers::StridedArrayView1D<T> mutableAttribute(UnsignedInt id);
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView1D<T> mutableAttribute(UnsignedInt id);
 
         /**
          * @brief Mutable data for given array attribute in a concrete type
@@ -1752,7 +1815,11 @@ class MAGNUM_TRADE_EXPORT MeshData {
          * @ref attributeArraySize() for given attribute. For non-array
          * attributes the second dimension has a size of @cpp 1 @ce.
          */
-        template<class T, class = typename std::enable_if<std::is_array<T>::value>::type> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> mutableAttribute(UnsignedInt id);
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView2D<typename std::remove_extent<T>::type> mutableAttribute(UnsignedInt id);
 
         /**
          * @brief Data for given named attribute
@@ -1802,7 +1869,11 @@ class MAGNUM_TRADE_EXPORT MeshData {
          *      @ref mutableAttribute(MeshAttribute, UnsignedInt, Int),
          *      @ref isVertexFormatImplementationSpecific()
          */
-        template<class T, class = typename std::enable_if<!std::is_array<T>::value>::type> Containers::StridedArrayView1D<const T> attribute(MeshAttribute name, UnsignedInt id = 0, Int morphTargetId = -1) const;
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView1D<const T> attribute(MeshAttribute name, UnsignedInt id = 0, Int morphTargetId = -1) const;
 
         /**
          * @brief Data for given named array attribute in a concrete type
@@ -1814,7 +1885,11 @@ class MAGNUM_TRADE_EXPORT MeshData {
          * @ref attributeArraySize() for given attribute. For non-array
          * attributes the second dimension has a size of @cpp 1 @ce.
          */
-        template<class T, class = typename std::enable_if<std::is_array<T>::value>::type> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> attribute(MeshAttribute name, UnsignedInt id = 0, Int morphTargetId = -1) const;
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> attribute(MeshAttribute name, UnsignedInt id = 0, Int morphTargetId = -1) const;
 
         /**
          * @brief Mutable data for given named attribute in a concrete type
@@ -1823,7 +1898,11 @@ class MAGNUM_TRADE_EXPORT MeshData {
          * returns a mutable view. Expects that the mesh is mutable.
          * @see @ref vertexDataFlags()
          */
-        template<class T, class = typename std::enable_if<!std::is_array<T>::value>::type> Containers::StridedArrayView1D<T> mutableAttribute(MeshAttribute name, UnsignedInt id = 0, Int morphTargetId = -1);
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView1D<T> mutableAttribute(MeshAttribute name, UnsignedInt id = 0, Int morphTargetId = -1);
 
         /**
          * @brief Mutable data for given named array attribute in a concrete type
@@ -1835,7 +1914,11 @@ class MAGNUM_TRADE_EXPORT MeshData {
          * @ref attributeArraySize() for given attribute. For non-array
          * attributes the second dimension has a size of @cpp 1 @ce.
          */
-        template<class T, class = typename std::enable_if<std::is_array<T>::value>::type> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> mutableAttribute(MeshAttribute name, UnsignedInt id = 0, Int morphTargetId = -1);
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView2D<typename std::remove_extent<T>::type> mutableAttribute(MeshAttribute name, UnsignedInt id = 0, Int morphTargetId = -1);
 
         /**
          * @brief Indices as 32-bit integers
@@ -2085,7 +2168,7 @@ class MAGNUM_TRADE_EXPORT MeshData {
          * elements. You can make a 2D view onto the result to conveniently
          * index the data:
          *
-         * @snippet MagnumTrade.cpp MeshData-jointIdsAsArray
+         * @snippet Trade.cpp MeshData-jointIdsAsArray
          *
          * @see @ref weightsAsArray(), @ref jointIdsInto(),
          *      @ref attributeFormat(),
@@ -2279,10 +2362,10 @@ namespace Implementation {
 }
 
 #ifndef DOXYGEN_GENERATING_OUTPUT
-template<class T, class> MeshIndexData::MeshIndexData(const MeshIndexType type, T&& data) noexcept: _type{type} {
+template<class T, typename std::enable_if<std::is_convertible<T, Containers::ArrayView<const void>>::value, int>::type> MeshIndexData::MeshIndexData(const MeshIndexType type, T&& data) noexcept: _type{type} {
     const Containers::ArrayView<const void> erased = data;
     CORRADE_ASSERT(!isMeshIndexTypeImplementationSpecific(type),
-        "Trade::MeshIndexData: can't create index data from a contiguous view and an implementation-specific type" << reinterpret_cast<void*>(meshIndexTypeUnwrap(type)) << Debug::nospace << ", pass a strided view instead", );
+        "Trade::MeshIndexData: can't create index data from a contiguous view and an implementation-specific type" << Debug::hex << meshIndexTypeUnwrap(type) << Debug::nospace << ", pass a strided view instead", );
     const std::size_t typeSize = meshIndexTypeSize(type);
     CORRADE_ASSERT(erased.size()%typeSize == 0,
         "Trade::MeshIndexData: view size" << erased.size() << "does not correspond to" << type, );
@@ -2650,7 +2733,7 @@ template<class T> Containers::StridedArrayView1D<const T> MeshData::indices() co
     if(!data.stride()[1]) return {};
     #endif
     CORRADE_ASSERT(!isMeshIndexTypeImplementationSpecific(_indexType),
-        "Trade::MeshData::indices(): can't cast data from an implementation-specific index type" << reinterpret_cast<void*>(meshIndexTypeUnwrap(_indexType)), {});
+        "Trade::MeshData::indices(): can't cast data from an implementation-specific index type" << Debug::hex << meshIndexTypeUnwrap(_indexType), {});
     CORRADE_ASSERT(Implementation::meshIndexTypeFor<T>() == _indexType,
         "Trade::MeshData::indices(): indices are" << _indexType << "but requested" << Implementation::meshIndexTypeFor<T>(), {});
     return Containers::arrayCast<1, const T>(data);
@@ -2664,7 +2747,7 @@ template<class T> Containers::StridedArrayView1D<T> MeshData::mutableIndices() {
     if(!data.stride()[1]) return {};
     #endif
     CORRADE_ASSERT(!isMeshIndexTypeImplementationSpecific(_indexType),
-        "Trade::MeshData::mutableIndices(): can't cast data from an implementation-specific index type" << reinterpret_cast<void*>(meshIndexTypeUnwrap(_indexType)), {});
+        "Trade::MeshData::mutableIndices(): can't cast data from an implementation-specific index type" << Debug::hex << meshIndexTypeUnwrap(_indexType), {});
     CORRADE_ASSERT(Implementation::meshIndexTypeFor<T>() == _indexType,
         "Trade::MeshData::mutableIndices(): indices are" << _indexType << "but requested" << Implementation::meshIndexTypeFor<T>(), {});
     return Containers::arrayCast<1, T>(data);
@@ -2677,7 +2760,7 @@ template<class T> bool MeshData::checkVertexFormatCompatibility(const MeshAttrib
     #endif
 ) const {
     CORRADE_ASSERT(!isVertexFormatImplementationSpecific(attribute._format),
-        prefix << "can't cast data from an implementation-specific vertex format" << reinterpret_cast<void*>(vertexFormatUnwrap(attribute._format)), false);
+        prefix << "can't cast data from an implementation-specific vertex format" << Debug::hex << vertexFormatUnwrap(attribute._format), false);
     CORRADE_ASSERT(Implementation::isVertexFormatCompatible<typename std::remove_extent<T>::type>(attribute._format),
         prefix << attribute._name << "is" << attribute._format << "but requested a type equivalent to" << Implementation::vertexFormatFor<typename std::remove_extent<T>::type>(), false);
     CORRADE_ASSERT(!attribute._arraySize || std::is_array<T>::value,
@@ -2686,7 +2769,8 @@ template<class T> bool MeshData::checkVertexFormatCompatibility(const MeshAttrib
 }
 #endif
 
-template<class T, class> Containers::StridedArrayView1D<const T> MeshData::attribute(const UnsignedInt id) const {
+#ifndef DOXYGEN_GENERATING_OUTPUT
+template<class T, typename std::enable_if<!std::is_array<T>::value, int>::type> Containers::StridedArrayView1D<const T> MeshData::attribute(const UnsignedInt id) const {
     Containers::StridedArrayView2D<const char> data = attribute(id);
     #ifdef CORRADE_GRACEFUL_ASSERT /* Sigh. Brittle. Better idea? */
     if(!data.stride()[1]) return {};
@@ -2697,7 +2781,7 @@ template<class T, class> Containers::StridedArrayView1D<const T> MeshData::attri
     return Containers::arrayCast<1, const T>(data);
 }
 
-template<class T, class> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> MeshData::attribute(const UnsignedInt id) const {
+template<class T, typename std::enable_if<std::is_array<T>::value, int>::type> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> MeshData::attribute(const UnsignedInt id) const {
     Containers::StridedArrayView2D<const char> data = attribute(id);
     #ifdef CORRADE_GRACEFUL_ASSERT /* Sigh. Brittle. Better idea? */
     if(!data.stride()[1]) return {};
@@ -2708,7 +2792,7 @@ template<class T, class> Containers::StridedArrayView2D<const typename std::remo
     return Containers::arrayCast<2, const typename std::remove_extent<T>::type>(data);
 }
 
-template<class T, class> Containers::StridedArrayView1D<T> MeshData::mutableAttribute(const UnsignedInt id) {
+template<class T, typename std::enable_if<!std::is_array<T>::value, int>::type> Containers::StridedArrayView1D<T> MeshData::mutableAttribute(const UnsignedInt id) {
     Containers::StridedArrayView2D<char> data = mutableAttribute(id);
     #ifdef CORRADE_GRACEFUL_ASSERT /* Sigh. Brittle. Better idea? */
     if(!data.stride()[1]) return {};
@@ -2719,7 +2803,7 @@ template<class T, class> Containers::StridedArrayView1D<T> MeshData::mutableAttr
     return Containers::arrayCast<1, T>(data);
 }
 
-template<class T, class> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> MeshData::mutableAttribute(const UnsignedInt id) {
+template<class T, typename std::enable_if<std::is_array<T>::value, int>::type> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> MeshData::mutableAttribute(const UnsignedInt id) {
     Containers::StridedArrayView2D<char> data = mutableAttribute(id);
     #ifdef CORRADE_GRACEFUL_ASSERT /* Sigh. Brittle. Better idea? */
     if(!data.stride()[1]) return {};
@@ -2730,7 +2814,7 @@ template<class T, class> Containers::StridedArrayView2D<typename std::remove_ext
     return Containers::arrayCast<2, typename std::remove_extent<T>::type>(data);
 }
 
-template<class T, class> Containers::StridedArrayView1D<const T> MeshData::attribute(const MeshAttribute name, const UnsignedInt id, const Int morphTargetId) const {
+template<class T, typename std::enable_if<!std::is_array<T>::value, int>::type> Containers::StridedArrayView1D<const T> MeshData::attribute(const MeshAttribute name, const UnsignedInt id, const Int morphTargetId) const {
     const UnsignedInt attributeId = findAttributeIdInternal(name, id, morphTargetId);
     #ifndef CORRADE_NO_ASSERT
     if(morphTargetId == -1) CORRADE_ASSERT(attributeId != ~UnsignedInt{},
@@ -2747,7 +2831,7 @@ template<class T, class> Containers::StridedArrayView1D<const T> MeshData::attri
     return Containers::arrayCast<1, const T>(data);
 }
 
-template<class T, class> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> MeshData::attribute(const MeshAttribute name, const UnsignedInt id, const Int morphTargetId) const {
+template<class T, typename std::enable_if<std::is_array<T>::value, int>::type> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> MeshData::attribute(const MeshAttribute name, const UnsignedInt id, const Int morphTargetId) const {
     const UnsignedInt attributeId = findAttributeIdInternal(name, id, morphTargetId);
     #ifndef CORRADE_NO_ASSERT
     if(morphTargetId == -1) CORRADE_ASSERT(attributeId != ~UnsignedInt{},
@@ -2764,7 +2848,7 @@ template<class T, class> Containers::StridedArrayView2D<const typename std::remo
     return Containers::arrayCast<2, const typename std::remove_extent<T>::type>(data);
 }
 
-template<class T, class> Containers::StridedArrayView1D<T> MeshData::mutableAttribute(const MeshAttribute name, const UnsignedInt id, const Int morphTargetId) {
+template<class T, typename std::enable_if<!std::is_array<T>::value, int>::type> Containers::StridedArrayView1D<T> MeshData::mutableAttribute(const MeshAttribute name, const UnsignedInt id, const Int morphTargetId) {
     const UnsignedInt attributeId = findAttributeIdInternal(name, id, morphTargetId);
     #ifndef CORRADE_NO_ASSERT
     if(morphTargetId == -1) CORRADE_ASSERT(attributeId != ~UnsignedInt{},
@@ -2782,7 +2866,7 @@ template<class T, class> Containers::StridedArrayView1D<T> MeshData::mutableAttr
     return Containers::arrayCast<1, T>(data);
 }
 
-template<class T, class> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> MeshData::mutableAttribute(const MeshAttribute name, const UnsignedInt id, const Int morphTargetId) {
+template<class T, typename std::enable_if<std::is_array<T>::value, int>::type> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> MeshData::mutableAttribute(const MeshAttribute name, const UnsignedInt id, const Int morphTargetId) {
     const UnsignedInt attributeId = findAttributeIdInternal(name, id, morphTargetId);
     #ifndef CORRADE_NO_ASSERT
     if(morphTargetId == -1) CORRADE_ASSERT(attributeId != ~UnsignedInt{},
@@ -2799,6 +2883,7 @@ template<class T, class> Containers::StridedArrayView2D<typename std::remove_ext
     #endif
     return Containers::arrayCast<2, typename std::remove_extent<T>::type>(data);
 }
+#endif
 
 }}
 

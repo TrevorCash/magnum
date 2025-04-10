@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -50,7 +51,7 @@ Debug& operator<<(Debug& debug, const DynamicAttribute::Kind value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const DynamicAttribute::Components value) {
@@ -70,7 +71,7 @@ Debug& operator<<(Debug& debug, const DynamicAttribute::Components value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const DynamicAttribute::DataType value) {
@@ -101,7 +102,7 @@ Debug& operator<<(Debug& debug, const DynamicAttribute::DataType value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 namespace Implementation {
@@ -133,15 +134,53 @@ UnsignedInt FloatAttribute::size(GLint components, DataType dataType) {
 #ifndef MAGNUM_TARGET_GLES2
 UnsignedInt IntAttribute::size(GLint components, DataType dataType) {
     switch(dataType) {
-        case DataType::UnsignedByte:
         case DataType::Byte:
             return components;
-        case DataType::UnsignedShort:
         case DataType::Short:
             return 2*components;
-        case DataType::UnsignedInt:
         case DataType::Int:
             return 4*components;
+        #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_PUSH
+        #endif
+        case DataType::UnsignedByte:
+            return components;
+        case DataType::UnsignedShort:
+            return 2*components;
+        case DataType::UnsignedInt:
+            return 4*components;
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
+        #endif
+    }
+
+    CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
+}
+
+UnsignedInt UnsignedIntAttribute::size(GLint components, DataType dataType) {
+    switch(dataType) {
+        case DataType::UnsignedByte:
+            return components;
+        case DataType::UnsignedShort:
+            return 2*components;
+        case DataType::UnsignedInt:
+            return 4*components;
+        #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_PUSH
+        #endif
+        case DataType::Byte:
+            return components;
+        case DataType::Short:
+            return 2*components;
+        case DataType::Int:
+            return 4*components;
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
+        #endif
     }
 
     CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
@@ -231,7 +270,7 @@ Debug& operator<<(Debug& debug, const SizedAttribute<1, 1>::Components value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const SizedAttribute<1, 2>::Components value) {
@@ -246,7 +285,7 @@ Debug& operator<<(Debug& debug, const SizedAttribute<1, 2>::Components value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const SizedAttribute<1, 3>::Components value) {
@@ -263,7 +302,7 @@ Debug& operator<<(Debug& debug, const SizedAttribute<1, 3>::Components value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const SizedAttribute<1, 4>::Components value) {
@@ -282,7 +321,7 @@ Debug& operator<<(Debug& debug, const SizedAttribute<1, 4>::Components value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const SizedMatrixAttribute<2>::Components value) {
@@ -295,7 +334,7 @@ Debug& operator<<(Debug& debug, const SizedMatrixAttribute<2>::Components value)
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const SizedMatrixAttribute<3>::Components value) {
@@ -308,7 +347,7 @@ Debug& operator<<(Debug& debug, const SizedMatrixAttribute<3>::Components value)
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const SizedMatrixAttribute<4>::Components value) {
@@ -321,7 +360,7 @@ Debug& operator<<(Debug& debug, const SizedMatrixAttribute<4>::Components value)
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const Attribute<Math::Vector<4, Float>>::Components value) {
@@ -344,7 +383,7 @@ Debug& operator<<(Debug& debug, const Attribute<Math::Vector<4, Float>>::Compone
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const FloatAttribute::DataType value) {
@@ -370,7 +409,7 @@ Debug& operator<<(Debug& debug, const FloatAttribute::DataType value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 #ifndef MAGNUM_TARGET_GLES2
@@ -380,17 +419,52 @@ Debug& operator<<(Debug& debug, const IntAttribute::DataType value) {
     switch(value) {
         /* LCOV_EXCL_START */
         #define _c(value) case IntAttribute::DataType::value: return debug << "::" #value;
-        _c(UnsignedByte)
         _c(Byte)
-        _c(UnsignedShort)
         _c(Short)
-        _c(UnsignedInt)
         _c(Int)
+        #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_PUSH
+        #endif
+        _c(UnsignedByte)
+        _c(UnsignedShort)
+        _c(UnsignedInt)
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
+        #endif
         #undef _c
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
+}
+
+Debug& operator<<(Debug& debug, const UnsignedIntAttribute::DataType value) {
+    debug << "GL::Attribute::DataType" << Debug::nospace;
+
+    switch(value) {
+        /* LCOV_EXCL_START */
+        #define _c(value) case UnsignedIntAttribute::DataType::value: return debug << "::" #value;
+        _c(UnsignedByte)
+        _c(UnsignedShort)
+        _c(UnsignedInt)
+        #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_PUSH
+        #endif
+        _c(Byte)
+        _c(Short)
+        _c(Int)
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
+        #endif
+        #undef _c
+        /* LCOV_EXCL_STOP */
+    }
+
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 #endif
 
@@ -406,7 +480,7 @@ Debug& operator<<(Debug& debug, const DoubleAttribute::DataType value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 #endif
 
@@ -434,7 +508,7 @@ Debug& operator<<(Debug& debug, const Attribute<Math::Vector<3, Float>>::DataTyp
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const Attribute<Math::Vector<4, Float>>::DataType value) {
@@ -464,7 +538,7 @@ Debug& operator<<(Debug& debug, const Attribute<Math::Vector<4, Float>>::DataTyp
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 }

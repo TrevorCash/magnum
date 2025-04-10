@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/String.h>
-#include <Corrade/Containers/StringStl.h> /** @todo remove once AbstractFont is <string>-free */
 #include <Corrade/Containers/Triple.h>
 #include <Corrade/Utility/Path.h>
 
@@ -40,7 +39,7 @@
 #include "Magnum/Math/Range.h"
 #include "Magnum/GL/OpenGLTester.h"
 #include "Magnum/Text/AbstractFont.h"
-#include "Magnum/Text/GlyphCache.h"
+#include "Magnum/Text/GlyphCacheGL.h"
 #include "Magnum/Trade/AbstractImporter.h"
 
 #include "configure.h"
@@ -137,9 +136,9 @@ void MagnumFontGLTest::createGlyphCache() {
        we cannot really verify that the size matches, but at least
        something. */
     #ifndef MAGNUM_TARGET_GLES
-    Image2D image = static_cast<GlyphCache&>(*cache).texture().image(0, {PixelFormat::R8Unorm});
+    Image2D image = static_cast<GlyphCacheGL&>(*cache).texture().image(0, {PixelFormat::R8Unorm});
     #else
-    Image2D image = DebugTools::textureSubImage(static_cast<GlyphCache&>(*cache).texture(), 0, {{}, {128, 64}}, {PixelFormat::R8Unorm});
+    Image2D image = DebugTools::textureSubImage(static_cast<GlyphCacheGL&>(*cache).texture(), 0, {{}, {128, 64}}, {PixelFormat::R8Unorm});
     #endif
     MAGNUM_VERIFY_NO_GL_ERROR();
     CORRADE_COMPARE_WITH(image,
@@ -211,9 +210,9 @@ void MagnumFontGLTest::createGlyphCacheProcessedImage() {
        we cannot really verify that the size matches, but at least
        something. */
     #ifndef MAGNUM_TARGET_GLES
-    Image2D image = static_cast<GlyphCache&>(*cache).texture().image(0, {PixelFormat::R8Unorm});
+    Image2D image = static_cast<GlyphCacheGL&>(*cache).texture().image(0, {PixelFormat::R8Unorm});
     #else
-    Image2D image = DebugTools::textureSubImage(static_cast<GlyphCache&>(*cache).texture(), 0, {{}, {8, 4}}, {PixelFormat::R8Unorm});
+    Image2D image = DebugTools::textureSubImage(static_cast<GlyphCacheGL&>(*cache).texture(), 0, {{}, {8, 4}}, {PixelFormat::R8Unorm});
     #endif
     MAGNUM_VERIFY_NO_GL_ERROR();
     CORRADE_COMPARE_WITH(image,

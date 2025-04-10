@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -247,7 +248,7 @@ Same string as returned by
 used inside @ref CORRADE_PLUGIN_REGISTER() to avoid having to update the
 interface string by hand every time the version gets bumped:
 
-@snippet MagnumAudio.cpp MAGNUM_AUDIO_ABSTRACTIMPORTER_PLUGIN_INTERFACE
+@snippet Audio.cpp MAGNUM_AUDIO_ABSTRACTIMPORTER_PLUGIN_INTERFACE
 
 The interface string version gets increased on every ABI break to prevent
 silent crashes and memory corruption. Plugins built against the previous

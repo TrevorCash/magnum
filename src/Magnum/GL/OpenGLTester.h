@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -137,6 +138,24 @@ If @gl_extension{ARB,timer_query} desktop extension (part of OpenGL 3.3),
 @gl_extension{EXT,disjoint_timer_query_webgl2} WebGL 2 extension is not
 available, GPU time benchmarks will get automatically skipped, producing a
 @cb{.ansi} [1;39mSKIP @ce message on the output.
+
+Note that GPUs are subject to the same frequency scaling as CPUs, and depending
+on the vendor and driver the variance may be so high that the measurements are
+useless. This is particlarly the case with Intel integrated GPUs, which heavily
+downclock for power saving, and do so independently on the CPU power mode. On
+Linux it's possible to tune the behavior by setting the min and max frequency
+to the same value, for example:
+
+@m_class{m-console-wrap}
+
+@code{.sh}
+cat /sys/class/drm/card1/gt/gt0/rps_max_freq_mhz > /sys/class/drm/card1/gt/gt0/rps_min_freq_mhz
+@endcode
+
+On systems that have multiple GPUs, pick `cardN` based on whether it has a
+`gt/` subdirectory, NVidia GPUs for example don't have it. Discrete GPUs have
+additional tunables, see the [official Intel docs](https://www.intel.com/content/www/us/en/docs/oneapi/optimization-guide-gpu/2024-2/configuring-gpu-device.html)
+for more information.
 
 @note This class is available only if Magnum is compiled with
     @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
@@ -286,10 +305,12 @@ class OpenGLTester: public TestSuite::Tester {
         void gpuTimeBenchmarkBegin();
         std::uint64_t gpuTimeBenchmarkEnd();
 
+        #ifndef DOXYGEN_GENERATING_OUTPUT
         struct WindowlessApplication: Platform::WindowlessApplication {
             explicit WindowlessApplication(const Arguments& arguments): Platform::WindowlessApplication{arguments} {}
             int exec() override final { return 0; }
         } _windowlessApplication;
+        #endif
 
         TimeQuery _gpuTimeQuery{NoCreate};
 };
@@ -299,7 +320,7 @@ class OpenGLTester: public TestSuite::Tester {
 
 Equivalent to
 
-@snippet MagnumGL.cpp OpenGLTester-MAGNUM_VERIFY_NO_GL_ERROR
+@snippet GL.cpp OpenGLTester-MAGNUM_VERIFY_NO_GL_ERROR
 */
 #define MAGNUM_VERIFY_NO_GL_ERROR() CORRADE_COMPARE(Magnum::GL::Renderer::error(), Magnum::GL::Renderer::Error::NoError)
 

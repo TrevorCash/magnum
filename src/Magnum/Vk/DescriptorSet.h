@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -52,7 +53,7 @@ Given a @ref DescriptorSetLayout and a compatible @ref DescriptorPool with
 enough free slots, asingle descriptor set for given layout can be allocated
 with @ref DescriptorPool::allocate():
 
-@snippet MagnumVk.cpp DescriptorSet-allocation
+@snippet Vk.cpp DescriptorSet-allocation
 
 When allocating more than what the pool has, the @ref DescriptorPool::allocate()
 function aborts with an error message. In cases where the application is very
@@ -61,7 +62,7 @@ dynamic and cannot predict that a pools is large enough, you can use
 --- for example by recycling unused sets or by allocating from a different
 pool:
 
-@snippet MagnumVk.cpp DescriptorSet-allocation-try
+@snippet Vk.cpp DescriptorSet-allocation-try
 
 @subsection Vk-DescriptorSet-allocation-free Freeing descriptor sets
 
@@ -74,7 +75,7 @@ descriptor sets to be allocated without resetting the whole pool. Using this
 flag however can cause allocation to fail also due to pool fragmentation, not
 just when exhausing all available resources:
 
-@snippet MagnumVk.cpp DescriptorSet-allocation-free
+@snippet Vk.cpp DescriptorSet-allocation-free
 
 @subsection Vk-DescriptorSet-allocation-variable Variable descriptor count allocation
 
@@ -83,7 +84,7 @@ has to be at most one and it has to be the last binding), a concrete count is
 specified in the call to @ref DescriptorPool::allocate(VkDescriptorSetLayout, UnsignedInt). Here the fragment shader can access up to 8 sampled images and
 we're allocating four:
 
-@snippet MagnumVk.cpp DescriptorSet-allocation-variable
+@snippet Vk.cpp DescriptorSet-allocation-variable
 */
 class MAGNUM_VK_EXPORT DescriptorSet {
     public:

@@ -4,10 +4,12 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020 Nghia Truong <nghiatruong.vn@gmail.com>
     Copyright © 2020 Pablo Escobar <mail@rvrs.in>
     Copyright © 2020 janos <janos.meny@googlemail.com>
+    Copyright © 2024 John Turner <7strbass@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -71,11 +73,11 @@ namespace Implementation {
 
 Example usage:
 
-@snippet MagnumMath.cpp div
+@snippet Math.cpp div
 
 Equivalent to the following, but possibly done in a single CPU instruction:
 
-@snippet MagnumMath.cpp div-equivalent
+@snippet Math.cpp div-equivalent
 */
 template<class Integral> inline Containers::Pair<Integral, Integral> div(Integral x, Integral y) {
     static_assert(IsIntegral<Integral>::value && IsScalar<Integral>::value,
@@ -250,7 +252,11 @@ the operations component-wise.
 @see @ref isNan(), @ref Constants::inf(),
     @ref isInf(const Containers::StridedArrayView1D<const T>&)
 */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, bool>::type isInf(T value) {
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline bool isInf(T value) {
     return std::isinf(UnderlyingTypeOf<T>(value));
 }
 
@@ -274,7 +280,11 @@ Equivalent to @cpp value != value @ce.
     @ref isNan(const Containers::StridedArrayView1D<const T>&)
 */
 /* defined in Vector.h */
-template<class T> typename std::enable_if<IsScalar<T>::value, bool>::type isNan(T value);
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type
+    #endif
+> bool isNan(T value);
 
 /**
 @overload
@@ -296,7 +306,11 @@ template<std::size_t size, class T> inline BitVector<size> isNan(const Vector<si
     @ref Vector::min(), @ref Utility::min()
 */
 /* defined in Vector.h */
-template<class T> constexpr typename std::enable_if<IsScalar<T>::value, T>::type min(T value, T min);
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type
+    #endif
+> constexpr T min(T value, T min);
 
 /** @overload */
 template<std::size_t size, class T> inline Vector<size, T> min(const Vector<size, T>& value, const Vector<size, T>& min) {
@@ -323,7 +337,11 @@ template<std::size_t size, class T> inline Vector<size, T> min(const Vector<size
     @ref Vector::max(), @ref Utility::max()
 */
 /* defined in Vector.h */
-template<class T> constexpr typename std::enable_if<IsScalar<T>::value, T>::type max(T a, T b);
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type
+    #endif
+> constexpr T max(T a, T b);
 
 /** @overload */
 template<std::size_t size, class T> Vector<size, T> max(const Vector<size, T>& value, const Vector<size, T>& max) {
@@ -349,7 +367,11 @@ template<std::size_t size, class T> inline Vector<size, T> max(const Vector<size
     @ref Vector::minmax(),
     @ref Range::Range(const Containers::Pair<VectorType, VectorType>&)
 */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, Containers::Pair<T, T>>::type minmax(T a, T b) {
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline Containers::Pair<T, T> minmax(T a, T b) {
     return a < b ? Containers::pair(a, b) : Containers::pair(b, a);
 }
 
@@ -368,13 +390,17 @@ template<std::size_t size, class T> inline Containers::Pair<Vector<size, T>, Vec
 Values smaller than @p min are set to @p min, values larger than @p max are
 set to @p max. Equivalent to:
 
-@snippet MagnumMath.cpp clamp
+@snippet Math.cpp clamp
 
 <em>NaN</em>s passed in @p value parameter are propagated.
 @see @ref min(), @ref max()
 */
 /* defined in Vector.h */
-template<class T> constexpr typename std::enable_if<IsScalar<T>::value, T>::type clamp(T value, T min, T max);
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type
+    #endif
+> constexpr T clamp(T value, T min, T max);
 
 /** @overload */
 template<std::size_t size, class T> inline Vector<size, T> clamp(const Vector<size, T>& value, const Vector<size, T>& min, const Vector<size, T>& max) {
@@ -397,22 +423,30 @@ template<std::size_t size, class T> inline Vector<size, T> clamp(const Vector<si
 
 Returns `1` if @p x > 0, `0` if @p x = 0 and `-1` if @p x < 0.
 */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type sign(T scalar) {
-    if(scalar > T(0)) return T(1);
-    if(scalar < T(0)) return T(-1);
-    return T(0);
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline UnderlyingTypeOf<T> sign(T scalar) {
+    if(scalar > T(0)) return UnderlyingTypeOf<T>(1);
+    if(scalar < T(0)) return UnderlyingTypeOf<T>(-1);
+    return UnderlyingTypeOf<T>(0);
 }
 
 /** @overload */
-template<std::size_t size, class T> inline Vector<size, T> sign(const Vector<size, T>& a) {
-    Vector<size, T> out{Magnum::NoInit};
+template<std::size_t size, class T> inline Vector<size, UnderlyingTypeOf<T>> sign(const Vector<size, T>& a) {
+    Vector<size, UnderlyingTypeOf<T>> out{Magnum::NoInit};
     for(std::size_t i = 0; i != size; ++i)
         out[i] = Math::sign(a[i]);
     return out;
 }
 
 /** @brief Absolute value */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type abs(T a) {
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline T abs(T a) {
     return T(std::abs(UnderlyingTypeOf<T>(a)));
 }
 
@@ -425,7 +459,11 @@ template<std::size_t size, class T> inline Vector<size, T> abs(const Vector<size
 }
 
 /** @brief Nearest not larger integer */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type floor(T a) {
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline T floor(T a) {
     return T(std::floor(UnderlyingTypeOf<T>(a)));
 }
 
@@ -438,7 +476,11 @@ template<std::size_t size, class T> inline Vector<size, T> floor(const Vector<si
 }
 
 /** @brief Round value to nearest integer */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type round(T a) {
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline T round(T a) {
     return T(std::round(UnderlyingTypeOf<T>(a)));
 }
 
@@ -451,7 +493,11 @@ template<std::size_t size, class T> inline Vector<size, T> round(const Vector<si
 }
 
 /** @brief Nearest not smaller integer */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type ceil(T a) {
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline T ceil(T a) {
     return T(std::ceil(UnderlyingTypeOf<T>(a)));
 }
 
@@ -479,7 +525,11 @@ Calculates the remainder @f$ r @f$ of a floating point division: @f[
 
 @m_keyword{mod(),GLSL mod(),}
 */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type fmod(T a, T b) {
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline T fmod(T a, T b) {
     return T(std::fmod(UnderlyingTypeOf<T>(a), UnderlyingTypeOf<T>(b)));
 }
 
@@ -491,6 +541,17 @@ template<std::size_t size, class T> inline Vector<size, T> fmod(const Vector<siz
     Vector<size, T> out{Magnum::NoInit};
     for(std::size_t i = 0; i != size; ++i)
         out[i] = Math::fmod(a[i], b[i]);
+    return out;
+}
+
+/**
+@overload
+@m_since_latest
+*/
+template<std::size_t size, class T> inline Vector<size, T> fmod(const Vector<size, T>& a, T b) {
+    Vector<size, T> out{Magnum::NoInit};
+    for(std::size_t i = 0; i != size; ++i)
+        out[i] = Math::fmod(a[i], b);
     return out;
 }
 
@@ -513,13 +574,11 @@ See @ref select() for constant interpolation using the same API and
     @ref lerp(const CubicHermiteQuaternion<T>&, const CubicHermiteQuaternion<T>&, T)
 @m_keyword{mix(),GLSL mix(),}
 */
-template<class T, class U> inline
+template<class T, class U
     #ifndef DOXYGEN_GENERATING_OUTPUT
-    typename std::enable_if<(IsVector<T>::value || IsScalar<T>::value) && !Implementation::IsBitVectorOrScalar<U>::value, T>::type
-    #else
-    T
+    , typename std::enable_if<(IsVector<T>::value || IsScalar<T>::value) && !Implementation::IsBitVectorOrScalar<U>::value, int>::type = 0
     #endif
-lerp(const T& a, const T& b, U t) {
+> inline T lerp(const T& a, const T& b, U t) {
     return Implementation::lerp(a, b, t);
 }
 
@@ -534,6 +593,7 @@ template<class T> inline T lerp(const T& a, const T& b, bool t) {
 Similar to the above, but instead of multiplication and addition it just does
 component-wise selection from either @p a or @p b based on values in @p t.
 @m_keyword{mix(),GLSL mix(),}
+@see @ref Vector::Vector(const BitVector<size>&)
 */
 template<std::size_t size, class T> inline Vector<size, T> lerp(const Vector<size, T>& a, const Vector<size, T>& b, const BitVector<size>& t) {
     Vector<size, T> out{Magnum::NoInit};
@@ -569,11 +629,15 @@ another --- for example, the following snippet maps `a` from a range
 @f$ [ -1; +1 ] @f$ to a range @f$ [ 5\degree; 15\degree ] @f$; the second
 expression combines that with @ref clamp() to ensure the value is in bounds:
 
-@snippet MagnumMath.cpp lerpInverted-map
+@snippet Math.cpp lerpInverted-map
 
 @see @ref select()
 */
-template<class T> inline UnderlyingTypeOf<typename std::enable_if<IsScalar<T>::value, T>::type> lerpInverted(T a, T b, T lerp) {
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline UnderlyingTypeOf<T> lerpInverted(T a, T b, T lerp) {
     return (lerp - a)/(b - a);
 }
 
@@ -598,6 +662,7 @@ A constant interpolation counterpart to @ref lerp(): @f[
 Equivalent to calling @cpp Math::lerp(a, b, t >= U(1)) @ce.
 */
 template<class T, class U> constexpr T select(const T& a, const T& b, U t) {
+    static_assert(IsUnitless<U>::value, "expecting a unitless type for the interpolation phase");
     return lerp(a, b, t >= U(1));
 }
 
@@ -608,8 +673,12 @@ Computes and returns @f$ ab + c @f$. On some architectures might be faster than
 doing the computation manually. Works only on types that satisfy
 @ref IsUnitless.
 */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type fma(T a, T b, T c) {
-    static_assert(IsUnitless<T>::value, "expecting an unitless type");
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline T fma(T a, T b, T c) {
+    static_assert(IsUnitless<T>::value, "expecting a unitless type");
     /* On Emscripten it works with -O2 but not with -O1 (function not defined).
        I guess that's only because -O2 optimizes it out, so disabling it there. */
     #ifndef CORRADE_TARGET_EMSCRIPTEN
@@ -621,7 +690,7 @@ template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type fm
 
 /** @overload */
 template<std::size_t size, class T> inline Vector<size, T> fma(const Vector<size, T>& a, const Vector<size, T>& b, const Vector<size, T>& c) {
-    static_assert(IsUnitless<T>::value, "expecting an unitless type");
+    static_assert(IsUnitless<T>::value, "expecting a unitless type");
     return a*b + c;
 }
 
@@ -634,9 +703,9 @@ template<std::size_t size, class T> inline Vector<size, T> fma(const Vector<size
 /**
 @{ @name Exponential and power functions
 
-Unlike @m_class{m-doc} [scalar/vector functions](#scalarvector-functions) these
-don't work on @ref Magnum::Math::Deg "Deg" / @ref Magnum::Math::Rad "Rad" as
-the resulting unit can't be easily expressed.
+Unlike @m_class{m-doc} <a href="#scalarvector-functions">scalar/vector functions</a>
+these don't work on @ref Magnum::Math::Deg "Deg" / @ref Magnum::Math::Rad "Rad"
+as the resulting unit can't be easily expressed.
 */
 
 /**
@@ -678,8 +747,12 @@ Returns integral power of base to the exponent. Works only on types that
 satisfy @ref IsUnitless.
 @see @ref pow(T, T)
 */
-template<UnsignedInt exponent, class T> constexpr typename std::enable_if<IsScalar<T>::value, T>::type pow(T base) {
-    static_assert(IsUnitless<T>::value, "expected an unitless type");
+template<UnsignedInt exponent, class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> constexpr T pow(T base) {
+    static_assert(IsUnitless<T>::value, "expected a unitless type");
     return Implementation::Pow<exponent>::pow(base);
 }
 
@@ -698,8 +771,12 @@ Returns power of @p base to the @p exponent. Works only on types that satisfy
 @ref IsUnitless.
 @see @ref pow(T), @ref exp()
 */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type pow(T base, T exponent) {
-    static_assert(IsUnitless<T>::value, "expected an unitless type");
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline T pow(T base, T exponent) {
+    static_assert(IsUnitless<T>::value, "expected a unitless type");
     return std::pow(base, exponent);
 }
 
@@ -717,8 +794,12 @@ template<std::size_t size, class T> inline Vector<size, T> pow(const Vector<size
 Works only on types that satisfy @ref IsUnitless.
 @see @ref sqrtInverted(), @ref Vector::length(), @ref sqrt(const Dual<T>&)
 */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type sqrt(T a) {
-    static_assert(IsUnitless<T>::value, "expecting an unitless type");
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline T sqrt(T a) {
+    static_assert(IsUnitless<T>::value, "expecting a unitless type");
     return std::sqrt(a);
 }
 
@@ -737,8 +818,12 @@ Works only on types that satisfy @ref IsUnitless.
 @see @ref sqrt(), @ref Vector::lengthInverted()
 @m_keyword{inversesqrt(),GLSL inversesqrt(),}
 */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, T>::type sqrtInverted(T a) {
-    static_assert(IsUnitless<T>::value, "expecting an unitless type");
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline T sqrtInverted(T a) {
+    static_assert(IsUnitless<T>::value, "expecting a unitless type");
     return T(1)/std::sqrt(a);
 }
 

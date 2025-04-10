@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -108,7 +109,11 @@ class MAGNUM_GL_EXPORT Extension {
         constexpr const char* string() const { return _string; }
 
         /** @brief Construct from a compile-time extension */
-        template<class E, class = typename std::enable_if<Implementation::IsExtension<E>::value>::type> constexpr /*implicit*/ Extension(const E&): _index{E::Index}, _requiredVersion{E::requiredVersion()}, _coreVersion{E::coreVersion()}, _string{E::string()} {}
+        template<class E
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<Implementation::IsExtension<E>::value, int>::type = 0
+            #endif
+        > constexpr /*implicit*/ Extension(const E&): _index{E::Index}, _requiredVersion{E::requiredVersion()}, _coreVersion{E::coreVersion()}, _string{E::string()} {}
 
     private:
         std::size_t _index;
@@ -211,12 +216,12 @@ instances for other OpenGL contexts, *first* you need to "unset" the current one
 with @ref makeCurrent() and *then* create another instance, which will then
 become implicitly active:
 
-@snippet MagnumGL-application.cpp Context-makeCurrent-nullptr
+@snippet GL-application.cpp Context-makeCurrent-nullptr
 
 Once all needed instances are created, switch between them right after making
 the underlying GL context current:
 
-@snippet MagnumGL-application.cpp Context-makeCurrent
+@snippet GL-application.cpp Context-makeCurrent
 
 @section GL-Context-multithreading Thread safety
 
@@ -734,7 +739,7 @@ class MAGNUM_GL_EXPORT Context {
          * equivalent to subsequent @ref isVersionSupported() calls --- the two
          * following examples produce the same result:
          *
-         * @snippet MagnumGL.cpp Context-supportedVersion
+         * @snippet GL.cpp Context-supportedVersion
          *
          * If no version from the list is supported, returns lowest available
          * OpenGL version (@ref Version::GL210 for desktop OpenGL,
@@ -751,7 +756,7 @@ class MAGNUM_GL_EXPORT Context {
          * and in the @ref opengl-support "OpenGL support tables". Example
          * usage:
          *
-         * @snippet MagnumGL.cpp Context-isExtensionSupported
+         * @snippet GL.cpp Context-isExtensionSupported
          *
          * @see @ref isExtensionSupported(const Extension&) const,
          *      @ref MAGNUM_ASSERT_GL_EXTENSION_SUPPORTED(),
@@ -769,7 +774,7 @@ class MAGNUM_GL_EXPORT Context {
          * @p version. Useful mainly in shader compilation when the decisions
          * depend on selected GLSL version, for example:
          *
-         * @snippet MagnumGL.cpp Context-isExtensionSupported-version
+         * @snippet GL.cpp Context-isExtensionSupported-version
          */
         template<class E> bool isExtensionSupported(Version version) const {
             static_assert(Implementation::IsExtension<E>::value, "expected an OpenGL extension");
@@ -1184,7 +1189,7 @@ By default, if assertion fails, an message is printed to error output and the
 application aborts. If `CORRADE_NO_ASSERT` is defined, this macro does nothing.
 Example usage:
 
-@snippet MagnumGL.cpp Context-MAGNUM_ASSERT_GL_VERSION_SUPPORTED
+@snippet GL.cpp Context-MAGNUM_ASSERT_GL_VERSION_SUPPORTED
 
 @see @ref Magnum::GL::Context::isVersionSupported() "GL::Context::isVersionSupported()",
     @ref MAGNUM_ASSERT_GL_EXTENSION_SUPPORTED(), @ref CORRADE_ASSERT(),
@@ -1213,7 +1218,7 @@ By default, if assertion fails, an message is printed to error output and the
 application aborts. If `CORRADE_NO_ASSERT` is defined, this macro does nothing.
 Example usage:
 
-@snippet MagnumGL.cpp Context-MAGNUM_ASSERT_GL_EXTENSION_SUPPORTED
+@snippet GL.cpp Context-MAGNUM_ASSERT_GL_EXTENSION_SUPPORTED
 
 @see @ref Magnum::GL::Context::isExtensionSupported() "Context::isExtensionSupported()",
     @ref MAGNUM_ASSERT_GL_VERSION_SUPPORTED(), @ref CORRADE_ASSERT(),

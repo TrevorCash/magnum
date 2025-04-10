@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -49,13 +50,13 @@ subclass instead. See also @ref scenegraph for more information.
 Uses @ref Corrade::Containers::LinkedList for efficient feature management.
 Traversing through the feature list can be done using range-based for:
 
-@snippet MagnumSceneGraph.cpp AbstractObject-features-range
+@snippet SceneGraph.cpp AbstractObject-features-range
 
 Or, if you need more flexibility, like in the following code. It is also
 possible to go in reverse order using @ref Corrade::Containers::LinkedList::last()
 and @ref AbstractFeature::previousFeature().
 
-@snippet MagnumSceneGraph.cpp AbstractObject-features
+@snippet SceneGraph.cpp AbstractObject-features
 
 @section SceneGraph-AbstractObject-explicit-specializations Explicit template specializations
 
@@ -311,11 +312,7 @@ template<class T> using AbstractBasicObject3D = AbstractObject<3, T>;
 
 @see @ref AbstractObject2D
 */
-#ifndef CORRADE_GCC46_COMPATIBILITY
 typedef AbstractBasicObject3D<Float> AbstractObject3D;
-#else
-typedef AbstractObject<3, Float> AbstractObject3D;
-#endif
 
 #if defined(CORRADE_TARGET_WINDOWS) && !(defined(CORRADE_TARGET_MINGW) && !defined(CORRADE_TARGET_CLANG))
 extern template class MAGNUM_SCENEGRAPH_EXPORT AbstractObject<2, Float>;

@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #   Copyright © 2022 Guillaume Jacquemin <williamjcm@users.noreply.github.com>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
@@ -26,7 +27,7 @@
 
 # TODO: same TODOs as in corrade/src/debuggers/CMakeLists.txt apply here
 if(NOT CORRADE_TARGET_MSVC AND NOT CORRADE_TARGET_EMSCRIPTEN)
-    install(DIRECTORY gdb DESTINATION ${MAGNUM_DATA_INSTALL_DIR}/debuggers)
+    install(DIRECTORY gdb/magnum DESTINATION share/gdb/python)
 endif()
 
 if(CORRADE_TARGET_MSVC)

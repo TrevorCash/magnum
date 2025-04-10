@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -26,11 +27,16 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#ifdef MAGNUM_TARGET_GL
 /** @file
  * @brief Struct @ref Magnum::Shaders::GenericGL, typedef @ref Magnum::Shaders::GenericGL2D, @ref Magnum::Shaders::GenericGL3D
  * @m_since_latest
  */
+#endif
 
+#include "Magnum/configure.h"
+
+#ifdef MAGNUM_TARGET_GL
 #include "Magnum/GL/Attribute.h"
 #include "Magnum/Shaders/Shaders.h"
 
@@ -73,9 +79,7 @@ future use, with no attribute definition implemented yet.
 <tr>
 <td>1</td>
 <td colspan="3">
-@ref TextureCoordinates
-
-* *Reserved* --- third component for a layer
+@ref TextureCoordinates / @ref TextureArrayCoordinates
 </td>
 </tr>
 <tr>
@@ -233,14 +237,14 @@ If you're using @ref GL::AbstractShaderProgram::bindAttributeLocation(), it's
 rather easy, as you can simply use the @ref GL::Attribute::Location of given
 attribute:
 
-@snippet MagnumShaders-gl.cpp GenericGL-custom-bind
+@snippet Shaders-gl.cpp GenericGL-custom-bind
 
 For attribute location defined directly in shader code (which is the
 recommended way unless you need compatibility with WebGL 1.0 and OpenGL ES
 2.0), the attribute locations can be propagated using a preprocessor define.
 For example:
 
-@snippet MagnumShaders-gl.cpp GenericGL-custom-preprocessor
+@snippet Shaders-gl.cpp GenericGL-custom-preprocessor
 
 Then, the attribute definition in a shader will look like this:
 
@@ -289,10 +293,29 @@ template<UnsignedInt dimensions> struct GenericGL {
     /**
      * @brief 2D texture coordinates
      *
-     * @ref Magnum::Vector2 "Vector2". Corresponds to
+     * @ref Magnum::Vector2 "Vector2". Use either this or the
+     * @ref TextureArrayCoordinates attribute. Corresponds to
      * @ref Trade::MeshAttribute::TextureCoordinates.
      */
     typedef GL::Attribute<1, Vector2> TextureCoordinates;
+
+    #ifndef MAGNUM_TARGET_GLES2
+    /**
+     * @brief 2D array texture coordinates
+     * @m_since_latest
+     *
+     * @ref Magnum::Vector3 "Vector3". Use either this or the
+     * @ref TextureCoordinates attribute. Currently doesn't have a
+     * corresponding @ref Trade::MeshAttribute.
+     * @requires_gl30 Extension @gl_extension{EXT,texture_array}
+     * @requires_gles30 Texture arrays are not available in OpenGL ES 2.0.
+     * @requires_webgl20 Texture arrays are not available in WebGL 1.0.
+     */
+    /* Not naming this TextureCoordinates3D as that's semantically something
+       else, plus texture arrays are not on ES2 while 3D textures are. The name
+       for 3D coords would then be TextureVolumeCoordinates I think. */
+    typedef GL::Attribute<1, Vector3> TextureArrayCoordinates;
+    #endif
 
     /**
      * @brief Three-component vertex color
@@ -329,7 +352,7 @@ template<UnsignedInt dimensions> struct GenericGL {
      * of the tangent basis. Reconstructing the @ref Bitangent attribute can be
      * then done like this:
      *
-     * @snippet MagnumTrade.cpp MeshAttribute-bitangent-from-tangent
+     * @snippet Trade.cpp MeshAttribute-bitangent-from-tangent
      *
      * Use either this or the @ref Tangent attribute. Corresponds to
      * @ref Trade::MeshAttribute::Tangent.
@@ -540,6 +563,9 @@ struct BaseGenericGL {
     };
 
     typedef GL::Attribute<1, Vector2> TextureCoordinates;
+    #ifndef MAGNUM_TARGET_GLES2
+    typedef GL::Attribute<1, Vector3> TextureArrayCoordinates;
+    #endif
     typedef GL::Attribute<2, Magnum::Color3> Color3;
     typedef GL::Attribute<2, Magnum::Color4> Color4;
     #ifndef MAGNUM_TARGET_GLES2
@@ -611,5 +637,8 @@ typedef CORRADE_DEPRECATED("use GenericGL3D instead") GenericGL3D Generic3D;
 #endif
 
 }}
+#else
+#error this header is available only in the OpenGL build
+#endif
 
 #endif

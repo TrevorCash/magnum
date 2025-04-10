@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,17 +24,15 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pair.h>
 #include <Corrade/Containers/StridedBitArrayView.h>
-#include <Corrade/Containers/StringView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/Containers/StringIterable.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Complex.h"
 #include "Magnum/Math/Vector2.h"
@@ -257,7 +256,7 @@ void CombineTest::fields() {
         /* Array field */
         Trade::SceneFieldData{Trade::sceneFieldCustom(15),
             foos.slice(&Foo::mapping),
-            Containers::arrayCast<2, const Int>(foos.slice(&Foo::foo)),
+            Containers::StridedArrayView2D<const Int>{foos.slice(&Foo::foo)},
             Trade::SceneFieldFlag::OrderedMapping},
         /* Empty field */
         Trade::SceneFieldData{Trade::SceneField::Camera, Containers::ArrayView<const UnsignedByte>{}, Containers::ArrayView<const UnsignedShort>{}},
@@ -321,10 +320,10 @@ void CombineTest::fields() {
     /** @todo clean up once it's possible to compare multidimensional
         containers */
     CORRADE_COMPARE_AS(scene.field<Int[]>(3)[0],
-        (Containers::arrayCast<2, const Int>(foos.slice(&Foo::foo)))[0],
+        (Containers::StridedArrayView2D<const Int>{foos.slice(&Foo::foo)})[0],
         TestSuite::Compare::Container);
     CORRADE_COMPARE_AS(scene.field<Int[]>(3)[1],
-        (Containers::arrayCast<2, const Int>(foos.slice(&Foo::foo)))[1],
+        (Containers::StridedArrayView2D<const Int>{foos.slice(&Foo::foo)})[1],
         TestSuite::Compare::Container);
 
     CORRADE_COMPARE(scene.fieldName(4), Trade::SceneField::Camera);
@@ -995,7 +994,7 @@ void CombineTest::fieldsSharedMappingExpected() {
     UnsignedInt meshes[3]{};
     Int materials[3]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     combineFields(Trade::SceneMappingType::UnsignedInt, 3, {
         Trade::SceneFieldData{Trade::SceneField::Mesh,
@@ -1013,7 +1012,7 @@ void CombineTest::fieldsSharedMappingExpected() {
             Containers::ArrayView<UnsignedInt>{nullptr, 3},
             Containers::arrayView(materials)},
     });
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "SceneTools::combineFields(): Trade::SceneField::MeshMaterial mapping data {0xbeef, 2, 4} is different from Trade::SceneField::Mesh mapping data {0xdead, 3, 4}\n"
         /* Placeholder mapping is also disallowed right now -- it has to be
            either all placeholders or none */
@@ -1029,7 +1028,7 @@ void CombineTest::fieldsStringPlaceholder() {
     } data[3]{};
     auto view = Containers::stridedArrayView(data);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* A null string data pointer could work in this case (because it doesn't
        need to be accessed), but disallowing it always for consistency */
@@ -1059,7 +1058,7 @@ void CombineTest::fieldsStringPlaceholder() {
             reinterpret_cast<char*>(0xfece5), Trade::SceneFieldType::StringRangeNullTerminated16,
             Containers::StridedArrayView1D<const UnsignedShort>{{nullptr, 6}, 3}},
     });
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "SceneTools::combineFields(): string field 1 has a placeholder string data\n"
         "SceneTools::combineFields(): string field 0 has a placeholder data\n");
 }
@@ -1077,7 +1076,7 @@ void CombineTest::fieldsOffsetOnly() {
     };
     auto view = Containers::stridedArrayView(data);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     combineFields(Trade::SceneMappingType::UnsignedInt, 173, {
         Trade::SceneFieldData{Trade::SceneField::Mesh,
@@ -1087,7 +1086,7 @@ void CombineTest::fieldsOffsetOnly() {
             Trade::SceneMappingType::UnsignedInt, offsetof(Field, mapping), sizeof(Field),
             Trade::SceneFieldType::UnsignedShort, offsetof(Field, light), sizeof(Field)}
     });
-    CORRADE_COMPARE(out.str(), "SceneTools::combineFields(): field 1 is offset-only\n");
+    CORRADE_COMPARE(out, "SceneTools::combineFields(): field 1 is offset-only\n");
 }
 
 void CombineTest::fieldsFromDataOffsetOnly() {

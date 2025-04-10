@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -200,6 +201,7 @@ void flextGLInit(Magnum::GL::Context& context) {
 
     /* GL_OVR_multiview */
     flextGL.FramebufferTextureMultiviewOVR = reinterpret_cast<void(APIENTRY*)(GLenum, GLenum, GLuint, GLint, GLint, GLsizei)>(loader.load("glFramebufferTextureMultiviewOVR"));
+    flextGL.NamedFramebufferTextureMultiviewOVR = reinterpret_cast<void(APIENTRY*)(GLuint, GLenum, GLuint, GLint, GLint, GLsizei)>(loader.load("glNamedFramebufferTextureMultiviewOVR"));
 
     /* GL_VERSION_1_2 */
     flextGL.CopyTexSubImage3D = reinterpret_cast<void(APIENTRY*)(GLenum, GLint, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei)>(loader.load("glCopyTexSubImage3D"));

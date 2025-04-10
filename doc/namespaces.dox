@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -99,11 +100,11 @@ more information.
     This library is also available as a single-header, dependency-less
     [MagnumMath.hpp](https://github.com/mosra/magnum-singles/tree/master/MagnumMath.hpp)
     library in the Magnum Singles repository for easier integration into your
-    projects. See @ref singles for more information. Everything except contents
-    of the @ref Magnum/Math/ColorBatch.h, @ref Magnum/Math/FunctionsBatch.h,
-    @ref Magnum/Math/PackingBatch.h and @ref Magnum/Math/Algorithms/Svd.h
-    headers and the @ref Magnum::Math::StrictWeakOrdering helper is included.
-    The library has a separate non-inline implementation part, enable it
+    projects, with the batch APIs available in
+    [MagnumMathBatch.hpp](https://github.com/mosra/magnum-singles/tree/master/MagnumMathBatch.hpp) instead. See @ref singles for more information.
+    Everything except contents of the @ref Magnum/Math/Algorithms/Svd.h header
+    and the @ref Magnum::Math::StrictWeakOrdering helper is included. The
+    libraries have a separate non-inline implementation part, enable it
     * *just once* like this:
 @par
     @code{.cpp}
@@ -111,11 +112,20 @@ more information.
     #include <MagnumMath.hpp>
     @endcode
 @par
+    Or, for the batch APIs, like this:
+@par
+    @code{.cpp}
+    #define MAGNUM_MATH_BATCH_IMPLEMENTATION
+    #include <MagnumMathBatch.hpp>
+    @endcode
+@par
     If you need the deinlined symbols to be exported from a shared library,
-    @cpp #define MAGNUM_EXPORT @ce as appropriate. In addition, contents of the
-    @ref GlmIntegration and @ref EigenIntegration libraries except for the
-    @ref Magnum/EigenIntegration/DynamicMatrixIntegration.h header are included
-    as well --- opt-in by specifying either
+    @cpp #define MAGNUM_EXPORT @ce as appropriate. The STL compatibility bits
+    for time types are included as well --- opt-in with
+    @cpp #define MAGNUM_MATH_STL_COMPATIBILITY @ce before including the file.
+    Contents of the @ref GlmIntegration and @ref EigenIntegration libraries
+    except for the @ref Magnum/EigenIntegration/DynamicMatrixIntegration.h
+    can be opted in by specifying either
     @cpp #define MAGNUM_MATH_GLM_INTEGRATION @ce or
     @cpp #define MAGNUM_MATH_EIGEN_INTEGRATION @ce before including the file.
     Including it multiple times with different macros defined works as well.
@@ -124,7 +134,13 @@ more information.
 /** @namespace Magnum::Math::Literals
 @brief Math literals
 
-Literals for easy construction of angle and color values.
+Literals for easy construction of angle, color, time and other values. The
+namespace is further split to prevent potential ambiguity and conflicts with
+literals defined by other code, but the second namespace level is
+@cpp inline @ce so to get for example the color literals you can do either of
+these two:
+
+@snippet Math.cpp Literals-using
 
 This library is built as part of Magnum by default. To use this library with
 CMake, find the `Magnum` package and link to the `Magnum::Magnum` target:
@@ -145,6 +161,33 @@ See @ref building, @ref cmake and @ref types for more information.
     [MagnumMath.hpp](https://github.com/mosra/magnum-singles/tree/master/MagnumMath.hpp)
     library in the Magnum Singles repository for easier integration into your
     projects. See @ref singles and @ref Math for more information.
+*/
+/** @namespace Magnum::Math::Literals::AngleLiterals
+@brief Math angle literals
+@m_since_latest
+
+See the @ref Literals namespace and the @ref Deg and @ref Rad classes for more
+information.
+*/
+/** @namespace Magnum::Math::Literals::ColorLiterals
+@brief Math color literals
+@m_since_latest
+
+See the @ref Literals namespace and the @ref Color3 and @ref Color4 classes for
+more information.
+*/
+/** @namespace Magnum::Math::Literals::HalfLiterals
+@brief Math half-float literals
+@m_since_latest
+
+See the @ref Literals namespace and the @ref Half class for more information.
+*/
+/** @namespace Magnum::Math::Literals::TimeLiterals
+@brief Math time literals
+@m_since_latest
+
+See the @ref Literals namespace and the @ref Nanoseconds and @ref Seconds
+classes for more information.
 */
 
 /** @dir Magnum/Math/Algorithms
@@ -254,9 +297,8 @@ Audio import, playback and integration with @ref SceneGraph.
 
 This library depends on the [OpenAL](https://www.openal.org/) library and is
 built if `MAGNUM_WITH_AUDIO` is enabled when building Magnum. To use this
-library with CMake, put [FindOpenAL.cmake](https://github.com/mosra/magnum/blob/master/modules/FindOpenAL.cmake)
-into your `modules/` directory, request the `Audio` component of the `Magnum`
-package and link to the `Magnum::Audio` target:
+library with CMake, request the `Audio` component of the `Magnum` package and
+link to the `Magnum::Audio` target:
 
 @code{.cmake}
 find_package(Magnum REQUIRED Audio)
@@ -334,12 +376,6 @@ find_package(Magnum REQUIRED GL)
 target_link_libraries(your-app PRIVATE Magnum::GL)
 @endcode
 
-In case you're building for EGL or OpenGL ES platforms, you also need to put
-[FindEGL.cmake](https://github.com/mosra/magnum/blob/master/modules/FindEGL.cmake),
-[FindOpenGLES2.cmake](https://github.com/mosra/magnum/blob/master/modules/FindOpenGLES2.cmake)
-or [FindOpenGLES3.cmake](https://github.com/mosra/magnum/blob/master/modules/FindOpenGLES3.cmake)
-into your `modules/` directory.
-
 See @ref building, @ref cmake and @ref opengl for more information.
 
 @m_class{m-block m-success}
@@ -384,7 +420,7 @@ See @ref building and @ref cmake for more information.
 /** @namespace Magnum::MeshTools
 @brief Mesh tools
 
-Tools for generating, optimizing and cleaning meshes.
+Tools for transforming, filtering, optimizing and merging meshes.
 
 This library is built if `MAGNUM_WITH_MESHTOOLS` is enabled when building
 Magnum. To use this library with CMake, request the `MeshTools` component of
@@ -401,7 +437,28 @@ Note that functionality depending on @ref GL APIs is available only if Magnum
 is built with both `MAGNUM_WITH_GL` and `MAGNUM_TARGET_GL` enabled (which is
 done by default).
 
-See @ref building and @ref cmake for more information.
+See @ref building, @ref cmake and @ref meshtools for more information.
+
+@m_class{m-block m-success}
+
+@par Single-header version
+    A subset of this library is also available as a single-header,
+    dependency-less [MagnumMeshTools.hpp](https://github.com/mosra/magnum-singles/tree/master/MagnumMeshTools.hpp)
+    library in the Magnum Singles repository for easier integration into your
+    projects. See @ref singles for more information. At the moment, the
+    @ref Magnum/MeshTools/BoundingVolume.h and
+    @ref Magnum/MeshTools/GenerateIndices.h headers are included, except for
+    APIs relying on the @ref Trade library. The library has a separate
+    non-inline implementation part, enable it *just once* like this:
+@par
+    @code{.cpp}
+    #define MAGNUM_MESHTOOLS_IMPLEMENTATION
+    #include <MagnumMeshTools.hpp>
+    @endcode
+@par
+    If you need the deinlined symbols to be exported from a shared library,
+    @cpp #define MAGNUM_MESHTOOLS_EXPORT @ce as appropriate.
+
 */
 
 /** @dir Magnum/Primitives
@@ -862,9 +919,8 @@ C++14 wrappers and helpers for Vulkan development.
 
 This library is depends on [Vulkan](https://www.khronos.org/vulkan/) and is
 built if `MAGNUM_WITH_VK` is enabled when building Magnum. To use this library
-with CMake, put [FindVulkan.cmake](https://github.com/mosra/magnum/blob/master/modules/FindVulkan.cmake)
-into your `modules/` directory, request the `Vk` component of the `Magnum`
-package and link to the `Magnum::Vk` target:
+with CMake, request the `Vk` component of the `Magnum` package and link to the
+`Magnum::Vk` target:
 
 @code{.cmake}
 find_package(Magnum REQUIRED Vk)

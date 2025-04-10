@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -825,7 +826,7 @@ enum class MaterialAttribute: UnsignedInt {
      * Shader code that is able to reconstruct a XYZ normal from both RG and GA
      * variants assuming constant values in other channels ([source](https://github.com/KhronosGroup/glTF/issues/1682#issuecomment-557880407)):
      *
-     * @snippet MagnumTrade.glsl unpackTwoChannelNormal
+     * @snippet Trade.glsl unpackTwoChannelNormal
      *
      * Default value is @ref MaterialTextureSwizzle::RGB.
      * @see @ref PbrMetallicRoughnessMaterialData::hasNormalRoughnessMetallicTexture(),
@@ -1407,7 +1408,7 @@ class MAGNUM_TRADE_EXPORT MaterialAttributeData {
          */
         template<class T
             #ifndef DOXYGEN_GENERATING_OUTPUT
-            , class = typename std::enable_if<!std::is_convertible<const T&, Containers::StringView>::value && !std::is_convertible<const T&, Containers::ArrayView<const void>>::value>::type
+            , typename std::enable_if<!std::is_convertible<const T&, Containers::StringView>::value && !std::is_convertible<const T&, Containers::ArrayView<const void>>::value, int>::type = 0
             #endif
         > constexpr /*implicit*/ MaterialAttributeData(Containers::StringView name, const T& value) noexcept;
 
@@ -1446,7 +1447,7 @@ class MAGNUM_TRADE_EXPORT MaterialAttributeData {
         #ifndef DOXYGEN_GENERATING_OUTPUT
         /* "Sure can't be constexpr" overloads to avoid going through the
            *insane* overload puzzle when not needed */
-        template<class T, class = typename std::enable_if<!std::is_convertible<const T&, Containers::StringView>::value && !std::is_convertible<const T&, Containers::ArrayView<const void>>::value>::type> /*implicit*/ MaterialAttributeData(const char* name, const T& value) noexcept: MaterialAttributeData{name, Implementation::MaterialAttributeTypeFor<T>::type(), sizeof(T), &value} {}
+        template<class T, typename std::enable_if<!std::is_convertible<const T&, Containers::StringView>::value && !std::is_convertible<const T&, Containers::ArrayView<const void>>::value, int>::type = 0> /*implicit*/ MaterialAttributeData(const char* name, const T& value) noexcept: MaterialAttributeData{name, Implementation::MaterialAttributeTypeFor<T>::type(), sizeof(T), &value} {}
         /*implicit*/ MaterialAttributeData(const char* name, Containers::StringView value) noexcept: MaterialAttributeData{name, MaterialAttributeType::String, 0, &value} {}
         #endif
 
@@ -1461,16 +1462,16 @@ class MAGNUM_TRADE_EXPORT MaterialAttributeData {
          * name. Apart from the type check, the following two instances are
          * equivalent:
          *
-         * @snippet MagnumTrade.cpp MaterialAttributeData-name
+         * @snippet Trade.cpp MaterialAttributeData-name
          */
         template<class T
             #ifndef DOXYGEN_GENERATING_OUTPUT
-            , class = typename std::enable_if<!std::is_convertible<const T&, Containers::StringView>::value>::type
+            , typename std::enable_if<!std::is_convertible<const T&, Containers::StringView>::value, int>::type = 0
             #endif
         > /*implicit*/ MaterialAttributeData(MaterialAttribute name, const T& value) noexcept: MaterialAttributeData{name, Implementation::MaterialAttributeTypeFor<T>::type(), &value} {}
 
         /**
-         * @brief Construct with a predefined name and string value
+         * @brief Construct with a predefined name and a string value
          * @param name      Attribute name
          * @param value     Attribute value
          *
@@ -1497,21 +1498,22 @@ class MAGNUM_TRADE_EXPORT MaterialAttributeData {
          * @ref MaterialAttributeType::Buffer, copies a number of bytes
          * according to @ref materialAttributeTypeSize() from @p value. The
          * @p name together with @p value is expected to fit into 62 bytes.
+         * Note that in case of a @ref MaterialAttributeType::Pointer or a
+         * @ref MaterialAttributeType::MutablePointer, takes a
+         * *pointer to a pointer*, not the pointer value itself.
          *
          * In case @p type is @ref MaterialAttributeType::String, @p value is
-         * expected to point to a @ref Containers::StringView. The combined
-         * length of @p name and @p value strings is expected to fit into 60
-         * bytes.
-         *
-         * In case @p type is @ref MaterialAttributeType::String, @p value is
-         * expected to point to a @relativeref{Corrade,Containers::ArrayView}.
-         * The combined length of @p name and @p value views is expected to fit
-         * into 61 bytes.
+         * expected to point to a @relativeref{Corrade,Containers::StringView}.
+         * The combined length of @p name and @p value strings is expected to
+         * fit into 60 bytes. In case @p type is
+         * @ref MaterialAttributeType::Buffer, @p value is expected to point to
+         * a @relativeref{Corrade,Containers::ArrayView}. The combined length
+         * of @p name and @p value views is expected to fit into 61 bytes.
          */
         /*implicit*/ MaterialAttributeData(Containers::StringView name, MaterialAttributeType type, const void* value) noexcept;
 
         /**
-         * @brief Construct with a predefined name
+         * @brief Construct with a predefined name and a type-erased value
          * @param name      Attribute name
          * @param type      Attribute type
          * @param value     Attribute value
@@ -1554,9 +1556,9 @@ class MAGNUM_TRADE_EXPORT MaterialAttributeData {
          *
          * In case of a @ref MaterialAttributeType::String, returns a
          * null-terminated @cpp const char* @ce (not a pointer to
-         * @ref Containers::StringView). This doesn't preserve the actual
-         * string size in case the string data contain @cpp '\0' @ce bytes,
-         * thus prefer to use typed access in that case.
+         * @relativeref{Corrade,Containers::StringView}). This doesn't preserve
+         * the actual string size in case the string data contain @cpp '\0' @ce
+         * bytes, thus prefer to use typed access in that case.
          *
          * In case of a @ref MaterialAttributeType::Buffer, returns a
          * pointer to the data with no size information. Prefer to use typed
@@ -1675,18 +1677,18 @@ class MAGNUM_TRADE_EXPORT MaterialAttributeData {
 
             constexpr explicit Storage(Containers::StringView name, Containers::StringView value) noexcept: s{MaterialAttributeType::String, name, value} {}
 
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 1, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _1{type, name, value} {}
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 4 && !std::is_pointer<T>::value, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _4{type, name, value} {}
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 8 && !Math::IsVector<T>::value && !std::is_pointer<T>::value, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _8{type, name, value} {}
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 8 && Math::IsVector<T>::value && !std::is_pointer<T>::value, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _8v{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 1, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _1{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 4 && !std::is_pointer<T>::value, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _4{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 8 && !Math::IsVector<T>::value && !std::is_pointer<T>::value, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _8{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 8 && Math::IsVector<T>::value && !std::is_pointer<T>::value, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _8v{type, name, value} {}
             constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const void* value) noexcept: p{type, name, value} {}
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 12, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _12{type, name, value} {}
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 16 && Math::IsVector<T>::value, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _16{type, name, value} {}
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 16 && !Math::IsVector<T>::value, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _16m{type, name, value} {}
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 24, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _24{type, name, value} {}
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 32, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _32{type, name, value} {}
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 36, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _36{type, name, value} {}
-            template<class T> constexpr explicit Storage(typename std::enable_if<sizeof(T) == 48, MaterialAttributeType>::type type, Containers::StringView name, const T& value) noexcept: _48{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 12, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _12{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 16 && Math::IsVector<T>::value, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _16{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 16 && !Math::IsVector<T>::value, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _16m{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 24, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _24{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 32, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _32{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 36, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _36{type, name, value} {}
+            template<class T, typename std::enable_if<sizeof(T) == 48, int>::type = 0> constexpr explicit Storage(MaterialAttributeType type, Containers::StringView name, const T& value) noexcept: _48{type, name, value} {}
 
             MaterialAttributeType type;
             char data[Implementation::MaterialAttributeDataSize];
@@ -1799,7 +1801,13 @@ MAGNUM_TRADE_EXPORT Debug& operator<<(Debug& debug, MaterialAlphaMode value);
 Key-value store for builtin as well as custom material attributes, with an
 ability to define additional layers further affecting the base material.
 Populated instances of this class are returned from
-@ref AbstractImporter::material().
+@ref AbstractImporter::material(), can be passed to
+@ref AbstractSceneConverter::add(const MaterialData&, Containers::StringView)
+as well as used in various
+@ref MaterialTools algorithms
+. Like with other @ref Trade types, the internal
+representation is fixed upon construction and allows only optional in-place
+modification of the attribute values itself, but not of the overall structure.
 
 @section Trade-MaterialData-usage Usage
 
@@ -1810,10 +1818,10 @@ values. You're expected to check for attribute presence first with
 To make things easier, each of the attributes defined in @ref MaterialAttribute
 has a strictly defined type, so you can safely assume the type when requesting
 those. In addition there's @ref findAttribute() and @ref attributeOr() that
-return a @ref Containers::NullOpt or a default value in case given attribute is
-not found.
+return a @relativeref{Corrade,Containers::NullOpt} or a default value in case
+given attribute is not found.
 
-@snippet MagnumTrade.cpp MaterialData-usage
+@snippet Trade.cpp MaterialData-usage
 
 It's also possible to iterate through all attributes using @ref attributeName(),
 @ref attributeType() and @ref attribute() taking indices instead of names, with
@@ -1838,7 +1846,7 @@ you can convert any @ref MaterialData instance to a reference to one of those.
 These convenience APIs then take care of default values when an attribute isn't
 present or handle fallbacks when an attribute can be defined in multiple ways:
 
-@snippet MagnumTrade.cpp MaterialData-usage-types
+@snippet Trade.cpp MaterialData-usage-types
 
 Each @ref MaterialAttribute is exposed through one or more of those convenience
 APIs, see the documentation of of a particular enum value for more information.
@@ -1857,7 +1865,7 @@ there are queries like @ref PbrSpecularGlossinessMaterialData::hasSpecularGlossi
 @ref PbrSpecularGlossinessMaterialData::hasCommonTextureTransformation() to
 help narrowing the options down:
 
-@snippet MagnumTrade.cpp MaterialData-usage-texture-complexity
+@snippet Trade.cpp MaterialData-usage-texture-complexity
 
 @subsection Trade-MaterialData-usage-layers Material layers
 
@@ -1878,13 +1886,13 @@ the factor is applied is left to the layer implementation.
 Here's an example showing retrieval of a clear coat layer parameters, if
 present:
 
-@snippet MagnumTrade.cpp MaterialData-usage-layers
+@snippet Trade.cpp MaterialData-usage-layers
 
 Like with base material attributes, builtin layers also have convenience
 accessor APIs. The above can be written in a more compact way using
 @link PbrClearCoatMaterialData @endlink:
 
-@snippet MagnumTrade.cpp MaterialData-usage-layers-types
+@snippet Trade.cpp MaterialData-usage-layers-types
 
 @subsection Trade-MaterialData-usage-mutable Mutable data access
 
@@ -1897,7 +1905,7 @@ there's a set of @ref mutableAttribute() functions. To use these, you need to
 check that the data are mutable using @ref attributeDataFlags() first. The
 following snippet desaturates the base color of a PBR material:
 
-@snippet MagnumTrade.cpp MaterialData-usage-mutable
+@snippet Trade.cpp MaterialData-usage-mutable
 
 Because the class internally expects the attribute data to be sorted and
 partitioned into layers, it's not possible to modify attribute names,
@@ -1917,7 +1925,7 @@ names, but you're encouraged to use the predefined names from
 that it's in an expected type. Attribute order doesn't matter, the array gets
 internally sorted by name to allow a @f$ \mathcal{O}(\log n) @f$ lookup.
 
-@snippet MagnumTrade.cpp MaterialData-populating
+@snippet Trade.cpp MaterialData-populating
 
 @subsection Trade-MaterialData-populating-non-owned Non-owned instances
 
@@ -1931,7 +1939,7 @@ allocating it implicitly from an initializer list in the constructor, pass
 attribute data is treated as immutable, you *have to* ensure the list is
 already sorted by name.
 
-@snippet MagnumTrade.cpp MaterialData-populating-non-owned
+@snippet Trade.cpp MaterialData-populating-non-owned
 
 <b></b>
 
@@ -1953,7 +1961,7 @@ greater flexibility, custom attributes can be also strings, untyped buffers
 or pointers, allowing you to store arbitrary properties such as image
 filenames or direct texture pointers instead of IDs:
 
-@snippet MagnumTrade.cpp MaterialData-populating-custom
+@snippet Trade.cpp MaterialData-populating-custom
 
 @subsection Trade-MaterialData-populating-layers Adding material layers
 
@@ -1966,7 +1974,7 @@ snippet we have two layers (one base material and one clear coat layer), the
 base material being the first two attributes and the clear coat layer being
 attributes in range @cpp 2 @ce to @cpp 6 @ce (thus four attributes):
 
-@snippet MagnumTrade.cpp MaterialData-populating-layers
+@snippet Trade.cpp MaterialData-populating-layers
 
 Like with just a base material, the attributes get sorted for a
 @f$ \mathcal{O}(\log n) @f$ lookup --- but not as a whole, each layer
@@ -1983,7 +1991,7 @@ Apart from builtin layers, there's no limit in what the layers can be used for
 of authored `rockTile`, `sandTile`, `grassTile` textures and procedurally
 generated blend factors `a`, `b`, `c`, `d`:
 
-@snippet MagnumTrade.cpp MaterialData-populating-layers-custom
+@snippet Trade.cpp MaterialData-populating-layers-custom
 
 @section Trade-MaterialData-representation Internal representation
 
@@ -2253,7 +2261,8 @@ class MAGNUM_TRADE_EXPORT MaterialData {
          * returned by @ref attributeData() const. The @p layer is expected to
          * be less *or equal to* @ref layerCount(), i.e. it's always possible
          * to call this function with @cpp layer @ce and @cpp layer + 1 @ce to
-         * get the attribute range for given layer.
+         * get the attribute range for given layer, or with @ref layerCount()
+         * to get the total attribute count in all layers.
          */
         UnsignedInt attributeDataOffset(UnsignedInt layer) const;
 
@@ -2272,9 +2281,10 @@ class MAGNUM_TRADE_EXPORT MaterialData {
         /**
          * @brief Find ID of a named layer
          *
-         * The @p layer doesn't exist, returns @ref Containers::NullOpt. The
-         * lookup is done in an @f$ \mathcal{O}(n) @f$ complexity with
-         * @f$ n @f$ being the layer count.
+         * The @p layer doesn't exist, returns
+         * @relativeref{Corrade,Containers::NullOpt}. The lookup is done in an
+         * @f$ \mathcal{O}(n) @f$ complexity with @f$ n @f$ being the layer
+         * count.
          * @see @ref hasLayer()
          */
         Containers::Optional<UnsignedInt> findLayerId(Containers::StringView layer) const;
@@ -2524,10 +2534,11 @@ class MAGNUM_TRADE_EXPORT MaterialData {
         /**
          * @brief Find ID of a named attribute in given material layer
          *
-         * If @p name doesn't exist, returns @ref Containers::NullOpt. The
-         * @p layer is expected to be smaller than @ref layerCount() const. The
-         * lookup is done in an @f$ \mathcal{O}(\log n) @f$ complexity with
-         * @f$ n @f$ being attribute count in given @p layer.
+         * If @p name doesn't exist, returns
+         * @relativeref{Corrade,Containers::NullOpt}. The @p layer is expected
+         * to be smaller than @ref layerCount() const. The lookup is done in an
+         * @f$ \mathcal{O}(\log n) @f$ complexity with @f$ n @f$ being
+         * attribute count in given @p layer.
          * @see @ref hasAttribute(), @ref attributeId()
          */
         Containers::Optional<UnsignedInt> findAttributeId(UnsignedInt layer, Containers::StringView name) const;
@@ -2536,10 +2547,11 @@ class MAGNUM_TRADE_EXPORT MaterialData {
         /**
          * @brief Find ID of a named attribute in a named material layer
          *
-         * If @p name doesn't exist, returns @ref Containers::NullOpt. The
-         * @p layer is expected to exist. The lookup is done in an
-         * @f$ \mathcal{O}(m + \log n) @f$ complexity with @f$ m @f$ being
-         * layer count and @f$ n @f$ being attribute count in given @p layer.
+         * If @p name doesn't exist, returns
+         * @relativeref{Corrade,Containers::NullOpt}. The @p layer is expected
+         * to exist. The lookup is done in an @f$ \mathcal{O}(m + \log n) @f$
+         * complexity with @f$ m @f$ being layer count and @f$ n @f$ being
+         * attribute count in given @p layer.
          * @see @ref hasLayer(), @ref hasAttribute(), @ref attributeId(),
          *      @ref findLayerId()
          */
@@ -2723,9 +2735,9 @@ class MAGNUM_TRADE_EXPORT MaterialData {
          *      *pointer to a pointer*, not the pointer value itself.
          * -    In case of a @ref MaterialAttributeType::String returns a
          *      null-terminated @cpp const char* @ce (not a pointer to
-         *      @ref Containers::StringView). This doesn't preserve the actual
-         *      string size in case the string data contain zero bytes, thus
-         *      prefer to use typed access in that case.
+         *      @relativeref{Corrade,Containers::StringView}). This doesn't
+         *      preserve the actual string size in case the string data contain
+         *      zero bytes, thus prefer to use typed access in that case.
          * -    In case of a @ref MaterialAttributeType::Buffer returns a
          *      pointer to the data with no size information, Prefer to use
          *      typed access in that case.
@@ -2753,9 +2765,9 @@ class MAGNUM_TRADE_EXPORT MaterialData {
          *      *pointer to a pointer*, not the pointer value itself.
          * -    In case of a @ref MaterialAttributeType::String returns a
          *      null-terminated @cpp const char* @ce (not a pointer to
-         *      @ref Containers::StringView). This doesn't preserve the actual
-         *      string size in case the string data contain zero bytes, thus
-         *      prefer to use typed access in that case.
+         *      @relativeref{Corrade,Containers::StringView}). This doesn't
+         *      preserve the actual string size in case the string data contain
+         *      zero bytes, thus prefer to use typed access in that case.
          * -    In case of a @ref MaterialAttributeType::Buffer returns a
          *      pointer to the data with no size information, Prefer to use
          *      typed access in that case.
@@ -2787,9 +2799,9 @@ class MAGNUM_TRADE_EXPORT MaterialData {
          *      *pointer to a pointer*, not the pointer value itself.
          * -    In case of a @ref MaterialAttributeType::String returns a
          *      null-terminated @cpp const char* @ce (not a pointer to
-         *      @ref Containers::StringView). This doesn't preserve the actual
-         *      string size in case the string data contain zero bytes, thus
-         *      prefer to use typed access in that case.
+         *      @relativeref{Corrade,Containers::StringView}). This doesn't
+         *      preserve the actual string size in case the string data contain
+         *      zero bytes, thus prefer to use typed access in that case.
          * -    In case of a @ref MaterialAttributeType::Buffer returns a
          *      pointer to the data with no size information, Prefer to use
          *      typed access in that case.
@@ -2821,9 +2833,9 @@ class MAGNUM_TRADE_EXPORT MaterialData {
          *      *pointer to a pointer*, not the pointer value itself.
          * -    In case of a @ref MaterialAttributeType::String returns a
          *      null-terminated @cpp const char* @ce (not a pointer to
-         *      @ref Containers::StringView). This doesn't preserve the actual
-         *      string size in case the string data contain zero bytes, thus
-         *      prefer to use typed access in that case.
+         *      @relativeref{Corrade,Containers::StringView}). This doesn't
+         *      preserve the actual string size in case the string data contain
+         *      zero bytes, thus prefer to use typed access in that case.
          * -    In case of a @ref MaterialAttributeType::Buffer returns a
          *      pointer to the data with no size information, Prefer to use
          *      typed access in that case.
@@ -3551,7 +3563,7 @@ namespace Implementation {
 /* The 2 extra bytes are for a null byte after the name and a type */
 template<class T
     #ifndef DOXYGEN_GENERATING_OUTPUT
-    , class
+    , typename std::enable_if<!std::is_convertible<const T&, Containers::StringView>::value && !std::is_convertible<const T&, Containers::ArrayView<const void>>::value, int>::type
     #endif
 > constexpr MaterialAttributeData::MaterialAttributeData(const Containers::StringView name, const T& value) noexcept:
     _data{Implementation::MaterialAttributeTypeFor<T>::type(), (

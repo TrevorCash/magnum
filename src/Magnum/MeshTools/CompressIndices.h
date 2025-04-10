@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -63,7 +64,7 @@ to many GPUs (and for example unextended Vulkan or D3D12 don't even support
 them). It's also possible to choose a type larger than the input type to
 "inflate" an index buffer of a smaller type. Example usage:
 
-@snippet MagnumMeshTools-gl.cpp compressIndices
+@snippet MeshTools-gl.cpp compressIndices
 
 In case the indices all start from a large offset, the @p offset parameter can
 be used to subtract it, allowing them to be compressed even further. For
@@ -72,14 +73,14 @@ into a 32-bit type), subtracting 75000 makes them in range @f$ [ 0; 21000 ] @f$
 which fits into 16 bits. Note that you also need to update vertex attribute
 offsets accordingly. Example:
 
-@snippet MagnumMeshTools.cpp compressIndices-offset
+@snippet MeshTools.cpp compressIndices-offset
 
 A negative @p offset value will do an operation inverse to the above. See also
 @ref compressIndices(const Trade::MeshData&, MeshIndexType) that can do this
 operation directly on a @ref Trade::MeshData instance.
 
 The @p atLeast parameter is expected to not be an implementation-specific type.
-@see @ref isMeshIndexTypeImplementationSpecific()
+@see @ref isMeshIndexTypeImplementationSpecific(), @ref Math::castInto()
 */
 MAGNUM_MESHTOOLS_EXPORT Containers::Pair<Containers::Array<char>, MeshIndexType> compressIndices(const Containers::StridedArrayView1D<const UnsignedInt>& indices, MeshIndexType atLeast = MeshIndexType::UnsignedShort, Long offset = 0);
 
@@ -151,9 +152,12 @@ MAGNUM_MESHTOOLS_EXPORT Containers::Pair<Containers::Array<char>, MeshIndexType>
 
 Does the same as @ref compressIndices(const Containers::StridedArrayView2D<const char>&, MeshIndexType, Long),
 but together with adjusting vertex attribute offsets in the passed
-@ref Trade::MeshData instance. This function will unconditionally make a copy
-of all vertex data, use @ref compressIndices(Trade::MeshData&&, MeshIndexType)
-to avoid that copy.
+@ref Trade::MeshData instance. By default the function will make a copy of all
+vertex data, pass a r-value in order to pick the
+@ref compressIndices(Trade::MeshData&&, MeshIndexType) overload and avoid the
+copy. The function is by default using at least a 16-bit index type because
+while @ref MeshIndexType::UnsignedByte can make the in-memory representation
+smaller, it's not supported by all GPU APIs and its usage is discouraged.
 
 The mesh is expected to be indexed and the index type and the @p atLeast
 parameter is expected to not be implementation-specific type.
@@ -189,7 +193,7 @@ sufficient.
 
 Example usage:
 
-@snippet MagnumMeshTools-gl.cpp compressIndices-stl
+@snippet MeshTools-gl.cpp compressIndices-stl
 */
 CORRADE_DEPRECATED("use compressIndices(const Containers::StridedArrayView1D<const UnsignedInt>&, MeshIndexType, Long) instead") MAGNUM_MESHTOOLS_EXPORT std::tuple<Containers::Array<char>, MeshIndexType, UnsignedInt, UnsignedInt> compressIndices(const std::vector<UnsignedInt>& indices);
 
@@ -204,7 +208,7 @@ Values in the index array are expected to be representable with given type.
 
 Example usage:
 
-@snippet MagnumMeshTools.cpp compressIndicesAs
+@snippet MeshTools.cpp compressIndicesAs
 */
 template<class T> CORRADE_DEPRECATED("use compressIndices(const Containers::StridedArrayView1D<const UnsignedInt>&, MeshIndexType, Long) instead") MAGNUM_MESHTOOLS_EXPORT Containers::Array<T> compressIndicesAs(const std::vector<UnsignedInt>& indices);
 

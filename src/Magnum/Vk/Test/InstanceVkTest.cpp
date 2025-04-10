@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,14 +24,13 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <cstdlib> /* std::getenv() */
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/StringIterable.h>
 #include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 
 #include "Magnum/Vk/Extensions.h"
 #include "Magnum/Vk/ExtensionProperties.h"
@@ -375,7 +375,7 @@ void InstanceVkTest::constructCommandLineDisable() {
     if(!enumerateInstanceExtensionProperties({"VK_LAYER_KHRONOS_validation"}).isSupported<Extensions::EXT::validation_features>())
         CORRADE_SKIP("VK_EXT_validation_features not supported, can't test");
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Debug redirectOutput{&out};
     Instance instance{InstanceCreateInfo{Int(data.argsDisable.size()), data.argsDisable,
@@ -394,7 +394,7 @@ void InstanceVkTest::constructCommandLineDisable() {
     UnsignedInt minor = versionMinor(enumerateInstanceVersion());
     UnsignedInt patch = versionPatch(enumerateInstanceVersion());
     /* Vulkan 1.0 instances report no patch version, special-case that */
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.log, major, minor, patch ? Utility::formatString(".{}", patch) : ""));
+    CORRADE_COMPARE(out, Utility::format(data.log, major, minor, patch ? Utility::format(".{}", patch) : ""));
 
     /* Verify that the entrypoint is actually (not) loaded as expected, to
        avoid all the above reporting being just smoke & mirrors */
@@ -415,7 +415,7 @@ void InstanceVkTest::constructCommandLineEnable() {
     if(!enumerateInstanceExtensionProperties({"VK_LAYER_KHRONOS_validation"}).isSupported<Extensions::EXT::validation_features>())
         CORRADE_SKIP("VK_EXT_validation_features not supported, can't test");
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Debug redirectOutput{&out};
     Instance instance{InstanceCreateInfo{Int(data.argsEnable.size()), data.argsEnable,
@@ -432,7 +432,7 @@ void InstanceVkTest::constructCommandLineEnable() {
     UnsignedInt minor = versionMinor(enumerateInstanceVersion());
     UnsignedInt patch = versionPatch(enumerateInstanceVersion());
     /* Vulkan 1.0 instances report no patch version, special-case that */
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.log, major, minor, patch ? Utility::format(".{}", patch) : ""));
+    CORRADE_COMPARE(out, Utility::format(data.log, major, minor, patch ? Utility::format(".{}", patch) : ""));
 
     /* Verify that the entrypoint is actually (not) loaded as expected, to
        avoid all the above reporting being just smoke & mirrors */
@@ -445,30 +445,30 @@ void InstanceVkTest::tryCreateAlreadyCreated() {
     Instance instance;
     CORRADE_VERIFY(instance.handle());
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     instance.tryCreate();
-    CORRADE_COMPARE(out.str(), "Vk::Instance::tryCreate(): instance already created\n");
+    CORRADE_COMPARE(out, "Vk::Instance::tryCreate(): instance already created\n");
 }
 
 void InstanceVkTest::tryCreateUnknownLayer() {
     Instance instance{NoCreate};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(instance.tryCreate(InstanceCreateInfo{}
         .addEnabledLayers({"VK_LAYER_this_doesnt_exist"_s})), Result::ErrorLayerNotPresent);
-    CORRADE_COMPARE(out.str(), "Vk::Instance::tryCreate(): instance creation failed: Vk::Result::ErrorLayerNotPresent\n");
+    CORRADE_COMPARE(out, "Vk::Instance::tryCreate(): instance creation failed: Vk::Result::ErrorLayerNotPresent\n");
 }
 
 void InstanceVkTest::tryCreateUnknownExtension() {
     Instance instance{NoCreate};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(instance.tryCreate(InstanceCreateInfo{}
         .addEnabledExtensions({"VK_this_doesnt_exist"_s})), Result::ErrorExtensionNotPresent);
-    CORRADE_COMPARE(out.str(), "Vk::Instance::tryCreate(): instance creation failed: Vk::Result::ErrorExtensionNotPresent\n");
+    CORRADE_COMPARE(out, "Vk::Instance::tryCreate(): instance creation failed: Vk::Result::ErrorExtensionNotPresent\n");
 }
 
 void InstanceVkTest::wrap() {
@@ -532,10 +532,10 @@ void InstanceVkTest::wrapAlreadyCreated() {
     Instance instance;
     CORRADE_VERIFY(instance.handle());
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     instance.wrap({}, {}, {});
-    CORRADE_COMPARE(out.str(), "Vk::Instance::wrap(): instance already created\n");
+    CORRADE_COMPARE(out, "Vk::Instance::wrap(): instance already created\n");
 }
 
 void InstanceVkTest::populateGlobalFunctionPointers() {

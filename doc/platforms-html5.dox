@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020 Pablo Escobar <mail@rvrs.in>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -94,12 +95,6 @@ node my-application.js
 @endcode
 
 @section platforms-html5-apps Building and deploying graphical apps
-
-In case you don't have an OpenGL ES build set up yet, you need to copy
-`FindOpenGLES2.cmake` (or `FindOpenGLES3.cmake`) from the
-[modules/](https://github.com/mosra/magnum/tree/master/modules) directory in
-Magnum source to the `modules/` dir in your project so it is able to find the
-WebGL libraries.
 
 Magnum provides Emscripten application wrappers in @ref Platform::Sdl2Application
 and @ref Platform::EmscriptenApplication. See their documentation for more
@@ -207,12 +202,6 @@ webserver again by pressing @m_class{m-label m-warning} **Ctrl**
 @m_class{m-label m-default} **C**.
 
 @section platforms-html5-windowless-apps Building and deploying windowless apps
-
-In case you don't have an EGL + OpenGL ES build set up yet, you need to copy
-`FindEGL.cmake` and `FindOpenGLES2.cmake` (or `FindOpenGLES3.cmake`) from the
-[modules/](https://github.com/mosra/magnum/tree/master/modules) directory in
-Magnum source to the `modules/` dir in your project so it is able to find the
-EGL and WebGL libraries.
 
 Windowless Magnum apps (i.e. apps that use the OpenGL context without a window)
 can be run in the browser as well using the @ref Platform::WindowlessEglApplication
@@ -369,6 +358,7 @@ Aspect ratio    | CSS class (landscape/portrait)
 1:1             | @cb{.css} .mn-aspect-1-1 @ce <b></b>
 4:3 (1.33:1)    | @cb{.css} .mn-aspect-4-3 @ce (default) / @cb{.css} .mn-aspect-3-4 @ce
 3:2 (1.5:1)     | @cb{.css} .mn-aspect-3-2 @ce / @cb{.css} .mn-aspect-2-3 @ce
+16:10 (1.6:1)   | @cb{.css} .mn-aspect-16-10 @ce / @cb{.css} .mn-aspect-10-16 @ce
 16:9 (1.78:1)   | @cb{.css} .mn-aspect-16-9 @ce / @cb{.css} .mn-aspect-9-16 @ce
 2:1             | @cb{.css} .mn-aspect-2-1 @ce / @cb{.css} .mn-aspect-1-2 @ce
 
@@ -392,6 +382,9 @@ Width           | CSS class
 600px           | @cb{.css} .mn-width-600 @ce <b></b>
 640px           | @cb{.css} .mn-width-640 @ce (default)
 800px           | @cb{.css} .mn-width-800 @ce <b></b>
+960px           | @cb{.css} .mn-width-960 @ce <b></b>
+1024px          | @cb{.css} .mn-width-1024 @ce <b></b>
+1280px          | @cb{.css} .mn-width-1280 @ce <b></b>
 
 For example, for a 480x640 canvas (3:4, portrait) you would use
 @cb{.html} <div class="mn-container mn-width-480 mn-aspect-3-4"> @ce. Besides
@@ -551,12 +544,12 @@ requirement for unique buffer target binding, aligned buffer offset and
 stride and some other restrictions. The most prominent difference is that while
 the following was enough on desktop:
 
-@snippet MagnumGL.cpp Buffer-webgl-nope
+@snippet GL.cpp Buffer-webgl-nope
 
 On WebGL (even 2.0) you always have to initialize the buffers like this (and
 other target hints for UBOs etc.):
 
-@snippet MagnumGL.cpp Buffer-webgl
+@snippet GL.cpp Buffer-webgl
 
 See @ref GL-Buffer-webgl-restrictions "GL::Buffer",
 @ref GL-Mesh-webgl-restrictions "GL::Mesh",

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -104,6 +105,7 @@ constexpr Extension ExtensionList[]{
     Extensions::EXT::texture_sRGB_RG8{},
     Extensions::EXT::texture_sRGB_decode{},
     Extensions::GREMEDY::string_marker{},
+    Extensions::INTEL::blackhole_render{},
     Extensions::KHR::blend_equation_advanced{},
     Extensions::KHR::blend_equation_advanced_coherent{},
     Extensions::KHR::parallel_shader_compile{},
@@ -271,6 +273,7 @@ constexpr Extension ExtensionList460[]{
 };
 #elif defined(MAGNUM_TARGET_WEBGL)
 constexpr Extension ExtensionList[]{
+    Extensions::EXT::clip_control{},
     #ifndef MAGNUM_TARGET_GLES2
     Extensions::EXT::clip_cull_distance{},
     #endif
@@ -278,6 +281,7 @@ constexpr Extension ExtensionList[]{
     Extensions::EXT::color_buffer_float{},
     #endif
     Extensions::EXT::color_buffer_half_float{},
+    Extensions::EXT::depth_clamp{},
     #ifdef MAGNUM_TARGET_GLES2
     Extensions::EXT::disjoint_timer_query{},
     #endif
@@ -288,14 +292,19 @@ constexpr Extension ExtensionList[]{
     Extensions::EXT::draw_buffers_indexed{},
     #endif
     Extensions::EXT::float_blend{},
+    Extensions::EXT::polygon_offset_clamp{},
     Extensions::EXT::texture_compression_bptc{},
     Extensions::EXT::texture_compression_rgtc{},
     Extensions::EXT::texture_filter_anisotropic{},
+    Extensions::EXT::texture_mirror_clamp_to_edge{},
     #ifndef MAGNUM_TARGET_GLES2
     Extensions::EXT::texture_norm16{},
     #endif
     Extensions::KHR::parallel_shader_compile{},
+    Extensions::MAGNUM::compressed_texture_astc_hdr{},
+    Extensions::MAGNUM::compressed_texture_astc_ldr{},
     #ifndef MAGNUM_TARGET_GLES2
+    Extensions::NV::shader_noperspective_interpolation{},
     Extensions::OES::draw_buffers_indexed{},
     #endif
     Extensions::OES::texture_float_linear{},
@@ -303,6 +312,7 @@ constexpr Extension ExtensionList[]{
     Extensions::OVR::multiview2{},
     #endif
     Extensions::WEBGL::blend_equation_advanced_coherent{},
+    Extensions::WEBGL::blend_func_extended{},
     #ifndef MAGNUM_TARGET_GLES2
     Extensions::WEBGL::clip_cull_distance{},
     #endif
@@ -320,6 +330,11 @@ constexpr Extension ExtensionList[]{
     Extensions::WEBGL::multi_draw{},
     #ifndef MAGNUM_TARGET_GLES2
     Extensions::WEBGL::multi_draw_instanced_base_vertex_base_instance{},
+    #endif
+    Extensions::WEBGL::polygon_mode{},
+    #ifndef MAGNUM_TARGET_GLES2
+    Extensions::WEBGL::provoking_vertex{},
+    Extensions::WEBGL::stencil_texturing{},
     #endif
 };
 constexpr Extension ExtensionListES300[]{
@@ -356,6 +371,11 @@ constexpr Extension ExtensionList[]{
     #endif
     Extensions::ANGLE::compressed_texture_etc{},
     Extensions::ANGLE::multi_draw{},
+    Extensions::ANGLE::polygon_mode{},
+    #ifndef MAGNUM_TARGET_GLES2
+    Extensions::ANGLE::provoking_vertex{},
+    Extensions::ANGLE::stencil_texturing{},
+    #endif
     Extensions::ANGLE::texture_compression_dxt1{},
     Extensions::ANGLE::texture_compression_dxt3{},
     Extensions::ANGLE::texture_compression_dxt5{},
@@ -363,6 +383,10 @@ constexpr Extension ExtensionList[]{
     Extensions::APPLE::texture_format_BGRA8888{},
     Extensions::ARM::shader_framebuffer_fetch{},
     Extensions::ARM::shader_framebuffer_fetch_depth_stencil{},
+    Extensions::EXT::blend_func_extended{},
+    #ifndef MAGNUM_TARGET_GLES2
+    Extensions::EXT::buffer_storage{},
+    #endif
     Extensions::EXT::clip_control{},
     #ifndef MAGNUM_TARGET_GLES2
     Extensions::EXT::clip_cull_distance{},
@@ -395,6 +419,7 @@ constexpr Extension ExtensionList[]{
     Extensions::EXT::texture_compression_s3tc_srgb{},
     Extensions::EXT::texture_filter_anisotropic{},
     Extensions::EXT::texture_format_BGRA8888{},
+    Extensions::EXT::texture_mirror_clamp_to_edge{},
     #ifndef MAGNUM_TARGET_GLES2
     Extensions::EXT::texture_norm16{},
     Extensions::EXT::texture_sRGB_R8{},
@@ -407,6 +432,7 @@ constexpr Extension ExtensionList[]{
     Extensions::EXT::texture_view{},
     #endif
     Extensions::IMG::texture_compression_pvrtc{},
+    Extensions::INTEL::blackhole_render{},
     Extensions::KHR::blend_equation_advanced_coherent{},
     Extensions::KHR::context_flush_control{},
     Extensions::KHR::no_error{},
@@ -673,9 +699,10 @@ Context* currentContext = nullptr;
    called from. To avoid #ifdef hell in code below, the currentContext is
    redefined to return a value from this uniqueness-ensuring function. */
 #if defined(CORRADE_TARGET_WINDOWS) && defined(MAGNUM_BUILD_STATIC_UNIQUE_GLOBALS) && !defined(CORRADE_TARGET_WINDOWS_RT)
-/* Clang-CL complains that the function has a return type incompatible with C.
-   I don't care, I only need an unmangled name to look up later at runtime. */
-#ifdef CORRADE_TARGET_CLANG_CL
+/* MinGW Clang and Clang-CL complains that the function has a return type
+   incompatible with C. I don't care, I only need an unmangled name to look up
+   later at runtime. */
+#if defined(CORRADE_TARGET_CLANG_CL) || (defined(CORRADE_TARGET_MINGW) && defined(CORRADE_TARGET_CLANG))
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
 #endif
@@ -683,7 +710,7 @@ extern "C" CORRADE_VISIBILITY_EXPORT Context*& magnumGLUniqueCurrentContext();
 extern "C" CORRADE_VISIBILITY_EXPORT Context*& magnumGLUniqueCurrentContext() {
     return currentContext;
 }
-#ifdef CORRADE_TARGET_CLANG_CL
+#ifdef CORRADE_TARGET_CLANG
 #pragma clang diagnostic pop
 #endif
 
@@ -1118,7 +1145,7 @@ Containers::Array<Containers::StringView> Context::extensionStrings() const {
        on GL 2.1. Happens with Mesa's zink that's just 2.1 currently (Apr 2020)
        even though for other backends Mesa exposes this. */
     #ifndef MAGNUM_TARGET_GLES2
-    #ifndef MAGNUM_TARGET_GLES3
+    #ifndef MAGNUM_TARGET_GLES
     if(isVersionSupported(Version::GL300))
     #endif
     {
@@ -1129,14 +1156,15 @@ Containers::Array<Containers::StringView> Context::extensionStrings() const {
             extensions[i] = {reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i)), Containers::StringViewFlag::Global};
         return extensions;
     }
-    #ifndef MAGNUM_TARGET_GLES3
+    #ifndef MAGNUM_TARGET_GLES
     else
     #endif
     #endif
-
-    #ifndef MAGNUM_TARGET_GLES3
-    /* OpenGL 2.1 / OpenGL ES 2.0 doesn't have glGetStringi() */
-    return Containers::StringView{reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS)), Containers::StringViewFlag::Global}.splitOnWhitespaceWithoutEmptyParts();
+    #if !defined(MAGNUM_TARGET_GLES) || defined(MAGNUM_TARGET_GLES2)
+    {
+        /* OpenGL 2.1 / OpenGL ES 2.0 doesn't have glGetStringi() */
+        return Containers::StringView{reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS)), Containers::StringViewFlag::Global}.splitOnWhitespaceWithoutEmptyParts();
+    }
     #endif
 }
 
@@ -1295,7 +1323,6 @@ Context::Configuration& Context::Configuration::addDisabledExtensions(std::initi
     return addDisabledExtensions(Containers::arrayView(extensions));
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 #ifndef MAGNUM_TARGET_WEBGL
 Debug& operator<<(Debug& debug, const Context::Flag value) {
     const bool packed = debug.immediateFlags() >= Debug::Flag::Packed;
@@ -1318,7 +1345,7 @@ Debug& operator<<(Debug& debug, const Context::Flag value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << (packed ? "" : "(") << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << (packed ? "" : ")");
+    return debug << (packed ? "" : "(") << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << (packed ? "" : ")");
 }
 
 Debug& operator<<(Debug& debug, const Context::Flags value) {
@@ -1365,7 +1392,7 @@ Debug& operator<<(Debug& debug, const Context::DetectedDriver value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << (packed ? "" : "(") << Debug::nospace << reinterpret_cast<void*>(GLint(value)) << Debug::nospace << (packed ? "" : ")");
+    return debug << (packed ? "" : "(") << Debug::nospace << Debug::hex << GLint(value) << Debug::nospace << (packed ? "" : ")");
 }
 
 Debug& operator<<(Debug& debug, const Context::DetectedDrivers value) {
@@ -1389,6 +1416,5 @@ Debug& operator<<(Debug& debug, const Context::DetectedDrivers value) {
         #endif
     });
 }
-#endif
 
 }}

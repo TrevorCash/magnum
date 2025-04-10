@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Pablo Escobar <mail@rvrs.in>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -42,10 +43,10 @@ namespace Magnum { namespace MeshTools {
 @return Bounding range
 @m_since_latest
 
-Same as @ref Math::minmax(const Corrade::Containers::StridedArrayView1D<const T>&).
+Same as @ref Math::minmax(const Containers::StridedArrayView1D<const T>&).
 @see @ref Math::Intersection::rayRange(),
     @ref Math::Intersection::rangeFrustum(),
-    @ref Math::Intersection::rangeCone()
+    @ref Math::Intersection::rangeCone(), @ref meshtools-bounding-volume
 */
 MAGNUM_MESHTOOLS_EXPORT Range3D boundingRange(const Containers::StridedArrayView1D<const Vector3>& positions);
 
@@ -66,7 +67,7 @@ problem, 2012, https://www.grin.com/document/204869*.
 @see @ref Math::Intersection::pointSphere(),
     @ref Math::Intersection::sphereFrustum(),
     @ref Math::Intersection::sphereCone(),
-    @ref Math::Intersection::sphereConeView()
+    @ref Math::Intersection::sphereConeView(), @ref meshtools-bounding-volume
 */
 MAGNUM_MESHTOOLS_EXPORT Containers::Pair<Vector3, Float> boundingSphereBouncingBubble(const Containers::StridedArrayView1D<const Vector3>& positions);
 

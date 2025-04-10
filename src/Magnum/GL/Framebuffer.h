@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Pablo Escobar <mail@rvrs.in>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -29,6 +30,8 @@
 /** @file
  * @brief Class @ref Magnum::GL::Framebuffer
  */
+
+#include <initializer_list>
 
 #include "Magnum/Tags.h"
 #include "Magnum/GL/AbstractFramebuffer.h"
@@ -67,12 +70,12 @@ there's not much reason to use @ref Renderbuffer anymore, however in OpenGL ES
 and WebGL due to various texture format restrictions, renderbuffers are still
 the more flexible option if you don't need to use the result in a shader.
 
-@snippet MagnumGL.cpp Framebuffer-usage
+@snippet GL.cpp Framebuffer-usage
 
 Rendering then usually consists of switching between different framebuffers
 using @ref bind() and reusing the rendered texture in subsequent draws:
 
-@snippet MagnumGL.cpp Framebuffer-usage-rendering
+@snippet GL.cpp Framebuffer-usage-rendering
 
 @section GL-Framebuffer-usage-multisample Multisampled rendering
 
@@ -80,7 +83,7 @@ Another use case for custom framebuffers is multisampled rendering --- as
 you're not always allowed to control the MSAA setting on a default framebuffer,
 or you might want your rendered texture to be multisampled as well:
 
-@snippet MagnumGL.cpp Framebuffer-usage-multisample
+@snippet GL.cpp Framebuffer-usage-multisample
 
 Here @ref Renderbuffer gets used for the color attachment as well. While it's
 possible to achieve the same with a @ref MultisampleTexture2D, support for it
@@ -95,7 +98,7 @@ gets used. In builtin shaders this is also how the
 @ref Shaders::FlatGL::ColorOutput / @ref Shaders::FlatGL::ObjectIdOutput etc.
 get used:
 
-@snippet MagnumGL.cpp Framebuffer-usage-deferred
+@snippet GL.cpp Framebuffer-usage-deferred
 
 @section GL-Framebuffer-performance-optimizations Performance optimizations
 
@@ -145,6 +148,10 @@ class MAGNUM_GL_EXPORT Framebuffer: public AbstractFramebuffer, public AbstractO
             private:
                 GLenum attachment;
         };
+
+        #ifdef Magnum_British_h
+        typedef ColorAttachment ColurAttachment;
+        #endif
 
         /**
          * @brief Draw attachment
@@ -535,7 +542,7 @@ class MAGNUM_GL_EXPORT Framebuffer: public AbstractFramebuffer, public AbstractO
          * used, you can achieve the same by passing @ref Framebuffer::DrawAttachment::None
          * as color attachment ID. Example usage:
          *
-         * @snippet MagnumGL.cpp Framebuffer-mapForDraw
+         * @snippet GL.cpp Framebuffer-mapForDraw
          *
          * If @gl_extension{ARB,direct_state_access} (part of OpenGL 4.5) is
          * not available, the framebuffer is bound before the operation (if not

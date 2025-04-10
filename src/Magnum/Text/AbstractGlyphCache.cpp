@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -57,7 +58,7 @@ Debug& operator<<(Debug& debug, const GlyphCacheFeature value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(UnsignedByte(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << UnsignedByte(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const GlyphCacheFeatures value) {
@@ -70,7 +71,7 @@ Debug& operator<<(Debug& debug, const GlyphCacheFeatures value) {
 }
 
 struct AbstractGlyphCache::State {
-    explicit State(PixelFormat format, const Vector3i& size, const Vector2i& padding): image{format, size, Containers::Array<char>{ValueInit, 4*((pixelFormatSize(format)*size.x() + 3)/4)*size.y()*size.z()}}, atlas{size}, padding{padding} {
+    explicit State(PixelFormat format, const Vector3i& size, PixelFormat processedFormat, const Vector2i& processedSize, const Vector2i& padding): image{format, size, Containers::Array<char>{ValueInit, 4*((pixelFormatSize(format)*size.x() + 3)/4)*size.y()*size.z()}}, atlas{size}, processedFormat{processedFormat}, processedSize{processedSize}, padding{padding} {
         /* Flags are currently cleared as well, will be enabled back in a later
            step once the behavior is specified (with negative ranges) and
            Math::join() is fixed to handle those correctly. */
@@ -82,7 +83,11 @@ struct AbstractGlyphCache::State {
     Image3D image;
     TextureTools::AtlasLandfill atlas;
 
+    PixelFormat processedFormat;
+    Vector2i processedSize;
     Vector2i padding;
+
+    /* 0/4 bytes free */
 
     /* First element is glyph position relative to a point on the baseline,
        second layer in the texture atlas, third a region in the atlas
@@ -117,13 +122,15 @@ struct AbstractGlyphCache::State {
     Containers::Array<UnsignedShort> fontGlyphMapping;
 };
 
-AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector3i& size, const Vector2i& padding) {
+AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector3i& size, const PixelFormat processedFormat, const Vector2i& processedSize, const Vector2i& padding) {
     CORRADE_ASSERT(size.product(),
         "Text::AbstractGlyphCache: expected non-zero size, got" << Debug::packed << size, );
+    CORRADE_ASSERT(processedSize.product(),
+        "Text::AbstractGlyphCache: expected non-zero processed size, got" << Debug::packed << processedSize, );
 
     /* Creating the state only after the assert as the AtlasLandfill would
        assert on zero size as well */
-    _state.emplace(format, size, padding);
+    _state.emplace(format, size, processedFormat, processedSize, padding);
 
     /* Default invalid glyph -- empty / zero-area */
     arrayAppend(_state->glyphs, InPlaceInit);
@@ -132,17 +139,27 @@ AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector3i&
     arrayAppend(_state->fonts, InPlaceInit, 0u, nullptr);
 }
 
-AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector3i& size): AbstractGlyphCache{format, size, {}} {}
+AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector3i& size, const PixelFormat processedFormat, const Vector2i& processedSize): AbstractGlyphCache{format, size, processedFormat, processedSize, Vector2i{1}} {}
+
+AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector2i& size, const PixelFormat processedFormat, const Vector2i& processedSize, const Vector2i& padding): AbstractGlyphCache{format, Vector3i{size, 1}, processedFormat, processedSize, padding} {}
+
+AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector2i& size, const PixelFormat processedFormat, const Vector2i& processedSize): AbstractGlyphCache{format, size, processedFormat, processedSize, Vector2i{1}} {}
+
+AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector3i& size, const Vector2i& padding): AbstractGlyphCache{format, size, format, size.xy(), padding} {}
+
+AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector3i& size): AbstractGlyphCache{format, size, Vector2i{1}} {}
 
 AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector2i& size, const Vector2i& padding): AbstractGlyphCache{format, Vector3i{size, 1}, padding} {}
 
-AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector2i& size): AbstractGlyphCache{format, size, {}} {}
+AbstractGlyphCache::AbstractGlyphCache(const PixelFormat format, const Vector2i& size): AbstractGlyphCache{format, size, Vector2i{1}} {}
 
 #ifdef MAGNUM_BUILD_DEPRECATED
 AbstractGlyphCache::AbstractGlyphCache(const Vector2i& size, const Vector2i& padding): AbstractGlyphCache{PixelFormat::R8Unorm, size, padding} {}
 
-AbstractGlyphCache::AbstractGlyphCache(const Vector2i& size): AbstractGlyphCache{PixelFormat::R8Unorm, size, {}} {}
+AbstractGlyphCache::AbstractGlyphCache(const Vector2i& size): AbstractGlyphCache{PixelFormat::R8Unorm, size, Vector2i{1}} {}
 #endif
+
+AbstractGlyphCache::AbstractGlyphCache(NoCreateT) noexcept {}
 
 AbstractGlyphCache::AbstractGlyphCache(AbstractGlyphCache&&) noexcept = default;
 
@@ -154,8 +171,16 @@ PixelFormat AbstractGlyphCache::format() const {
     return _state->image.format();
 }
 
+PixelFormat AbstractGlyphCache::processedFormat() const {
+    return _state->processedFormat;
+}
+
 Vector3i AbstractGlyphCache::size() const {
     return _state->image.size();
+}
+
+Vector3i AbstractGlyphCache::processedSize() const {
+    return {_state->processedSize, _state->image.size().z()};
 }
 
 #ifdef MAGNUM_BUILD_DEPRECATED
@@ -277,7 +302,7 @@ std::vector<Range2Di> AbstractGlyphCache::reserve(const std::vector<Vector2i>& s
     for(std::size_t i = 0; i != sizes.size(); ++i)
         out[i].max() = sizes[i];
 
-    const bool succeeded = state.atlas.add(
+    const bool succeeded = !!state.atlas.add(
         Containers::stridedArrayView(out).slice(&Range2Di::max),
         Containers::stridedArrayView(out).slice(&Range2Di::min));
 
@@ -312,10 +337,9 @@ UnsignedInt AbstractGlyphCache::addGlyph(const UnsignedInt fontId, const Unsigne
         "Text::AbstractGlyphCache::addGlyph(): glyph" << fontGlyphId << "in font" << fontId << "already added at index" << state.fontGlyphMapping[fontOffset + fontGlyphId], {});
     /** @todo expand once rotations (and thus negative rectangle sizes) are
         supported */
-    const Range2Di rectanglePadded = rectangle.padded(state.padding);
     #ifndef CORRADE_NO_ASSERT
     const Range2Dui rectangleu{rectangle};
-    const Range2Dui rectanglePaddedu{rectanglePadded};
+    const Range2Dui rectanglePaddedu{rectangle.padded(state.padding)};
     #endif
     CORRADE_ASSERT(UnsignedInt(layer) < UnsignedInt(state.image.size().z()) && (rectangleu.min() <= rectangleu.max()).all() && (rectanglePaddedu.min() <= Vector2ui{state.image.size().xy()}).all() && (rectanglePaddedu.max() <= Vector2ui{state.image.size().xy()}).all(),
         "Text::AbstractGlyphCache::addGlyph(): layer" << layer << "and rectangle" << Debug::packed << rectangle << "out of range for size" << Debug::packed << state.image.size() << "and padding" << Debug::packed << state.padding, {});
@@ -379,18 +403,25 @@ void AbstractGlyphCache::flushImage(const Range3Di& range) {
     CORRADE_ASSERT((rangeu.min() <= rangeu.max()).all() && (rangeu.max() <= Vector3ui{state.image.size()}).all(),
         "Text::AbstractGlyphCache::flushImage():" << Debug::packed << range << "out of range for size" << Debug::packed << state.image.size(), );
 
+    /* Set the image including padding, to make sure the sampled glyph area
+       doesn't contain potentially uninitialized GPU memory */
+    const Vector3i paddedMin = Math::max(Vector3i{0},
+        range.min() - Vector3i{padding(), 0});
+    const Vector3i paddedMax = Math::min(size(),
+        range.max() + Vector3i{padding(), 0});
+
     /** @todo ugh have slicing on images directly already */
     PixelStorage storage;
     storage.setRowLength(state.image.size().x())
-        .setSkip(range.min());
+        .setSkip(paddedMin);
     /* Set image height only if it's an array glyph cache, as otherwise it'd
        cause errors on ES2 that doesn't support this pixel storage state */
     if(state.image.size().z() != 1)
         storage.setImageHeight(state.image.size().y());
-    doSetImage(range.min(), ImageView3D{
+    doSetImage(paddedMin, ImageView3D{
         storage,
         state.image.format(),
-        range.size(),
+        paddedMax - paddedMin,
         state.image.data()});
 }
 
@@ -444,6 +475,37 @@ Image3D AbstractGlyphCache::processedImage() {
 
 Image3D AbstractGlyphCache::doProcessedImage() {
     CORRADE_ASSERT_UNREACHABLE("Text::AbstractGlyphCache::processedImage(): feature advertised but not implemented", Image3D{PixelFormat::R8Unorm});
+}
+
+void AbstractGlyphCache::setProcessedImage(const Vector3i& offset, const ImageView3D& image) {
+    #ifndef CORRADE_NO_ASSERT
+    State& state = *_state;
+    #endif
+    CORRADE_ASSERT(features() >= GlyphCacheFeature::ImageProcessing,
+        "Text::AbstractGlyphCache::setProcessedImage(): feature not supported", );
+    CORRADE_ASSERT((offset >= Vector3i{} && offset + image.size() <= processedSize()).all(),
+        "Text::AbstractGlyphCache::setProcessedImage():" << Debug::packed << Range3Di::fromSize(offset, image.size()) << "out of range for size" << Debug::packed << processedSize(), );
+    CORRADE_ASSERT(image.format() == state.processedFormat,
+        "Text::AbstractGlyphCache::setProcessedImage(): expected" << state.processedFormat << "but got" << image.format(), );
+    doSetProcessedImage(offset, image);
+}
+
+void AbstractGlyphCache::setProcessedImage(const Vector2i& offset, const ImageView2D& image) {
+    CORRADE_ASSERT(_state->image.size().z() == 1,
+        "Text::AbstractGlyphCache::setProcessedImage(): use the 3D overload for an array glyph cache", );
+    setProcessedImage({offset, 0}, image);
+}
+
+void AbstractGlyphCache::doSetProcessedImage(const Vector3i& offset, const ImageView3D& image) {
+    if(_state->image.size().z() == 1)
+        /** @todo ugh have slicing on images directly already */
+        return doSetProcessedImage(offset.xy(), ImageView2D{image.storage(), image.format(), image.size().xy(), image.data()});
+
+    CORRADE_ASSERT_UNREACHABLE("Text::AbstractGlyphCache::setProcessedImage(): feature advertised but not implemented", );
+}
+
+void AbstractGlyphCache::doSetProcessedImage(const Vector2i&, const ImageView2D&) {
+    CORRADE_ASSERT_UNREACHABLE("Text::AbstractGlyphCache::setProcessedImage(): feature advertised but not implemented", );
 }
 
 UnsignedInt AbstractGlyphCache::glyphId(const UnsignedInt fontId, const UnsignedInt fontGlyphId) const {

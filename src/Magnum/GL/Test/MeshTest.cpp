@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Mesh.h"
 #include "Magnum/GL/AbstractShaderProgram.h"
@@ -141,25 +141,25 @@ struct Shader: AbstractShaderProgram {
 void MeshTest::drawCountNotSet() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     Shader{NoCreate}.draw(Mesh{NoCreate});
 
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): Mesh::setCount() was never called, probably a mistake?\n");
 }
 
 void MeshTest::drawViewCountNotSet() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     Mesh mesh{NoCreate};
     Shader{NoCreate}.draw(MeshView{mesh});
 
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): MeshView::setCount() was never called, probably a mistake?\n");
 }
 
@@ -205,21 +205,21 @@ void MeshTest::mapPrimitiveImplementationSpecific() {
 void MeshTest::mapPrimitiveUnsupported() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     meshPrimitive(Magnum::MeshPrimitive::Instances);
-    CORRADE_COMPARE(out.str(), "GL::meshPrimitive(): unsupported primitive MeshPrimitive::Instances\n");
+    CORRADE_COMPARE(out, "GL::meshPrimitive(): unsupported primitive MeshPrimitive::Instances\n");
 }
 
 void MeshTest::mapPrimitiveInvalid() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     meshPrimitive(Magnum::MeshPrimitive{});
     meshPrimitive(Magnum::MeshPrimitive(0x12));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::meshPrimitive(): invalid primitive MeshPrimitive(0x0)\n"
         "GL::meshPrimitive(): invalid primitive MeshPrimitive(0x12)\n");
 }
@@ -260,12 +260,12 @@ void MeshTest::mapIndexTypeImplementationSpecific() {
 void MeshTest::mapIndexTypeInvalid() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     meshIndexType(Magnum::MeshIndexType(0x0));
     meshIndexType(Magnum::MeshIndexType(0x12));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::meshIndexType(): invalid type MeshIndexType(0x0)\n"
         "GL::meshIndexType(): invalid type MeshIndexType(0x12)\n");
 }
@@ -279,25 +279,25 @@ void MeshTest::indexTypeSize() {
 void MeshTest::indexTypeSizeInvalid() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     meshIndexTypeSize(MeshIndexType{});
     meshIndexTypeSize(MeshIndexType(0xbadcafe));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::meshIndexTypeSize(): invalid type GL::MeshIndexType(0x0)\n"
         "GL::meshIndexTypeSize(): invalid type GL::MeshIndexType(0xbadcafe)\n");
 }
 
 void MeshTest::debugPrimitive() {
-    std::ostringstream o;
-    Debug(&o) << MeshPrimitive::TriangleFan << MeshPrimitive(0xdead);
-    CORRADE_COMPARE(o.str(), "GL::MeshPrimitive::TriangleFan GL::MeshPrimitive(0xdead)\n");
+    Containers::String out;
+    Debug{&out} << MeshPrimitive::TriangleFan << MeshPrimitive(0xdead);
+    CORRADE_COMPARE(out, "GL::MeshPrimitive::TriangleFan GL::MeshPrimitive(0xdead)\n");
 }
 
 void MeshTest::debugIndexType() {
-    std::ostringstream o;
-    Debug(&o) << MeshIndexType::UnsignedShort << MeshIndexType(0xdead);
-    CORRADE_COMPARE(o.str(), "GL::MeshIndexType::UnsignedShort GL::MeshIndexType(0xdead)\n");
+    Containers::String out;
+    Debug{&out} << MeshIndexType::UnsignedShort << MeshIndexType(0xdead);
+    CORRADE_COMPARE(out, "GL::MeshIndexType::UnsignedShort GL::MeshIndexType(0xdead)\n");
 }
 
 }}}}

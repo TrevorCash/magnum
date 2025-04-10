@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -679,12 +680,17 @@ class MAGNUM_TRADE_EXPORT AnimationTrackData {
 /**
 @brief Animation clip data
 
-Provides access to animation data and track properties of given clip. The
-instance is commonly returned from @ref AbstractImporter::animation() and a
-typical usage is feeding all the tracks directly to @ref Animation::Player.
-For every track, you need to query its concrete type and then feed the
-resulting @ref Animation::TrackView of correct type to
-@ref Animation::Player::add(), for example.
+Provides access to animation data and track properties of given clip. Populated
+instances of this class are returned from @ref AbstractImporter::animation()
+and can be passed to @ref AbstractSceneConverter::add(const AnimationData&, Containers::StringView).
+Like with other @ref Trade types, the internal representation is fixed upon
+construction and allows only optional in-place modification of the data itself,
+but not of the overall structure.
+
+Typical usage is feeding all the tracks directly to @ref Animation::Player. For
+every track, you need to query its concrete type and then feed the resulting
+@ref Animation::TrackView of correct type to @ref Animation::Player::add(), for
+example.
 
 Note that this class owns the animation track data and the tracks are only
 views on it. In order to be able to destroy the @ref AnimationData instance and
@@ -694,7 +700,7 @@ keep using the animations later, you need to take ownership of the data using
 In the following snippet all animated positions are stored in an array. The
 array is then updated during calls to @ref Animation::Player::advance().
 
-@snippet MagnumTrade.cpp AnimationData-usage
+@snippet Trade.cpp AnimationData-usage
 
 It's also possible to directly update object transformations using callbacks,
 among other things. See documentation of the @ref Animation::Player class for
@@ -711,7 +717,7 @@ these, you need to check that the data are mutable using @ref dataFlags()
 first. The following snippet inverts the Y coordinate of a translation
 animation:
 
-@snippet MagnumTrade.cpp AnimationData-usage-mutable
+@snippet Trade.cpp AnimationData-usage-mutable
 
 @experimental
 */

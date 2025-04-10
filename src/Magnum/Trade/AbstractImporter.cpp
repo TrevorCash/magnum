@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -1301,7 +1302,7 @@ Containers::String AbstractImporter::materialName(const UnsignedInt id) {
 
 Containers::String AbstractImporter::doMaterialName(UnsignedInt) { return {}; }
 
-#if !defined(MAGNUM_BUILD_DEPRECATED) || defined(DOXYGEN_GENERATING_OUTPUT)
+#ifndef MAGNUM_BUILD_DEPRECATED
 Containers::Optional<MaterialData>
 #else
 Implementation::OptionalButAlsoPointer<MaterialData>
@@ -1328,7 +1329,7 @@ Containers::Optional<MaterialData> AbstractImporter::doMaterial(UnsignedInt) {
     CORRADE_ASSERT_UNREACHABLE("Trade::AbstractImporter::material(): not implemented", {});
 }
 
-#if !defined(MAGNUM_BUILD_DEPRECATED) || defined(DOXYGEN_GENERATING_OUTPUT)
+#ifndef MAGNUM_BUILD_DEPRECATED
 Containers::Optional<MaterialData>
 #else
 Implementation::OptionalButAlsoPointer<MaterialData>
@@ -1633,7 +1634,7 @@ Debug& operator<<(Debug& debug, const ImporterFeature value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << (packed ? "" : "(") << Debug::nospace << reinterpret_cast<void*>(UnsignedByte(value)) << Debug::nospace << (packed ? "" : ")");
+    return debug << (packed ? "" : "(") << Debug::nospace << Debug::hex << UnsignedByte(value) << Debug::nospace << (packed ? "" : ")");
 }
 
 Debug& operator<<(Debug& debug, const ImporterFeatures value) {
@@ -1655,7 +1656,7 @@ Debug& operator<<(Debug& debug, const ImporterFlag value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(UnsignedByte(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << UnsignedByte(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const ImporterFlags value) {

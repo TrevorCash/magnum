@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -82,7 +83,7 @@ class MAGNUM_EXPORT PixelStorage {
         constexpr Int rowLength() const { return _rowLength; }
 
         /**
-         * @brief Set row length
+         * @brief Set row length in pixels
          *
          * Used only on 2D and 3D images. If set to @cpp 0 @ce, size
          * information from the actual image is used. Default is @cpp 0 @ce.
@@ -96,7 +97,7 @@ class MAGNUM_EXPORT PixelStorage {
         constexpr Int imageHeight() const { return _imageHeight; }
 
         /**
-         * @brief Set image height
+         * @brief Set image height in pixels
          *
          * Used only on 3D images. If set to @cpp 0 @ce, size information from
          * the actual image is used. Default is @cpp 0 @ce.
@@ -152,8 +153,8 @@ Descibes how to interpret data which are read from or stored into
 @ref CompressedImage, @ref CompressedImageView, @ref Trade::ImageData or for
 example @ref GL::CompressedBufferImage.
 
-Includes all parameters from @ref PixelStorage, except for @ref alignment(),
-which is ignored for compressed images.
+Includes all parameters from @ref PixelStorage, except for
+@relativeref{PixelStorage,alignment()}, which is ignored for compressed images.
 */
 class MAGNUM_EXPORT CompressedPixelStorage: public PixelStorage {
     public:
@@ -210,11 +211,10 @@ class MAGNUM_EXPORT CompressedPixelStorage: public PixelStorage {
         /**
          * @brief Data properties for given parameters
          *
-         * Returns byte offset in each dimension, count of blocks in each
-         * dimension and block data size for image of given @p size with
-         * current pixel storage parameters. Adding byte offset and product of
-         * the vector multiplied with block data size gives minimal byte count
-         * to store given data.
+         * Returns byte offset in each direction and @cpp {rowLength, rowCount, layerCount} @ce
+         * *in blocks* for image of given @p size with current pixel storage
+         * parameters. Sum of the byte offset vector gives the byte offset of
+         * first block in the data array.
          *
          * Expects @ref compressedBlockSize() and @ref compressedBlockDataSize()
          * to be non-zero.
@@ -246,69 +246,6 @@ class MAGNUM_EXPORT CompressedPixelStorage: public PixelStorage {
 };
 
 constexpr PixelStorage::PixelStorage() noexcept: _rowLength{0}, _imageHeight{0}, _skip{0}, _alignment{4} {}
-
-namespace Implementation {
-    /* Used in templated image[view] constructors */
-    template<class T> inline UnsignedInt pixelFormatSizeAdl(T format) {
-        return pixelFormatSize(format);
-    }
-
-    template<class T, class U> inline UnsignedInt pixelFormatSizeAdl(T format, U formatExtra) {
-        return pixelFormatSize(format, formatExtra);
-    }
-
-    /* Used in image query functions */
-    template<std::size_t dimensions, class T> std::size_t imageDataSizeFor(const T& image, const Math::Vector<dimensions, Int>& size) {
-        std::pair<Math::Vector3<std::size_t>, Math::Vector3<std::size_t>> dataProperties = image.storage().dataProperties(image.pixelSize(), Vector3i::pad(size, 1));
-
-        /* Smallest line/rectangle/cube that covers the area */
-        std::size_t dataOffset = 0;
-        if(dataProperties.first.z())
-            dataOffset += dataProperties.first.z();
-        else if(dataProperties.first.y()) {
-            if(!image.storage().imageHeight())
-                dataOffset += dataProperties.first.y();
-        } else if(dataProperties.first.x()) {
-            if(!image.storage().rowLength())
-                dataOffset += dataProperties.first.x();
-        }
-        return dataOffset + dataProperties.second.product();
-    }
-
-    /* Used in data size assertions */
-    template<class T> inline std::size_t imageDataSize(const T& image) {
-        return imageDataSizeFor(image, image.size());
-    }
-
-    template<std::size_t dimensions, class T> std::pair<std::size_t, std::size_t> compressedImageDataOffsetSizeFor(const T& image, const Math::Vector<dimensions, Int>& size) {
-        CORRADE_INTERNAL_ASSERT(image.storage().compressedBlockSize().product() && image.storage().compressedBlockDataSize());
-
-        std::pair<Math::Vector3<std::size_t>, Math::Vector3<std::size_t>> dataProperties = image.storage().dataProperties(Vector3i::pad(size, 1));
-
-        const auto realBlockCount = Math::Vector3<std::size_t>{(Vector3i::pad(size, 1) + image.storage().compressedBlockSize() - Vector3i{1})/image.storage().compressedBlockSize()};
-
-        return {dataProperties.first.sum(), (dataProperties.second.product() - (dataProperties.second.x() - realBlockCount.x()) - (dataProperties.second.y() - realBlockCount.y())*dataProperties.second.x())*image.storage().compressedBlockDataSize()};
-    }
-
-    /* Used in image query functions */
-    template<std::size_t dimensions, class T> std::size_t compressedImageDataSizeFor(const T& image, const Math::Vector<dimensions, Int>& size) {
-        auto r = compressedImageDataOffsetSizeFor(image, size);
-        return r.first + r.second;
-    }
-
-    /* Use in compressed image upload functions */
-    template<class T> std::size_t occupiedCompressedImageDataSize(const T& image, std::size_t dataSize) {
-        return image.storage().compressedBlockSize().product() && image.storage().compressedBlockDataSize()
-            ? compressedImageDataOffsetSizeFor(image, image.size()).second : dataSize;
-    }
-
-    template<std::size_t dimensions, class T> std::ptrdiff_t pixelStorageSkipOffsetFor(const T& image, const Math::Vector<dimensions, Int>& size) {
-        return image.storage().dataProperties(image.pixelSize(), Vector3i::pad(size, 1)).first.sum();
-    }
-    template<class T> std::ptrdiff_t pixelStorageSkipOffset(const T& image) {
-        return pixelStorageSkipOffsetFor(image, image.size());
-    }
-}
 
 }
 

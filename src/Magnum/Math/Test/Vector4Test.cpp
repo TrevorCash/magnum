@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Vector4.h"
 #include "Magnum/Math/StrictWeakOrdering.h"
@@ -62,13 +63,18 @@ struct Vector4Test: TestSuite::Tester {
     void constructNoInit();
     void constructOneValue();
     void constructParts();
+    void constructArray();
+    void constructArrayRvalue();
     void constructConversion();
+    void constructBit();
     void constructCopy();
     void convert();
 
     void access();
     void threeComponent();
     void twoComponent();
+
+    void multiplyDivideIntegral();
 
     void planeEquationThreePoints();
     void planeEquationNormalPoint();
@@ -90,13 +96,18 @@ Vector4Test::Vector4Test() {
               &Vector4Test::constructNoInit,
               &Vector4Test::constructOneValue,
               &Vector4Test::constructParts,
+              &Vector4Test::constructArray,
+              &Vector4Test::constructArrayRvalue,
               &Vector4Test::constructConversion,
+              &Vector4Test::constructBit,
               &Vector4Test::constructCopy,
               &Vector4Test::convert,
 
               &Vector4Test::access,
               &Vector4Test::threeComponent,
               &Vector4Test::twoComponent,
+
+              &Vector4Test::multiplyDivideIntegral,
 
               &Vector4Test::planeEquationThreePoints,
               &Vector4Test::planeEquationNormalPoint,
@@ -180,6 +191,49 @@ void Vector4Test::constructParts() {
     CORRADE_VERIFY(std::is_nothrow_constructible<Vector4, Vector3, Float>::value);
 }
 
+void Vector4Test::constructArray() {
+    float data[]{1.3f, 2.7f, -15.0f, 7.0f};
+    Vector4 a{data};
+    CORRADE_COMPARE(a, (Vector4{1.3f, 2.7f, -15.0f, 7.0f}));
+
+    constexpr float cdata[]{1.3f, 2.7f, -15.0f, 7.0f};
+    constexpr Vector4 ca{cdata};
+    CORRADE_COMPARE(ca, (Vector4{1.3f, 2.7f, -15.0f, 7.0f}));
+
+    /* Implicit conversion is not allowed */
+    CORRADE_VERIFY(!std::is_convertible<float[4], Vector4>::value);
+
+    CORRADE_VERIFY(std::is_nothrow_constructible<Vector4, float[4]>::value);
+
+    /* See VectorTest::constructArray() for details */
+    #if 0
+    float data1[]{1.3f};
+    float data5[]{1.3f, 2.7f, -15.0f, 7.0f, 22.6f};
+    Vector4 b{data1};
+    Vector4 c{data5};
+    #endif
+}
+
+void Vector4Test::constructArrayRvalue() {
+    /* Silly but why not. Could theoretically help with some fancier types
+       that'd otherwise require explicit typing with the variadic
+       constructor. */
+    Vector4 a{{1.3f, 2.7f, -15.0f, 7.0f}};
+    CORRADE_COMPARE(a, (Vector4{1.3f, 2.7f, -15.0f, 7.0f}));
+
+    constexpr Vector4 ca{{1.3f, 2.7f, -15.0f, 7.0f}};
+    CORRADE_COMPARE(ca, (Vector4{1.3f, 2.7f, -15.0f, 7.0f}));
+
+    /* See VectorTest::constructArrayRvalue() for details */
+    #if 0
+    Vector4 c{{1.3f, 2.7f, -15.0f, 7.0f, 22.6f}};
+    #endif
+    #if 0 || (defined(CORRADE_TARGET_GCC) && !defined(CORRADE_TARGET_CLANG) && __GNUC__ < 5)
+    CORRADE_WARN("Creating a Vector from a smaller array isn't an error on GCC 4.8.");
+    Vector4 b{{1.3f, 2.7f}};
+    #endif
+}
+
 void Vector4Test::constructConversion() {
     constexpr Vector4 a(1.0f, -2.5f, 3.0f, 4.1f);
     constexpr Vector4i b(a);
@@ -189,6 +243,20 @@ void Vector4Test::constructConversion() {
     CORRADE_VERIFY(!std::is_convertible<Vector4, Vector4i>::value);
 
     CORRADE_VERIFY(std::is_nothrow_constructible<Vector4, Vector4i>::value);
+}
+
+void Vector4Test::constructBit() {
+    BitVector4 a{'\xa'}; /* 0b1010 */
+    CORRADE_COMPARE(Vector4{a}, (Vector4{0.0f, 1.0f, 0.0f, 1.0f}));
+
+    constexpr BitVector4 ca{'\xa'}; /* 0b1010 */
+    constexpr Vector4 cb{ca};
+    CORRADE_COMPARE(cb, (Vector4{0.0f, 1.0f, 0.0f, 1.0f}));
+
+    /* Implicit conversion is not allowed */
+    CORRADE_VERIFY(!std::is_convertible<BitVector4, Vector4>::value);
+
+    CORRADE_VERIFY(std::is_nothrow_constructible<Vector4, BitVector4>::value);
 }
 
 void Vector4Test::constructCopy() {
@@ -266,10 +334,14 @@ void Vector4Test::threeComponent() {
     CORRADE_COMPARE(a.rgb(), Vector3(1.0f, 2.0f, 3.0f));
 
     constexpr Vector4 b(1.0f, 2.0f, 3.0f, 4.0f);
-    constexpr Vector3 c = b.xyz();
-    constexpr Float d = b.xyz().y();
-    CORRADE_COMPARE(c, Vector3(1.0f, 2.0f, 3.0f));
-    CORRADE_COMPARE(d, 2.0f);
+    constexpr Vector3 c1 = b.xyz();
+    constexpr Vector3 c2 = b.rgb();
+    constexpr Float d1 = b.xyz().y();
+    constexpr Float d2 = b.rgb().g();
+    CORRADE_COMPARE(c1, Vector3(1.0f, 2.0f, 3.0f));
+    CORRADE_COMPARE(c2, Vector3(1.0f, 2.0f, 3.0f));
+    CORRADE_COMPARE(d1, 2.0f);
+    CORRADE_COMPARE(d2, 2.0f);
 }
 
 void Vector4Test::twoComponent() {
@@ -281,6 +353,30 @@ void Vector4Test::twoComponent() {
     constexpr Float d = b.xy().x();
     CORRADE_COMPARE(c, Vector2(1.0f, 2.0f));
     CORRADE_COMPARE(d, 1.0f);
+}
+
+void Vector4Test::multiplyDivideIntegral() {
+    const Vector4i vector{32, 10, -6, 2};
+    const Vector4i multiplied{-48, -15, 9, -3};
+
+    CORRADE_COMPARE(vector*-1.5f, multiplied);
+    /* On MSVC 2015 this picks an int*Vector2i overload, leading to a wrong
+       result, unless MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION() is used */
+    CORRADE_COMPARE(-1.5f*vector, multiplied);
+
+    constexpr Vector4i cvector{32, 10, -6, 2};
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* No idea? */
+    constexpr
+    #endif
+    Vector4i ca1 = cvector*-1.5f;
+    /* On MSVC 2015 this picks an int*Vector2i overload, leading to a wrong
+       result, unless MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION() is used */
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* No idea? */
+    constexpr
+    #endif
+    Vector4i ca2 = -1.5f*cvector;
+    CORRADE_COMPARE(ca1, multiplied);
+    CORRADE_COMPARE(ca2, multiplied);
 }
 
 void Vector4Test::planeEquationThreePoints() {
@@ -334,9 +430,9 @@ void Vector4Test::swizzleType() {
 }
 
 void Vector4Test::debug() {
-    std::ostringstream o;
-    Debug(&o) << Vector4(0.5f, 15.0f, 1.0f, 1.0f);
-    CORRADE_COMPARE(o.str(), "Vector(0.5, 15, 1, 1)\n");
+    Containers::String out;
+    Debug{&out} << Vector4(0.5f, 15.0f, 1.0f, 1.0f);
+    CORRADE_COMPARE(out, "Vector(0.5, 15, 1, 1)\n");
 }
 
 }}}}

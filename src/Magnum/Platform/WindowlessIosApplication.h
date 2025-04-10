@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -191,7 +192,7 @@ class WindowlessIosContext::Configuration: public GL::Context::Configuration {
         /**
          * @brief Context flags
          *
-         * @see @ref setFlags(), @ref Context::Flags
+         * @see @ref setFlags(), @ref GL::Context::Flags
          */
         typedef Containers::EnumSet<Flag> Flags;
 
@@ -277,9 +278,8 @@ See @ref cmake for more information.
 @section Platform-WindowlessIosApplication-usage General usage
 
 This application library is built if `MAGNUM_WITH_WINDOWLESSIOSAPPLICATION` is
-enabled when building Magnum. To use this library from CMake, put [FindEGL.cmake](https://github.com/mosra/magnum/blob/master/modules/FindEGL.cmake)
-into your `modules/` directory, request the `WindowlessIosApplication`
-component of the `Magnum` package and link to the
+enabled when building Magnum. To use this library from CMake, request the
+`WindowlessIosApplication` component of the `Magnum` package and link to the
 `Magnum::WindowlessIosApplication` target:
 
 @code{.cmake}
@@ -356,13 +356,7 @@ class WindowlessIosApplication {
          * alternative.
          * @see @ref WindowlessIosContext
          */
-        #ifdef DOXYGEN_GENERATING_OUTPUT
-        explicit WindowlessIosApplication(const Arguments& arguments, const Configuration& configuration = Configuration());
-        #else
-        /* To avoid "invalid use of incomplete type" */
-        explicit WindowlessIosApplication(const Arguments& arguments, const Configuration& configuration);
-        explicit WindowlessIosApplication(const Arguments& arguments);
-        #endif
+        explicit WindowlessIosApplication(const Arguments& arguments, const Configuration& configuration = Configuration{});
 
         /**
          * @brief Constructor

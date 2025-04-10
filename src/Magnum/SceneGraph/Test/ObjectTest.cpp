@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,11 +24,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Pointer.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 
 #include "Magnum/SceneGraph/AbstractFeature.hpp"
 #include "Magnum/SceneGraph/MatrixTransformation3D.hpp"
@@ -40,6 +40,7 @@ struct ObjectTest: TestSuite::Tester {
     explicit ObjectTest();
 
     template<class T> void addFeature();
+    template<class T> void addFeatureAbstractObject();
 
     template<class T> void parenting();
     template<class T> void addChild();
@@ -66,6 +67,8 @@ ObjectTest::ObjectTest() {
     addTests<ObjectTest>({
         &ObjectTest::addFeature<Float>,
         &ObjectTest::addFeature<Double>,
+        &ObjectTest::addFeatureAbstractObject<Float>,
+        &ObjectTest::addFeatureAbstractObject<Double>,
 
         &ObjectTest::parenting<Float>,
         &ObjectTest::parenting<Double>,
@@ -126,14 +129,34 @@ template<class T> void ObjectTest::addFeature() {
 
     class MyFeature: public AbstractBasicFeature3D<T> {
         public:
-            explicit MyFeature(AbstractBasicObject3D<T>& object, Int&, Containers::Pointer<int>&&): AbstractBasicFeature3D<T>{object} {}
+            explicit MyFeature(Object3D<T>& object, Int&, Containers::Pointer<int>&&): AbstractBasicFeature3D<T>{object} {}
     };
 
     Object3D<T> o;
     CORRADE_VERIFY(o.features().isEmpty());
     /* Test perfect forwarding as well */
     int a = 0;
+    /* When called on Object3D, the feature constructor should get the concrete
+       Object type. AbstractObject::addFeature() is tested below. */
     MyFeature& f = o.template addFeature<MyFeature>(a, Containers::Pointer<int>{});
+    CORRADE_VERIFY(!o.features().isEmpty());
+    CORRADE_COMPARE(&f.object(), &o);
+}
+
+template<class T> void ObjectTest::addFeatureAbstractObject() {
+    setTestCaseTemplateName(Math::TypeTraits<T>::name());
+
+    /* Like addFeature(), but calling the base variant on AbstractObject */
+
+    class MyFeature: public AbstractBasicFeature3D<T> {
+        public:
+            explicit MyFeature(AbstractBasicObject3D<T>& object, Int&, Containers::Pointer<int>&&): AbstractBasicFeature3D<T>{object} {}
+    };
+
+    Object3D<T> o;
+    CORRADE_VERIFY(o.features().isEmpty());
+    int a = 0;
+    MyFeature& f = static_cast<AbstractBasicObject3D<T>&>(o).template addFeature<MyFeature>(a, Containers::Pointer<int>{});
     CORRADE_VERIFY(!o.features().isEmpty());
     CORRADE_COMPARE(&f.object(), &o);
 }
@@ -256,11 +279,11 @@ template<class T> void ObjectTest::setParentKeepTransformationInvalid() {
     Object3D<T>* child = new Object3D<T>(&root);
 
     /* Old parent and new parent must share the same scene */
-    std::ostringstream o;
-    Error redirectError{&o};
+    Containers::String out;
+    Error redirectError{&out};
     Scene3D<T> scene;
     child->setParentKeepTransformation(&scene);
-    CORRADE_COMPARE(o.str(), "SceneGraph::Object::setParentKeepTransformation(): both parents must be in the same scene\n");
+    CORRADE_COMPARE(out, "SceneGraph::Object::setParentKeepTransformation(): both parents must be in the same scene\n");
 }
 
 template<class T> void ObjectTest::absoluteTransformation() {
@@ -365,14 +388,14 @@ template<class T> void ObjectTest::transformationsOrphan() {
 
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream o;
-    Error redirectError{&o};
+    Containers::String out;
+    Error redirectError{&out};
 
     /* Transformation of objects not part of the same scene */
     Scene3D<T> s;
     Object3D<T> orphan;
     CORRADE_COMPARE(s.transformations({orphan}), std::vector<Math::Matrix4<T>>{});
-    CORRADE_COMPARE(o.str(), "SceneGraph::Object::transformations(): the objects are not part of the same tree\n");
+    CORRADE_COMPARE(out, "SceneGraph::Object::transformations(): the objects are not part of the same tree\n");
 }
 
 template<class T> void ObjectTest::transformationsDuplicate() {
@@ -638,7 +661,7 @@ void ObjectTest::treeDestructionOrder() {
         int id;
     };
 
-    std::stringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     {
         struct Scene: Scene3D<Float> {
@@ -665,7 +688,7 @@ void ObjectTest::treeDestructionOrder() {
         AccessingParent{5, nullptr};
         AccessingObject{b, 4};
 
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
             "Destructing an object 5 with 0 parents and no scene\n"
             "Destructing a feature 4 attached to an object 1\n");
     }
@@ -677,7 +700,7 @@ void ObjectTest::treeDestructionOrder() {
         "a scene" /* See below. */
         #endif
         ;
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Destructing an object 5 with 0 parents and no scene\n"
         "Destructing a feature 4 attached to an object 1\n"
 

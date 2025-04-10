@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -41,7 +42,6 @@ namespace {
 
 using namespace Containers::Literals;
 
-#ifndef DOXYGEN_GENERATING_OUTPUT /* It gets *really* confused */
 constexpr Containers::StringView LayerMap[]{
     #define _c(name) #name ## _s,
     #include "Magnum/Trade/Implementation/materialLayerProperties.hpp"
@@ -61,7 +61,6 @@ constexpr struct {
     #undef _ct
     #undef _cnt
 };
-#endif
 
 }
 
@@ -254,7 +253,6 @@ const void* MaterialAttributeData::value() const {
     return _data.data + Implementation::MaterialAttributeDataSize - materialAttributeTypeSize(_data.type);
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 /* On Windows (MSVC, clang-cl and MinGw) it needs an explicit export otherwise
    the symbol doesn't get exported. */
 template<> MAGNUM_TRADE_EXPORT Containers::StringView MaterialAttributeData::value<Containers::StringView>() const {
@@ -273,7 +271,6 @@ template<> MAGNUM_TRADE_EXPORT Containers::ArrayView<const void> MaterialAttribu
     const std::size_t size = *(nameEnd + 1);
     return {_data.data + Implementation::MaterialAttributeDataSize - size, size};
 }
-#endif
 
 MaterialData::MaterialData(const MaterialTypes types, Containers::Array<MaterialAttributeData>&& attributeData, Containers::Array<UnsignedInt>&& layerData, const void* const importerState) noexcept: _data{Utility::move(attributeData)}, _layerOffsets{Utility::move(layerData)}, _types{types}, _attributeDataFlags{DataFlag::Owned|DataFlag::Mutable}, _layerDataFlags{DataFlag::Owned|DataFlag::Mutable}, _importerState{importerState} {
     #ifndef CORRADE_NO_ASSERT
@@ -999,7 +996,6 @@ void* MaterialData::mutableAttribute(const MaterialLayer layer, const MaterialAt
     return mutableAttribute(string, name);
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 /* On Windows (MSVC, clang-cl and MinGw) it needs an explicit export otherwise
    the symbol doesn't get exported. */
 template<> MAGNUM_TRADE_EXPORT Containers::StringView MaterialData::attribute<Containers::StringView>(const UnsignedInt layer, const UnsignedInt id) const {
@@ -1069,7 +1065,6 @@ template<> MAGNUM_TRADE_EXPORT Containers::ArrayView<void> MaterialData::mutable
     const std::size_t size = *(nameEnd + 1);
     return {const_cast<char*>(data._data.data) + Implementation::MaterialAttributeDataSize - size, size};
 }
-#endif
 
 const void* MaterialData::findAttribute(const UnsignedInt layer, const Containers::StringView name) const {
     CORRADE_ASSERT(layer < layerCount(),
@@ -1151,7 +1146,7 @@ Debug& operator<<(Debug& debug, const MaterialLayer value) {
     debug << "Trade::MaterialLayer" << Debug::nospace;
 
     if(UnsignedInt(value) - 1 >= Containers::arraySize(LayerMap))
-        return debug << "(" << Debug::nospace << reinterpret_cast<void*>(UnsignedInt(value)) << Debug::nospace << ")";
+        return debug << "(" << Debug::nospace << Debug::hex << UnsignedInt(value) << Debug::nospace << ")";
 
     return debug << "::" << Debug::nospace << LayerMap[UnsignedInt(value) - 1];
 }
@@ -1160,7 +1155,7 @@ Debug& operator<<(Debug& debug, const MaterialAttribute value) {
     debug << "Trade::MaterialAttribute" << Debug::nospace;
 
     if(UnsignedInt(value) - 1 >= Containers::arraySize(AttributeMap))
-        return debug << "(" << Debug::nospace << reinterpret_cast<void*>(UnsignedInt(value)) << Debug::nospace << ")";
+        return debug << "(" << Debug::nospace << Debug::hex << UnsignedInt(value) << Debug::nospace << ")";
 
     /* LayerName is prefixed with a single space, drop that */
     Containers::StringView string = AttributeMap[UnsignedInt(value) - 1].name;
@@ -1226,7 +1221,7 @@ Debug& operator<<(Debug& debug, const MaterialAttributeType value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << (packed ? "" : "(") << Debug::nospace << reinterpret_cast<void*>(UnsignedShort(value)) << Debug::nospace << (packed ? "" : ")");
+    return debug << (packed ? "" : "(") << Debug::nospace << Debug::hex << UnsignedShort(value) << Debug::nospace << (packed ? "" : ")");
 }
 
 Debug& operator<<(Debug& debug, const MaterialType value) {
@@ -1247,7 +1242,7 @@ Debug& operator<<(Debug& debug, const MaterialType value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << (packed ? "" : "(") << Debug::nospace << reinterpret_cast<void*>(UnsignedByte(value)) << Debug::nospace << (packed ? "" : ")");
+    return debug << (packed ? "" : "(") << Debug::nospace << Debug::hex << UnsignedByte(value) << Debug::nospace << (packed ? "" : ")");
 }
 
 Debug& operator<<(Debug& debug, const MaterialTypes value) {
@@ -1273,7 +1268,7 @@ Debug& operator<<(Debug& debug, const MaterialData::Flag value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(UnsignedByte(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << UnsignedByte(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const MaterialData::Flags value) {
@@ -1300,7 +1295,7 @@ Debug& operator<<(Debug& debug, const MaterialAlphaMode value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << (packed ? "" : "(") << Debug::nospace << reinterpret_cast<void*>(UnsignedByte(value)) << Debug::nospace << (packed ? "" : ")");
+    return debug << (packed ? "" : "(") << Debug::nospace << Debug::hex << UnsignedByte(value) << Debug::nospace << (packed ? "" : ")");
 }
 
 }}

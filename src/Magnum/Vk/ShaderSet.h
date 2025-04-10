@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -30,6 +31,7 @@
  * @m_since_latest
  */
 
+#include <initializer_list>
 #include <Corrade/Containers/Pointer.h>
 
 #include "Magnum/Tags.h"
@@ -116,14 +118,14 @@ for and the entrypoint name --- usually it'd be @cpp main() @ce, but there can
 be also SPIR-V shader modules with multiple entry points, which is why this
 parameter is needed.
 
-@snippet MagnumVk.cpp ShaderSet-usage
+@snippet Vk.cpp ShaderSet-usage
 
 <b></b>
 
 @m_class{m-note m-success}
 
 @par
-    The above code uses the @link Containers::Literals::operator""_s() @endlink
+    The above code uses the @link Corrade::Containers::Literals::StringLiterals::operator""_s() Containers::Literals::operator""_s() @endlink
     literal, which lets the library know that given string is global and
     null-terminated. Such strings then don't need to be copied internally to
     keep them in scope until they're consumed by Vulkan APIs.
@@ -135,7 +137,7 @@ via an additional parameter, taking a list of @ref ShaderSpecialization
 instances. The constant can be an integer, float or a boolean; constant IDs not
 present in the SPIR-V module are ignored.
 
-@snippet MagnumVk.cpp ShaderSet-usage-specializations
+@snippet Vk.cpp ShaderSet-usage-specializations
 
 @subsection Vk-ShaderSet-usage-ownership-transfer Shader ownership transfer
 
@@ -144,7 +146,7 @@ instances into the class using the @ref addShader(ShaderStage, Shader&&, Contain
 overload. If you have a multi-entrypoint shader, move only the last specified
 stage, for example:
 
-@snippet MagnumVk.cpp ShaderSet-usage-ownership-transfer
+@snippet Vk.cpp ShaderSet-usage-ownership-transfer
 */
 class MAGNUM_VK_EXPORT ShaderSet {
     public:
@@ -185,7 +187,7 @@ class MAGNUM_VK_EXPORT ShaderSet {
          * @return Reference to self (for method chaining)
          *
          * The function makes a copy of @p entrypoint if it's not global or
-         * null-terminated, use the @link Containers::Literals::operator""_s() @endlink
+         * null-terminated, use the @link Corrade::Containers::Literals::StringLiterals::operator""_s() Containers::Literals::operator""_s() @endlink
          * literal to prevent that where possible.
          *
          * The populated @type_vk{VkPipelineShaderStageCreateInfo} is

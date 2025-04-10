@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -66,13 +67,13 @@ on given matrix where @p rows >= `cols`: @f[
 
 Returns first @p cols column vectors of @f$ \boldsymbol{U} @f$, diagonal of
 @f$ \boldsymbol{\Sigma} @f$ and non-transposed @f$ \boldsymbol{V} @f$. If the
-solution doesn't converge, returns @ref Containers::NullOpt.
+solution doesn't converge, returns @relativeref{Corrade,Containers::NullOpt}.
 
 Full @f$ \boldsymbol{U} @f$, @f$ \boldsymbol{\Sigma} @f$ matrices and original
 @f$ \boldsymbol{M} @f$ matrix can be reconstructed from the values as
 following:
 
-@snippet MagnumMathAlgorithms.cpp svd
+@snippet MathAlgorithms.cpp svd
 
 One possible use is to decompose a transformation matrix into separate rotation
 and scaling parts. Note, however, that the decomposition is not unique. See the

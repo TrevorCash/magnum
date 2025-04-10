@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,7 +24,6 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <thread> /* std::thread::hardware_concurrency(), sigh */
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/PluginManager/Manager.h>
@@ -32,8 +32,7 @@
 #include <Corrade/TestSuite/Compare/File.h>
 #include <Corrade/TestSuite/Compare/String.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/ImageView.h"
@@ -161,7 +160,8 @@ constexpr struct {
     /* Have at least one test case with uppercase */
     {"JPEG uppercase", "output.JPG", "JpegImageConverter"},
     {"KTX2", "foo.ktx2", "KtxImageConverter"},
-    {"PNG", "file.png", "PngImageConverter"}
+    {"PNG", "file.png", "PngImageConverter"},
+    {"WebP", "file.webp", "WebPImageConverter"}
 };
 
 constexpr struct {
@@ -711,16 +711,16 @@ void AnyImageConverterTest::detect1D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(Image1D, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n", data.plugin));
     #endif
@@ -732,16 +732,16 @@ void AnyImageConverterTest::detect2D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(Image2D, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n", data.plugin));
     #endif
@@ -753,16 +753,16 @@ void AnyImageConverterTest::detect3D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(Image3D, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
@@ -775,16 +775,16 @@ void AnyImageConverterTest::detectCompressed1D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(CompressedImage1D, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n", data.plugin));
     #endif
@@ -796,16 +796,16 @@ void AnyImageConverterTest::detectCompressed2D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(CompressedImage2D, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n", data.plugin));
     #endif
@@ -817,16 +817,16 @@ void AnyImageConverterTest::detectCompressed3D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(CompressedImage3D, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n", data.plugin));
     #endif
@@ -838,18 +838,18 @@ void AnyImageConverterTest::detectLevels1D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(!converter->convertToFile({Image1D}, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n", data.plugin));
     #endif
@@ -861,18 +861,18 @@ void AnyImageConverterTest::detectLevels2D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(!converter->convertToFile({Image2D}, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
@@ -885,18 +885,18 @@ void AnyImageConverterTest::detectLevels3D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(!converter->convertToFile({Image3D}, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
@@ -909,18 +909,18 @@ void AnyImageConverterTest::detectCompressedLevels1D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(!converter->convertToFile({CompressedImage1D}, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
@@ -933,18 +933,18 @@ void AnyImageConverterTest::detectCompressedLevels2D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(!converter->convertToFile({CompressedImage2D}, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
@@ -957,18 +957,18 @@ void AnyImageConverterTest::detectCompressedLevels3D() {
 
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(!converter->convertToFile({CompressedImage3D}, data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageConverter::convertToFile(): cannot load the {0} plugin\n",
         data.plugin));
@@ -978,109 +978,109 @@ void AnyImageConverterTest::detectCompressedLevels3D() {
 void AnyImageConverterTest::unknown1D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(Image1D, "image.jpg"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.jpg for a 1D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.jpg for a 1D image\n");
 }
 
 void AnyImageConverterTest::unknown2D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(Image2D, "image.xcf"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.xcf for a 2D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.xcf for a 2D image\n");
 }
 
 void AnyImageConverterTest::unknown3D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(Image3D, "image.dds"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.dds for a 3D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.dds for a 3D image\n");
 }
 
 void AnyImageConverterTest::unknownCompressed1D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(CompressedImage1D, "image.exr"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.exr for a compressed 1D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.exr for a compressed 1D image\n");
 }
 
 void AnyImageConverterTest::unknownCompressed2D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(CompressedImage2D, "image.png"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.png for a compressed 2D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.png for a compressed 2D image\n");
 }
 
 void AnyImageConverterTest::unknownCompressed3D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile(CompressedImage3D, "image.exr"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.exr for a compressed 3D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.exr for a compressed 3D image\n");
 }
 
 void AnyImageConverterTest::unknownLevels1D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile({Image1D}, "image.tga"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.tga for a multi-level 1D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.tga for a multi-level 1D image\n");
 }
 
 void AnyImageConverterTest::unknownLevels2D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile({Image2D}, "image.png"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.png for a multi-level 2D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.png for a multi-level 2D image\n");
 }
 
 void AnyImageConverterTest::unknownLevels3D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile({Image3D}, "image.jpg"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.jpg for a multi-level 3D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.jpg for a multi-level 3D image\n");
 }
 
 void AnyImageConverterTest::unknownCompressedLevels1D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile({CompressedImage1D}, "image.bmp"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.bmp for a multi-level compressed 1D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.bmp for a multi-level compressed 1D image\n");
 }
 
 void AnyImageConverterTest::unknownCompressedLevels2D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile({CompressedImage2D}, "image.exr"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.exr for a multi-level compressed 2D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.exr for a multi-level compressed 2D image\n");
 }
 
 void AnyImageConverterTest::unknownCompressedLevels3D() {
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertToFile({CompressedImage3D}, "image.exr"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.exr for a multi-level compressed 3D image\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): cannot determine the format of image.exr for a multi-level compressed 3D image\n");
 }
 
 void AnyImageConverterTest::propagateFlags1D() {
@@ -1098,13 +1098,13 @@ void AnyImageConverterTest::propagateFlags2D() {
     /* Just test that the exported file exists */
     Containers::Pointer<AbstractImageConverter> converter = _manager.instantiate("AnyImageConverter");
     converter->setFlags(ImageConverterFlag::Verbose);
-    std::ostringstream out;
+    Containers::String out;
     {
         Debug redirectOutput{&out};
         CORRADE_VERIFY(converter->convertToFile(Image2D, filename));
     }
     CORRADE_VERIFY(Utility::Path::exists(filename));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AnyImageConverter::convertToFile(): using TgaImageConverter\n"
         "Trade::TgaImageConverter::convertToData(): converting from RGB to BGR\n"
         "Trade::TgaImageConverter::convertToData(): RLE output 3 bytes larger than uncompressed, falling back to uncompressed\n");
@@ -1137,13 +1137,13 @@ void AnyImageConverterTest::propagateFlags3D() {
         CORRADE_VERIFY(Utility::Path::remove(filename));
 
     converter->setFlags(ImageConverterFlag::Verbose);
-    std::ostringstream out;
+    Containers::String out;
     {
         Debug redirectOutput{&out};
         CORRADE_VERIFY(converter->convertToFile(ImageCube, filename));
     }
     CORRADE_VERIFY(Utility::Path::exists(filename));
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Trade::AnyImageConverter::convertToFile(): using OpenExrImageConverter\n"
         "Trade::OpenExrImageConverter::convertToData(): autodetected hardware concurrency to {} threads\n",
         std::thread::hardware_concurrency()));
@@ -1192,7 +1192,7 @@ void AnyImageConverterTest::propagateFlagsLevels2D() {
         CORRADE_VERIFY(Utility::Path::remove(filename));
 
     converter->setFlags(ImageConverterFlag::Verbose);
-    std::ostringstream out;
+    Containers::String out;
     {
         Debug redirectOutput{&out};
         /* Using the list API even though there's just one image, which should
@@ -1200,7 +1200,7 @@ void AnyImageConverterTest::propagateFlagsLevels2D() {
         CORRADE_VERIFY(converter->convertToFile({Image2DFloat}, filename));
     }
     CORRADE_VERIFY(Utility::Path::exists(filename));
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Trade::AnyImageConverter::convertToFile(): using OpenExrImageConverter\n"
         "Trade::OpenExrImageConverter::convertToData(): autodetected hardware concurrency to {} threads\n",
         std::thread::hardware_concurrency()));
@@ -1233,7 +1233,7 @@ void AnyImageConverterTest::propagateFlagsLevels3D() {
         CORRADE_VERIFY(Utility::Path::remove(filename));
 
     converter->setFlags(ImageConverterFlag::Verbose);
-    std::ostringstream out;
+    Containers::String out;
     {
         Debug redirectOutput{&out};
         /* Using the list API even though there's just one image, which should
@@ -1241,7 +1241,7 @@ void AnyImageConverterTest::propagateFlagsLevels3D() {
         CORRADE_VERIFY(converter->convertToFile({ImageCube}, filename));
     }
     CORRADE_VERIFY(Utility::Path::exists(filename));
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Trade::AnyImageConverter::convertToFile(): using OpenExrImageConverter\n"
         "Trade::OpenExrImageConverter::convertToData(): autodetected hardware concurrency to {} threads\n",
         std::thread::hardware_concurrency()));
@@ -1350,13 +1350,13 @@ void AnyImageConverterTest::propagateConfigurationUnknown1D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertToFile(Image1D, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "1d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationUnknown2D() {
@@ -1370,13 +1370,13 @@ void AnyImageConverterTest::propagateConfigurationUnknown2D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertToFile(Image2D, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "2d.tga")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by TgaImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by TgaImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationUnknown3D() {
@@ -1396,13 +1396,13 @@ void AnyImageConverterTest::propagateConfigurationUnknown3D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertToFile(Image3D, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "3d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationCompressed1D() {
@@ -1497,13 +1497,13 @@ void AnyImageConverterTest::propagateConfigurationCompressedUnknown1D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertToFile(CompressedImage1D, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "compressed-1d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationCompressedUnknown2D() {
@@ -1523,13 +1523,13 @@ void AnyImageConverterTest::propagateConfigurationCompressedUnknown2D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertToFile(CompressedImage2D, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "compressed-2d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationCompressedUnknown3D() {
@@ -1549,13 +1549,13 @@ void AnyImageConverterTest::propagateConfigurationCompressedUnknown3D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertToFile(CompressedImage3D, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "compressed-3d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationLevels1D() {
@@ -1656,15 +1656,15 @@ void AnyImageConverterTest::propagateConfigurationUnknownLevels1D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(converter->convertToFile({Image1D}, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "1d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationUnknownLevels2D() {
@@ -1684,15 +1684,15 @@ void AnyImageConverterTest::propagateConfigurationUnknownLevels2D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(converter->convertToFile({Image2D}, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "2d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationUnknownLevels3D() {
@@ -1712,15 +1712,15 @@ void AnyImageConverterTest::propagateConfigurationUnknownLevels3D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(converter->convertToFile({Image3D}, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "3d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationCompressedLevels1D() {
@@ -1821,15 +1821,15 @@ void AnyImageConverterTest::propagateConfigurationCompressedUnknownLevels1D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(converter->convertToFile({CompressedImage1D}, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "compressed-1d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationCompressedUnknownLevels2D() {
@@ -1849,15 +1849,15 @@ void AnyImageConverterTest::propagateConfigurationCompressedUnknownLevels2D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(converter->convertToFile({CompressedImage2D}, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "compressed-2d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 void AnyImageConverterTest::propagateConfigurationCompressedUnknownLevels3D() {
@@ -1877,15 +1877,15 @@ void AnyImageConverterTest::propagateConfigurationCompressedUnknownLevels3D() {
     converter->configuration().setValue("noSuchOption", "isHere");
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     /* Using the list API even though there's just one image, which should
        still trigger the correct code path for AnyImageConverter. */
     CORRADE_VERIFY(converter->convertToFile({CompressedImage3D}, Utility::Path::join(ANYIMAGECONVERTER_TEST_OUTPUT_DIR, "compressed-3d.ktx2")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
+        CORRADE_COMPARE(out, "Trade::AnyImageConverter::convertToFile(): option noSuchOption not recognized by KtxImageConverter\n");
 }
 
 }}}}

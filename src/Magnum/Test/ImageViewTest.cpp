@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -28,10 +29,11 @@
    arrayCast() template, which is forward-declared. */
 #include "Magnum/ImageView.h"
 
-#include <sstream>
 #include <Corrade/Containers/StridedArrayView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
+#include <Corrade/TestSuite/Compare/String.h>
+#include <Corrade/Utility/DebugStl.h> /** @todo remove once dataProperties() std::pair is gone */
 
 #include "Magnum/PixelFormat.h"
 #include "Magnum/Math/Color.h"
@@ -58,7 +60,8 @@ struct ImageViewTest: TestSuite::Tester {
     void constructFromMutable();
     void constructCompressedFromMutable();
 
-    void constructNullptr();
+    void constructUnknownImplementationSpecificPixelSize();
+    void constructInvalidPixelSize();
     void constructInvalidSize();
     void constructInvalidCubeMap();
     void constructCompressedInvalidSize();
@@ -113,7 +116,8 @@ ImageViewTest::ImageViewTest() {
               &ImageViewTest::constructFromMutable,
               &ImageViewTest::constructCompressedFromMutable,
 
-              &ImageViewTest::constructNullptr,
+              &ImageViewTest::constructUnknownImplementationSpecificPixelSize,
+              &ImageViewTest::constructInvalidPixelSize,
               &ImageViewTest::constructInvalidSize,
               &ImageViewTest::constructInvalidCubeMap,
               &ImageViewTest::constructCompressedInvalidSize,
@@ -170,8 +174,6 @@ namespace Vk {
         #endif
         return 12;
     }
-
-    enum class CompressedPixelFormat { Bc1SRGBAlpha = 42 };
 }
 
 template<class T> void ImageViewTest::constructGeneric() {
@@ -187,7 +189,7 @@ template<class T> void ImageViewTest::constructGeneric() {
         CORRADE_COMPARE(a.formatExtra(), 0);
         CORRADE_COMPARE(a.pixelSize(), 4);
         CORRADE_COMPARE(a.size(), (Vector2i{1, 3}));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 4*4);
     } {
         T data[3*2]{};
@@ -200,7 +202,7 @@ template<class T> void ImageViewTest::constructGeneric() {
         CORRADE_COMPARE(a.formatExtra(), 0);
         CORRADE_COMPARE(a.pixelSize(), 2);
         CORRADE_COMPARE(a.size(), (Vector2i{1, 3}));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 3*2);
     }
 }
@@ -246,7 +248,7 @@ template<class T> void ImageViewTest::constructImplementationSpecific() {
         CORRADE_COMPARE(a.formatExtra(), 0);
         CORRADE_COMPARE(a.pixelSize(), 12);
         CORRADE_COMPARE(a.size(), (Vector2i{1, 3}));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 3*12);
     } {
         T data[3*12]{};
@@ -259,7 +261,7 @@ template<class T> void ImageViewTest::constructImplementationSpecific() {
         CORRADE_COMPARE(a.formatExtra(), 0);
         CORRADE_COMPARE(a.pixelSize(), 12);
         CORRADE_COMPARE(a.size(), (Vector2i{1, 3}));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 3*12);
     }
 
@@ -274,7 +276,7 @@ template<class T> void ImageViewTest::constructImplementationSpecific() {
         CORRADE_COMPARE(a.formatExtra(), UnsignedInt(GL::PixelType::UnsignedShort));
         CORRADE_COMPARE(a.pixelSize(), 6);
         CORRADE_COMPARE(a.size(), Vector2i(1, 3));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 3*8);
     } {
         T data[3*6]{};
@@ -286,7 +288,7 @@ template<class T> void ImageViewTest::constructImplementationSpecific() {
         CORRADE_COMPARE(a.formatExtra(), UnsignedInt(GL::PixelType::UnsignedShort));
         CORRADE_COMPARE(a.pixelSize(), 6);
         CORRADE_COMPARE(a.size(), Vector2i(1, 3));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 3*6);
     }
 
@@ -301,7 +303,7 @@ template<class T> void ImageViewTest::constructImplementationSpecific() {
         CORRADE_COMPARE(a.formatExtra(), UnsignedInt(GL::PixelType::UnsignedShort));
         CORRADE_COMPARE(a.pixelSize(), 6);
         CORRADE_COMPARE(a.size(), Vector2i(1, 3));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 3*6);
     }
 }
@@ -381,7 +383,7 @@ template<class T> void ImageViewTest::constructCompressedGeneric() {
         CORRADE_COMPARE(a.storage().compressedBlockSize(), Vector3i{0});
         CORRADE_COMPARE(a.format(), CompressedPixelFormat::Bc1RGBAUnorm);
         CORRADE_COMPARE(a.size(), (Vector2i{4, 4}));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 8);
     } {
         T data[8]{};
@@ -393,7 +395,7 @@ template<class T> void ImageViewTest::constructCompressedGeneric() {
         CORRADE_COMPARE(a.storage().compressedBlockSize(), Vector3i{4});
         CORRADE_COMPARE(a.format(), CompressedPixelFormat::Bc1RGBAUnorm);
         CORRADE_COMPARE(a.size(), (Vector2i{4, 4}));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 8);
     }
 }
@@ -434,7 +436,7 @@ template<class T> void ImageViewTest::constructCompressedImplementationSpecific(
         CORRADE_COMPARE(a.storage().compressedBlockSize(), Vector3i{0});
         CORRADE_COMPARE(a.format(), compressedPixelFormatWrap(GL::CompressedPixelFormat::RGBS3tcDxt1));
         CORRADE_COMPARE(a.size(), (Vector2i{4, 4}));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 8);
     } {
         T data[8]{};
@@ -445,7 +447,7 @@ template<class T> void ImageViewTest::constructCompressedImplementationSpecific(
         CORRADE_COMPARE(a.storage().compressedBlockSize(), Vector3i{4});
         CORRADE_COMPARE(a.format(), compressedPixelFormatWrap(GL::CompressedPixelFormat::RGBS3tcDxt1));
         CORRADE_COMPARE(a.size(), (Vector2i{4, 4}));
-        CORRADE_COMPARE(a.data(), &data[0]);
+        CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
         CORRADE_COMPARE(a.data().size(), 8);
     }
 
@@ -490,7 +492,7 @@ void ImageViewTest::construct3DFrom1D() {
     CORRADE_COMPARE(a.formatExtra(), UnsignedInt(GL::PixelType::UnsignedShort));
     CORRADE_COMPARE(a.pixelSize(), 6);
     CORRADE_COMPARE(a.size(), 3);
-    CORRADE_COMPARE(a.data(), &data[0]);
+    CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(a.data().size(), 3*6);
 
     /* Not testing the flags parameter here to be sure implicit conversion
@@ -502,7 +504,7 @@ void ImageViewTest::construct3DFrom1D() {
     CORRADE_COMPARE(b.formatExtra(), UnsignedInt(GL::PixelType::UnsignedShort));
     CORRADE_COMPARE(b.pixelSize(), 6);
     CORRADE_COMPARE(b.size(), (Vector3i{3, 1, 1}));
-    CORRADE_COMPARE(b.data(), &data[0]);
+    CORRADE_COMPARE(b.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(b.data().size(), 3*6);
 
     /* Conversion the other way is not allowed (will be later, but explicitly
@@ -524,7 +526,7 @@ void ImageViewTest::construct3DFrom2D() {
     CORRADE_COMPARE(a.formatExtra(), UnsignedInt(GL::PixelType::UnsignedShort));
     CORRADE_COMPARE(a.pixelSize(), 6);
     CORRADE_COMPARE(a.size(), (Vector2i{1, 3}));
-    CORRADE_COMPARE(a.data(), &data[0]);
+    CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(a.data().size(), 3*6);
 
     MutableImageView3D b = {a, ImageFlag3D(0x00a0)};
@@ -536,7 +538,7 @@ void ImageViewTest::construct3DFrom2D() {
     CORRADE_COMPARE(b.formatExtra(), UnsignedInt(GL::PixelType::UnsignedShort));
     CORRADE_COMPARE(b.pixelSize(), 6);
     CORRADE_COMPARE(b.size(), (Vector3i{1, 3, 1}));
-    CORRADE_COMPARE(b.data(), &data[0]);
+    CORRADE_COMPARE(b.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(b.data().size(), 3*6);
 
     /* Conversion the other way is not allowed (will be later, but explicitly
@@ -558,7 +560,7 @@ void ImageViewTest::constructCompressed3DFrom1D() {
     CORRADE_COMPARE(a.storage().compressedBlockSize(), Vector3i{4});
     CORRADE_COMPARE(a.format(), compressedPixelFormatWrap(GL::CompressedPixelFormat::RGBS3tcDxt1));
     CORRADE_COMPARE(a.size(), 4);
-    CORRADE_COMPARE(a.data(), &data[0]);
+    CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(a.data().size(), 8);
 
     /* Not testing the flags parameter here to be sure implicit conversion
@@ -568,7 +570,7 @@ void ImageViewTest::constructCompressed3DFrom1D() {
     CORRADE_COMPARE(b.storage().compressedBlockSize(), Vector3i{4});
     CORRADE_COMPARE(b.format(), compressedPixelFormatWrap(GL::CompressedPixelFormat::RGBS3tcDxt1));
     CORRADE_COMPARE(b.size(), (Vector3i{4, 1, 1}));
-    CORRADE_COMPARE(b.data(), &data[0]);
+    CORRADE_COMPARE(b.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(b.data().size(), 8);
 
     /* Conversion the other way is not allowed (will be later, but explicitly
@@ -589,7 +591,7 @@ void ImageViewTest::constructCompressed3DFrom2D() {
     CORRADE_COMPARE(a.storage().compressedBlockSize(), Vector3i{4});
     CORRADE_COMPARE(a.format(), compressedPixelFormatWrap(GL::CompressedPixelFormat::RGBS3tcDxt1));
     CORRADE_COMPARE(a.size(), (Vector2i{4, 8}));
-    CORRADE_COMPARE(a.data(), &data[0]);
+    CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(a.data().size(), 8*2);
 
     MutableCompressedImageView3D b = {a, ImageFlag3D(0x00a0)};
@@ -599,7 +601,7 @@ void ImageViewTest::constructCompressed3DFrom2D() {
     CORRADE_COMPARE(b.storage().compressedBlockSize(), Vector3i{4});
     CORRADE_COMPARE(b.format(), compressedPixelFormatWrap(GL::CompressedPixelFormat::RGBS3tcDxt1));
     CORRADE_COMPARE(b.size(), (Vector3i{4, 8, 1}));
-    CORRADE_COMPARE(b.data(), &data[0]);
+    CORRADE_COMPARE(b.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(b.data().size(), 8*2);
 
     /* Conversion the other way is not allowed (will be later, but explicitly
@@ -619,7 +621,7 @@ void ImageViewTest::constructFromMutable() {
     CORRADE_COMPARE(a.formatExtra(), UnsignedInt(GL::PixelType::UnsignedShort));
     CORRADE_COMPARE(a.pixelSize(), 6);
     CORRADE_COMPARE(a.size(), Vector2i(1, 3));
-    CORRADE_COMPARE(a.data(), &data[0]);
+    CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(a.data().size(), 3*6);
 
     ImageView2D b = a;
@@ -629,7 +631,7 @@ void ImageViewTest::constructFromMutable() {
     CORRADE_COMPARE(b.formatExtra(), UnsignedInt(GL::PixelType::UnsignedShort));
     CORRADE_COMPARE(b.pixelSize(), 6);
     CORRADE_COMPARE(b.size(), Vector2i(1, 3));
-    CORRADE_COMPARE(b.data(), &data[0]);
+    CORRADE_COMPARE(b.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(b.data().size(), 3*6);
 }
 
@@ -643,7 +645,7 @@ void ImageViewTest::constructCompressedFromMutable() {
     CORRADE_COMPARE(a.storage().compressedBlockSize(), Vector3i{4});
     CORRADE_COMPARE(a.format(), compressedPixelFormatWrap(GL::CompressedPixelFormat::RGBS3tcDxt1));
     CORRADE_COMPARE(a.size(), (Vector2i{4, 4}));
-    CORRADE_COMPARE(a.data(), &data[0]);
+    CORRADE_COMPARE(a.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(a.data().size(), 8);
 
     CompressedImageView2D b = a;
@@ -651,33 +653,59 @@ void ImageViewTest::constructCompressedFromMutable() {
     CORRADE_COMPARE(b.storage().compressedBlockSize(), Vector3i{4});
     CORRADE_COMPARE(b.format(), compressedPixelFormatWrap(GL::CompressedPixelFormat::RGBS3tcDxt1));
     CORRADE_COMPARE(b.size(), (Vector2i{4, 4}));
-    CORRADE_COMPARE(b.data(), &data[0]);
+    CORRADE_COMPARE(b.data(), static_cast<const void*>(data));
     CORRADE_COMPARE(b.data().size(), 8);
 }
 
-void ImageViewTest::constructNullptr() {
-    #ifdef MAGNUM_BUILD_DEPRECATED
-    CORRADE_SKIP("This is still allowed on a deprecated build, can't test.");
-    #elif defined(CORRADE_NO_ASSERT)
-    CORRADE_SKIP("CORRADE_NO_ASSERT defined, can't test assertions");
-    #else
-    std::ostringstream out;
+void ImageViewTest::constructUnknownImplementationSpecificPixelSize() {
+    CORRADE_SKIP_IF_NO_ASSERT();
+
+    char data[1];
+
+    Containers::String out;
     Error redirectError{&out};
-    ImageView2D{PixelFormat::RGB8Unorm, {1, 3},  nullptr};
-    CORRADE_COMPARE(out.str(), "ImageView: data too small, got 0 but expected at least 12 bytes\n");
-    #endif
+    ImageView2D{pixelFormatWrap(0x666), {1, 1}, data};
+    ImageView2D{pixelFormatWrap(0x777), {1, 1}};
+    CORRADE_COMPARE_AS(out,
+        "ImageView: can't determine size of an implementation-specific pixel format 0x666, pass it explicitly\n"
+        /* The next messages are printed because it cannot exit the
+           construction from the middle of the member initializer list. It does
+           so with non-graceful asserts tho and just one message is printed. */
+        "pixelFormatSize(): can't determine size of an implementation-specific format 0x666\n"
+        "ImageView: expected pixel size to be non-zero and less than 256 but got 0\n"
+
+        "ImageView: can't determine size of an implementation-specific pixel format 0x777, pass it explicitly\n"
+        "pixelFormatSize(): can't determine size of an implementation-specific format 0x777\n"
+        "ImageView: expected pixel size to be non-zero and less than 256 but got 0\n",
+        TestSuite::Compare::String);
+}
+
+void ImageViewTest::constructInvalidPixelSize() {
+    CORRADE_SKIP_IF_NO_ASSERT();
+
+    Containers::String out;
+    Error redirectError{&out};
+    ImageView2D{PixelStorage{}, 666, 0, 0, {}, nullptr};
+    ImageView2D{PixelStorage{}, 666, 0, 256, {}, nullptr};
+    ImageView2D{PixelStorage{}, 666, 0, 0, {}};
+    ImageView2D{PixelStorage{}, 666, 0, 256, {}};
+    CORRADE_COMPARE_AS(out,
+        "ImageView: expected pixel size to be non-zero and less than 256 but got 0\n"
+        "ImageView: expected pixel size to be non-zero and less than 256 but got 256\n"
+        "ImageView: expected pixel size to be non-zero and less than 256 but got 0\n"
+        "ImageView: expected pixel size to be non-zero and less than 256 but got 256\n",
+        TestSuite::Compare::String);
 }
 
 void ImageViewTest::constructInvalidSize() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
-    Error redirectError{&out};
+    const char data[11]{};
 
-    /* Doesn't consider alignment */
-    const char data[3*3]{};
+    Containers::String out;
+    Error redirectError{&out};
     ImageView2D{PixelFormat::RGB8Unorm, {1, 3}, data};
-    CORRADE_COMPARE(out.str(), "ImageView: data too small, got 9 but expected at least 12 bytes\n");
+    CORRADE_COMPARE(out, "ImageView: data too small, got 11 but expected at least 12 bytes\n");
 }
 
 void ImageViewTest::constructInvalidCubeMap() {
@@ -685,7 +713,7 @@ void ImageViewTest::constructInvalidCubeMap() {
 
     const char data[4*3*18*4]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     ImageView3D{PixelFormat::RGBA8Unorm, {3, 3, 5}, data, ImageFlag3D::CubeMap};
     ImageView3D{PixelFormat::RGBA8Unorm, {3, 4, 6}, data, ImageFlag3D::CubeMap};
@@ -693,7 +721,7 @@ void ImageViewTest::constructInvalidCubeMap() {
     ImageView3D{PixelFormat::RGBA8Unorm, {4, 3, 18}, data, ImageFlag3D::CubeMap |ImageFlag3D::Array};
     /* The data-less variant should call into the same assertion helper */
     ImageView3D{PixelFormat::RGBA8Unorm, {3, 3, 5}, ImageFlag3D::CubeMap};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ImageView: expected exactly 6 faces for a cube map, got 5\n"
         "ImageView: expected square faces for a cube map, got {3, 4}\n"
         "ImageView: expected a multiple of 6 faces for a cube map array, got 17\n"
@@ -702,23 +730,25 @@ void ImageViewTest::constructInvalidCubeMap() {
 }
 
 void ImageViewTest::constructCompressedInvalidSize() {
+    CORRADE_SKIP_IF_NO_ASSERT();
+
     CORRADE_EXPECT_FAIL("Size checking for compressed image data is not implemented yet.");
 
-    const char data[2]{};
+    const char data[15]{};
 
     /* Too small for given format */
     {
-        std::ostringstream out;
+        Containers::String out;
         Error redirectError{&out};
         CompressedImageView2D{CompressedPixelFormat::Bc2RGBAUnorm, {4, 4}, data};
-        CORRADE_COMPARE(out.str(), "CompressedImageView: data too small, got 2 but expected at least 4 bytes\n");
+        CORRADE_COMPARE(out, "CompressedImageView: data too small, got 15 but expected at least 16 bytes\n");
 
     /* Size should be rounded up even if the image size is not full block */
     } {
-        std::ostringstream out;
+        Containers::String out;
         Error redirectError{&out};
         CompressedImageView2D{CompressedPixelFormat::Bc2RGBAUnorm, {2, 2}, data};
-        CORRADE_COMPARE(out.str(), "CompressedImageView: data too small, got 2 but expected at least 4 bytes\n");
+        CORRADE_COMPARE(out, "CompressedImageView: data too small, got 15 but expected at least 16 bytes\n");
     }
 }
 
@@ -727,7 +757,7 @@ void ImageViewTest::constructCompressedInvalidCubeMap() {
 
     const char data[8*18]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CompressedImageView3D{CompressedPixelFormat::Bc1RGBAUnorm, {3, 3, 5}, data, ImageFlag3D::CubeMap};
     CompressedImageView3D{CompressedPixelFormat::Bc1RGBAUnorm, {3, 4, 6}, data, ImageFlag3D::CubeMap};
@@ -735,7 +765,7 @@ void ImageViewTest::constructCompressedInvalidCubeMap() {
     CompressedImageView3D{CompressedPixelFormat::Bc1RGBAUnorm, {4, 3, 18}, data, ImageFlag3D::CubeMap |ImageFlag3D::Array};
     /* The data-less variant should call into the same assertion helper */
     CompressedImageView3D{CompressedPixelFormat::Bc1RGBAUnorm, {3, 3, 5}, ImageFlag3D::CubeMap};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "CompressedImageView: expected exactly 6 faces for a cube map, got 5\n"
         "CompressedImageView: expected square faces for a cube map, got {3, 4}\n"
         "CompressedImageView: expected a multiple of 6 faces for a cube map array, got 17\n"
@@ -803,35 +833,39 @@ template<class T> void ImageViewTest::setDataCompressed() {
 void ImageViewTest::setDataInvalidSize() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
-    Error redirectError{&out};
-
     ImageView2D image{PixelFormat::RGB8Unorm, {1, 3}};
-    const char data[3*3]{};
+    const char data[11]{};
 
-    /* Doesn't consider alignment */
+    Containers::String out;
+    Error redirectError{&out};
     image.setData(data);
-    CORRADE_COMPARE(out.str(), "ImageView::setData(): data too small, got 9 but expected at least 12 bytes\n");
+    CORRADE_COMPARE(out, "ImageView::setData(): data too small, got 11 but expected at least 12 bytes\n");
 }
 
 void ImageViewTest::setDataCompressedInvalidSize() {
+    CORRADE_SKIP_IF_NO_ASSERT();
+
     CORRADE_EXPECT_FAIL("Size checking for compressed image data is not implemented yet.");
 
-    const char data[2]{};
+    const char data[11]{};
 
     /* Too small for given format */
     {
-        std::ostringstream out;
+        CompressedImageView2D image{CompressedPixelFormat::Bc2RGBAUnorm, {4, 4}};
+
+        Containers::String out;
         Error redirectError{&out};
-        CompressedImageView2D{CompressedPixelFormat::Bc2RGBAUnorm, {4, 4}, data};
-        CORRADE_COMPARE(out.str(), "CompressedImageView::setData(): data too small, got 2 but expected at least 4 bytes\n");
+        image.setData(data);
+        CORRADE_COMPARE(out, "CompressedImageView::setData(): data too small, got 11 but expected at least 16 bytes\n");
 
     /* Size should be rounded up even if the image size is not that big */
     } {
-        std::ostringstream out;
+        CompressedImageView2D image{CompressedPixelFormat::Bc2RGBAUnorm, {2, 2}};
+
+        Containers::String out;
         Error redirectError{&out};
-        CompressedImageView2D{CompressedPixelFormat::Bc2RGBAUnorm, {2, 2}, data};
-        CORRADE_COMPARE(out.str(), "CompressedImageView::setData(): data too small, got 2 but expected at least 4 bytes\n");
+        image.setData(data);
+        CORRADE_COMPARE(out, "CompressedImageView::setData(): data too small, got 11 but expected at least 16 bytes\n");
     }
 }
 

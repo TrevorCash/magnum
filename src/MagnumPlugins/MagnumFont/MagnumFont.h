@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -177,7 +178,7 @@ class MAGNUM_MAGNUMFONT_EXPORT MagnumFont: public AbstractFont {
         MAGNUM_MAGNUMFONT_LOCAL Properties doOpenFile(Containers::StringView filename, Float) override;
         MAGNUM_MAGNUMFONT_LOCAL void doClose() override;
 
-        MAGNUM_MAGNUMFONT_LOCAL UnsignedInt doGlyphId(char32_t character) override;
+        MAGNUM_MAGNUMFONT_LOCAL void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>& characters, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) override;
         MAGNUM_MAGNUMFONT_LOCAL Vector2 doGlyphSize(UnsignedInt glyph) override;
         MAGNUM_MAGNUMFONT_LOCAL Vector2 doGlyphAdvance(UnsignedInt glyph) override;
         MAGNUM_MAGNUMFONT_LOCAL Containers::Pointer<AbstractGlyphCache> doCreateGlyphCache() override;

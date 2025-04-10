@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -37,16 +38,12 @@
 #include <Corrade/Utility/Macros.h>
 #endif
 
+#ifndef DOXYGEN_GENERATING_OUTPUT
 namespace Magnum { namespace Trade {
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 class AbstractImageConverter;
 class AbstractImporter;
 class AbstractSceneConverter;
-
-#ifdef MAGNUM_BUILD_DEPRECATED
-typedef CORRADE_DEPRECATED("use InputFileCallbackPolicy instead") InputFileCallbackPolicy ImporterFileCallbackPolicy;
-#endif
 
 enum class MaterialAttribute: UnsignedInt;
 enum class MaterialTextureSwizzle: UnsignedInt;
@@ -115,8 +112,8 @@ class SceneData;
 template<UnsignedInt> class SkinData;
 typedef SkinData<2> SkinData2D;
 typedef SkinData<3> SkinData3D;
-#endif
 
 }}
+#endif
 
 #endif

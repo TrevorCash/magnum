@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,17 +24,16 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <unordered_map>
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/Optional.h>
-#include <Corrade/Containers/StringStl.h> /** @todo remove once AbstractFont is <string>-free */
 #include <Corrade/Containers/StridedArrayView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
 #include <Corrade/TestSuite/Compare/String.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Path.h>
+#include <Corrade/Utility/DebugStl.h> /** @todo remove file callbacks are std::string-free */
 
 #include "Magnum/FileCallback.h"
 #include "Magnum/PixelFormat.h"
@@ -68,13 +68,13 @@ struct MagnumFontTest: TestSuite::Tester {
 const struct {
     const char* name;
     const char* string;
-    UnsignedInt eGlyphId;
+    UnsignedInt eGlyphId, eGlyphClusterExtraSize;
     UnsignedInt begin, end;
 } ShapeData[]{
-    {"", "Wave", 1, 0, ~UnsignedInt{}},
-    {"substring", "haWavefefe", 1, 2, 6},
-    {"UTF-8", "Wavě", 3, 0, ~UnsignedInt{}},
-    {"UTF-8 substring", "haWavěfefe", 3, 2, 7},
+    {"", "Weave", 1, 0, 0, ~UnsignedInt{}},
+    {"substring", "haWeavesfefe", 1, 0, 2, 7},
+    {"UTF-8", "Wěave", 3, 1, 0, ~UnsignedInt{}},
+    {"UTF-8 substring", "haWěavefefe", 3, 1, 2, 8},
 };
 
 MagnumFontTest::MagnumFontTest() {
@@ -102,11 +102,11 @@ MagnumFontTest::MagnumFontTest() {
 void MagnumFontTest::nonexistent() {
     Containers::Pointer<AbstractFont> font = _fontManager.instantiate("MagnumFont");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!font->openFile("nonexistent.conf", 0.0f));
     /* There's an error message from Path::read() before */
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         "\nText::AbstractFont::openFile(): cannot open file nonexistent.conf\n",
         TestSuite::Compare::StringHasSuffix);
 }
@@ -147,28 +147,39 @@ void MagnumFontTest::shape() {
 
     Containers::Pointer<AbstractShaper> shaper = font->createShaper();
 
-    CORRADE_COMPARE(shaper->shape(data.string, data.begin, data.end), 4);
+    CORRADE_COMPARE(shaper->shape(data.string, data.begin, data.end), 5);
 
-    UnsignedInt ids[4];
-    Vector2 offsets[4];
-    Vector2 advances[4];
+    UnsignedInt ids[5];
+    Vector2 offsets[5];
+    Vector2 advances[5];
+    UnsignedInt clusters[5];
     shaper->glyphIdsInto(ids);
     shaper->glyphOffsetsAdvancesInto(offsets, advances);
+    shaper->glyphClustersInto(clusters);
     CORRADE_COMPARE_AS(Containers::arrayView(ids), Containers::arrayView({
         2u,             /* 'W' */
+        data.eGlyphId,  /* 'e' or 'ě' */
         0u,             /* 'a' (not found) */
         0u,             /* 'v' (not found) */
-        data.eGlyphId   /* 'e' or 'ě' */
+        1u,             /* 'e' */
     }), TestSuite::Compare::Container);
     /* There are no glyph-specific offsets here */
     CORRADE_COMPARE_AS(Containers::arrayView(offsets), Containers::arrayView<Vector2>({
-        {}, {}, {}, {}
+        {}, {}, {}, {}, {}
     }), TestSuite::Compare::Container);
     CORRADE_COMPARE_AS(Containers::arrayView(advances), Containers::arrayView<Vector2>({
         {23.0f, 0.0f},
+        {12.f, 0.0f},
         {8.0f, 0.0f},
         {8.0f, 0.0f},
-        {12.f, 0.0f}
+        {12.f, 0.0f},
+    }), TestSuite::Compare::Container);
+    CORRADE_COMPARE_AS(Containers::arrayView(clusters), Containers::arrayView({
+        data.begin + 0u,
+        data.begin + 1u,
+        data.begin + 2u + data.eGlyphClusterExtraSize,
+        data.begin + 3u + data.eGlyphClusterExtraSize,
+        data.begin + 4u + data.eGlyphClusterExtraSize,
     }), TestSuite::Compare::Container);
 }
 
@@ -198,8 +209,10 @@ void MagnumFontTest::shaperReuse() {
         UnsignedInt ids[2];
         Vector2 offsets[2];
         Vector2 advances[2];
+        UnsignedInt clusters[2];
         shaper->glyphIdsInto(ids);
         shaper->glyphOffsetsAdvancesInto(offsets, advances);
+        shaper->glyphClustersInto(clusters);
         CORRADE_COMPARE_AS(Containers::arrayView(ids), Containers::arrayView({
             2u, /* 'W' */
             1u  /* 'e' */
@@ -211,47 +224,71 @@ void MagnumFontTest::shaperReuse() {
             {23.0f, 0.0f},
             {12.f, 0.0f}
         }), TestSuite::Compare::Container);
+        CORRADE_COMPARE_AS(Containers::arrayView(clusters), Containers::arrayView({
+            0u,
+            1u
+        }), TestSuite::Compare::Container);
 
     /* Long text, same as in shape(), should enlarge the array for it */
     } {
-        CORRADE_COMPARE(shaper->shape("Wave"), 4);
-        UnsignedInt ids[4];
-        Vector2 offsets[4];
-        Vector2 advances[4];
+        CORRADE_COMPARE(shaper->shape("Wěave"), 5);
+        UnsignedInt ids[5];
+        Vector2 offsets[5];
+        Vector2 advances[5];
+        UnsignedInt clusters[5];
         shaper->glyphIdsInto(ids);
         shaper->glyphOffsetsAdvancesInto(offsets, advances);
+        shaper->glyphClustersInto(clusters);
         CORRADE_COMPARE_AS(Containers::arrayView(ids), Containers::arrayView({
             2u, /* 'W' */
+            3u, /* 'ě' */
             0u, /* 'a' (not found) */
             0u, /* 'v' (not found) */
-            1u  /* 'e' or 'ě' */
+            1u  /* 'e' */
         }), TestSuite::Compare::Container);
         CORRADE_COMPARE_AS(Containers::arrayView(offsets), Containers::arrayView<Vector2>({
-            {}, {}, {}, {}
+            {}, {}, {}, {}, {}
         }), TestSuite::Compare::Container);
         CORRADE_COMPARE_AS(Containers::arrayView(advances), Containers::arrayView<Vector2>({
             {23.0f, 0.0f},
+            {12.f, 0.0f},
             {8.0f, 0.0f},
             {8.0f, 0.0f},
             {12.f, 0.0f}
         }), TestSuite::Compare::Container);
+        CORRADE_COMPARE_AS(Containers::arrayView(clusters), Containers::arrayView({
+            0u,
+            1u,
+            3u,
+            4u,
+            5u
+        }), TestSuite::Compare::Container);
 
     /* Short text again, should not leave the extra glyphs there */
     } {
-        CORRADE_COMPARE(shaper->shape("a"), 1);
-        UnsignedInt ids[1];
-        Vector2 offsets[1];
-        Vector2 advances[1];
+        CORRADE_COMPARE(shaper->shape("ave"), 3);
+        UnsignedInt ids[3];
+        Vector2 offsets[3];
+        Vector2 advances[3];
+        UnsignedInt clusters[3];
         shaper->glyphIdsInto(ids);
         shaper->glyphOffsetsAdvancesInto(offsets, advances);
+        shaper->glyphClustersInto(clusters);
         CORRADE_COMPARE_AS(Containers::arrayView(ids), Containers::arrayView({
-            0u,
+            0u, /* 'a' (not found) */
+            0u, /* 'v' (not found) */
+            1u  /* 'e' */
         }), TestSuite::Compare::Container);
         CORRADE_COMPARE_AS(Containers::arrayView(offsets), Containers::arrayView<Vector2>({
-            {},
+            {}, {}, {}
         }), TestSuite::Compare::Container);
         CORRADE_COMPARE_AS(Containers::arrayView(advances), Containers::arrayView<Vector2>({
-            {8.0f, 0.0f}
+            {8.0f, 0.0f},
+            {8.0f, 0.0f},
+            {12.f, 0.0f}
+        }), TestSuite::Compare::Container);
+        CORRADE_COMPARE_AS(Containers::arrayView(clusters), Containers::arrayView({
+            0u, 1u, 2u
         }), TestSuite::Compare::Container);
     }
 }
@@ -290,12 +327,12 @@ void MagnumFontTest::fileCallbackImageNotFound() {
             return Containers::Optional<Containers::ArrayView<const char>>{};
         });
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     Containers::Optional<Containers::Array<char>> conf = Utility::Path::read(Utility::Path::join(MAGNUMFONT_TEST_DIR, "font.conf"));
     CORRADE_VERIFY(conf);
     CORRADE_VERIFY(!font->openData(*conf, 13.0f));
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::openFile(): cannot open file font.tga\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::openFile(): cannot open file font.tga\n");
 }
 
 }}}}

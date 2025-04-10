@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2016 Alice Margatroid <loveoverwhelming@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -60,21 +61,7 @@ namespace Magnum { namespace Audio {
 
 @m_keywords{WavAudioImporter}
 
-Supports mono and stereo files of the following formats:
-
--   8 bit per channel PCM, imported as @ref BufferFormat::Mono8 and
-    @ref BufferFormat::Stereo8
--   16 bit per channel PCM, imported as @ref BufferFormat::Mono16 and
-    @ref BufferFormat::Stereo16
--   32-bit IEEE Float, imported as @ref BufferFormat::MonoFloat /
-    @ref BufferFormat::StereoFloat
--   64-bit IEEE Float, imported as @ref BufferFormat::MonoDouble /
-    @ref BufferFormat::StereoDouble
--   A-Law, imported as @ref BufferFormat::MonoALaw / @ref BufferFormat::StereoALaw
--   μ-Law, imported as @ref BufferFormat::MonoMuLaw / @ref BufferFormat::StereoMuLaw
-
-Both Little-Endian files (with a `RIFF` header) and Big-Endian files (with
-a `RIFX` header) are supported, data is converted to machine endian on import.
+Imports mono and stereo files.
 
 @section Audio-WavImporter-usage Usage
 
@@ -112,7 +99,23 @@ target_link_libraries(your-app PRIVATE Magnum::WavAudioImporter)
 
 See @ref building, @ref cmake and @ref plugins for more information.
 
-@section Audio-WavImporter-limitations Behavior and limitations
+@section Audio-WavImporter-behavior Behavior and limitations
+
+Supports mono and stereo files of the following formats:
+
+-   8 bit per channel PCM, imported as @ref BufferFormat::Mono8 and
+    @ref BufferFormat::Stereo8
+-   16 bit per channel PCM, imported as @ref BufferFormat::Mono16 and
+    @ref BufferFormat::Stereo16
+-   32-bit IEEE Float, imported as @ref BufferFormat::MonoFloat /
+    @ref BufferFormat::StereoFloat
+-   64-bit IEEE Float, imported as @ref BufferFormat::MonoDouble /
+    @ref BufferFormat::StereoDouble
+-   A-Law, imported as @ref BufferFormat::MonoALaw / @ref BufferFormat::StereoALaw
+-   μ-Law, imported as @ref BufferFormat::MonoMuLaw / @ref BufferFormat::StereoMuLaw
+
+Both Little-Endian files (with a `RIFF` header) and Big-Endian files (with
+a `RIFX` header) are supported, data is converted to machine endian on import.
 
 Multi-channel formats are not supported.
 */

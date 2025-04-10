@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -26,11 +27,16 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#ifdef MAGNUM_TARGET_GL
 /** @file
  * @brief Class @ref Magnum::Shaders::MeshVisualizerGL2D, @ref Magnum::Shaders::MeshVisualizerGL3D
  * @m_since_latest
  */
+#endif
 
+#include "Magnum/configure.h"
+
+#ifdef MAGNUM_TARGET_GL
 #include <Corrade/Utility/Move.h>
 #include <Corrade/Utility/Utility.h>
 
@@ -179,6 +185,10 @@ behavior with nothing enabled. The shader is a 2D variant of
 @ref MeshVisualizerGL3D with mostly identical workflow. See its documentation
 for more information, workflows that differ are shown below.
 
+@note This class is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+
 @section Shaders-MeshVisualizerGL2D-instancing Instanced rendering
 
 Enabling @ref Flag::InstancedTransformation will turn the shader into an
@@ -187,7 +197,7 @@ instanced one. It'll take per-instance transformation from the
 @ref setTransformationProjectionMatrix(). The snippet below shows adding a
 buffer with per-instance transformation to a mesh:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL2D-usage-instancing
+@snippet Shaders-gl.cpp MeshVisualizerGL2D-usage-instancing
 
 If @ref Flag::ObjectIdTexture is used and @ref Flag::InstancedTextureOffset is
 enabled, the @ref TextureOffset attribute (or @ref TextureOffsetLayer in case
@@ -1420,6 +1430,10 @@ visualization or object/primitive ID visualization by passing an appropriate
 @ref Flag to @ref Configuration::setFlags() --- there's no default behavior
 with nothing enabled.
 
+@note This class is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+
 @section Shaders-MeshVisualizerGL3D-wireframe Wireframe visualization
 
 Wireframe visualization is done by enabling @ref Flag::Wireframe. It is done
@@ -1456,28 +1470,28 @@ function. See @ref GL::Renderer::setBlendFunction() for details.
 
 Common mesh setup:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL3D-usage-geom1
+@snippet Shaders-gl.cpp MeshVisualizerGL3D-usage-geom1
 
 Common rendering setup:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL3D-usage-geom2
+@snippet Shaders-gl.cpp MeshVisualizerGL3D-usage-geom2
 
 @subsection Shaders-MeshVisualizerGL3D-wireframe-no-geom Example setup for indexed meshes without a geometry shader
 
 The vertices have to be converted to a non-indexed array first. Mesh setup:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL3D-usage-no-geom1
+@snippet Shaders-gl.cpp MeshVisualizerGL3D-usage-no-geom1
 
 Rendering setup:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL3D-usage-no-geom2
+@snippet Shaders-gl.cpp MeshVisualizerGL3D-usage-no-geom2
 
 @subsection Shaders-MeshVisualizerGL3D-usage-wireframe-no-geom-old Wireframe visualization of non-indexed meshes without a geometry shader on older hardware
 
 You need to provide also the @ref VertexIndex attribute. Mesh setup *in
 addition to the above*:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL3D-usage-no-geom-old
+@snippet Shaders-gl.cpp MeshVisualizerGL3D-usage-no-geom-old
 
 Rendering setup the same as above.
 
@@ -1508,11 +1522,11 @@ case you'll enable @ref Flag::BitangentDirection). Note that these two are
 mutually exclusive, so you need to choose either of them based on what given
 mesh contains. Example for the first case:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL3D-usage-tbn1
+@snippet Shaders-gl.cpp MeshVisualizerGL3D-usage-tbn1
 
 Rendering setup:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL3D-usage-tbn2
+@snippet Shaders-gl.cpp MeshVisualizerGL3D-usage-tbn2
 
 @section Shaders-MeshVisualizerGL3D-object-id Object, vertex and primitive ID visualization
 
@@ -1523,14 +1537,14 @@ and use @ref setColorMapTransformation() to map given range of discrete IDs to
 the @f$ [0, 1] @f$ texture range. Various colormap presets are in the
 @ref DebugTools::ColorMap namespace. Example usage:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL3D-usage-object-id
+@snippet Shaders-gl.cpp MeshVisualizerGL3D-usage-object-id
 
 Consistently with the other shaders, textured object ID is also supported if
 @ref Flag::ObjectIdTexture is enabled. In that case you need to provide also
 the @ref TextureCoordinates attribute and bind an integer texture via
 @ref bindObjectIdTexture(). @ref Flag::TextureTransformation then enables
 texture transformation and @ref Flag::TextureArrays texture arrays for the
-object ID texture.
+object ID texture, with the layer selected using @ref setTextureLayer().
 
 If you enable @ref Flag::VertexId, the shader will use the color map to
 visualize how are vertices shared among primitives. That's useful for
@@ -1603,7 +1617,7 @@ taken, applied before the matrix set by @ref setNormalMatrix(). The snippet
 below shows adding a buffer with per-instance transformation to a mesh,
 including a normal matrix attribute for correct TBN visualization:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL3D-usage-instancing
+@snippet Shaders-gl.cpp MeshVisualizerGL3D-usage-instancing
 
 If @ref Flag::ObjectIdTexture is used and @ref Flag::InstancedTextureOffset is
 enabled, the @ref TextureOffset attribute (or @ref TextureOffsetLayer in case
@@ -1641,7 +1655,7 @@ buffer setup equivalent to the
 look like this --- note that @ref setViewportSize() is an immediate uniform
 here as well, as it's assumed to be set globally and rarely changed:
 
-@snippet MagnumShaders-gl.cpp MeshVisualizerGL3D-ubo
+@snippet Shaders-gl.cpp MeshVisualizerGL3D-ubo
 
 For a multidraw workflow enable @ref Flag::MultiDraw, supply desired material
 and draw count via @ref Configuration::setMaterialCount() and
@@ -3419,5 +3433,8 @@ CORRADE_ENUMSET_OPERATORS(MeshVisualizerGL2D::Flags)
 CORRADE_ENUMSET_OPERATORS(MeshVisualizerGL3D::Flags)
 
 }}
+#else
+#error this header is available only in the OpenGL build
+#endif
 
 #endif

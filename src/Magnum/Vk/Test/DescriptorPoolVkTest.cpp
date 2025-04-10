@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Optional.h>
-#include <Corrade/Utility/DebugStl.h>
+#include <Corrade/Containers/String.h>
 
 #include "Magnum/Vk/DescriptorPoolCreateInfo.h"
 #include "Magnum/Vk/DescriptorSet.h"
@@ -173,33 +173,39 @@ void DescriptorPoolVkTest::allocate() {
 
 void DescriptorPoolVkTest::allocateFail() {
     DescriptorSetLayout layout{device(), DescriptorSetLayoutCreateInfo{
-        {{0, DescriptorType::UniformBuffer, 2}},
+        {{0, DescriptorType::UniformBuffer, 64}},
     }};
 
-    DescriptorPool pool{device(), DescriptorPoolCreateInfo{1, {
+    /* Make the pool contain two layouts so in case of the XFAILs below they
+       both either fit or both don't fit */
+    DescriptorPool pool{device(), DescriptorPoolCreateInfo{2, {
         {DescriptorType::UniformBuffer, 1}
     }}};
 
     {
         /* tryAllocate() should not assert, and should not print anything */
-        std::ostringstream out;
+        Containers::String out;
         Error redirectError{&out};
         {
             CORRADE_EXPECT_FAIL_IF(device().properties().name().contains("llvmpipe"),
                 "Mesa llvmpipe never fails an allocation.");
+            CORRADE_EXPECT_FAIL_IF(device().properties().name().contains("NVIDIA"),
+                "NVidia never fails an allocation.");
             CORRADE_VERIFY(!pool.tryAllocate(layout));
         }
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     } {
         CORRADE_SKIP_IF_NO_ASSERT();
 
         /* allocate() should assert with ErrorOutOfPoolMemory */
-        std::ostringstream out;
+        Containers::String out;
         Error redirectError{&out};
         pool.allocate(layout);
         CORRADE_EXPECT_FAIL_IF(device().properties().name().contains("llvmpipe"),
             "Mesa llvmpipe never fails an allocation.");
-        CORRADE_COMPARE(out.str(), "Vk::DescriptorPool::allocate(): allocation failed with Vk::Result::ErrorOutOfPoolMemory\n");
+        CORRADE_EXPECT_FAIL_IF(device().properties().name().contains("NVIDIA"),
+            "NVidia never fails an allocation.");
+        CORRADE_COMPARE(out, "Vk::DescriptorPool::allocate(): allocation failed with Vk::Result::ErrorOutOfPoolMemory\n");
     }
 }
 
@@ -247,36 +253,6 @@ void DescriptorPoolVkTest::allocateVariableCount() {
     }
 }
 
-void DescriptorPoolVkTest::allocateVariableCountFail() {
-    if(!(_deviceVariableDescriptorCount.enabledFeatures() & DeviceFeature::DescriptorBindingVariableDescriptorCount))
-        CORRADE_SKIP("DeviceFeature::DescriptorBindingVariableDescriptorCount not supported, can't test.");
-
-    DescriptorSetLayout layout{_deviceVariableDescriptorCount, DescriptorSetLayoutCreateInfo{
-        {{0, DescriptorType::UniformBuffer, 8, ~ShaderStages{}, DescriptorSetLayoutBinding::Flag::VariableDescriptorCount}}
-    }};
-
-    /* We can allocate two sets at most and at most 8 uniform buffers */
-    DescriptorPool pool{_deviceVariableDescriptorCount, DescriptorPoolCreateInfo{2, {
-        {DescriptorType::UniformBuffer, 8}
-    }}};
-
-    {
-        /* tryAllocate() should not assert, and should not print anything */
-        std::ostringstream out;
-        Error redirectError{&out};
-        CORRADE_VERIFY(!pool.tryAllocate(layout, 80));
-        CORRADE_COMPARE(out.str(), "");
-    } {
-        CORRADE_SKIP_IF_NO_ASSERT();
-
-        /* allocate() should assert with ErrorOutOfPoolMemory */
-        std::ostringstream out;
-        Error redirectError{&out};
-        pool.allocate(layout, 80);
-        CORRADE_COMPARE(out.str(), "Vk::DescriptorPool::allocate(): allocation failed with Vk::Result::ErrorOutOfPoolMemory\n");
-    }
-}
-
 void DescriptorPoolVkTest::allocateVariableCountFreeDescriptorSet() {
     if(!(_deviceVariableDescriptorCount.enabledFeatures() & DeviceFeature::DescriptorBindingVariableDescriptorCount))
         CORRADE_SKIP("DeviceFeature::DescriptorBindingVariableDescriptorCount not supported, can't test.");
@@ -293,6 +269,48 @@ void DescriptorPoolVkTest::allocateVariableCountFreeDescriptorSet() {
     CORRADE_VERIFY(allocated.handle());
     /* vkFreeDescriptorSets() gets called on destruction */
     CORRADE_COMPARE(allocated.handleFlags(), HandleFlag::DestroyOnDestruction);
+}
+
+void DescriptorPoolVkTest::allocateVariableCountFail() {
+    if(!(_deviceVariableDescriptorCount.enabledFeatures() & DeviceFeature::DescriptorBindingVariableDescriptorCount))
+        CORRADE_SKIP("DeviceFeature::DescriptorBindingVariableDescriptorCount not supported, can't test.");
+
+    DescriptorSetLayout layout{_deviceVariableDescriptorCount, DescriptorSetLayoutCreateInfo{
+        {{0, DescriptorType::UniformBuffer, 8, ~ShaderStages{}, DescriptorSetLayoutBinding::Flag::VariableDescriptorCount}}
+    }};
+
+    /* We can allocate two sets at most and at most 8 uniform buffers */
+    DescriptorPool pool{_deviceVariableDescriptorCount, DescriptorPoolCreateInfo{2, {
+        {DescriptorType::UniformBuffer, 8}
+    }}};
+
+    {
+        /* tryAllocate() should not assert, and should not print anything */
+        Containers::String out;
+        Error redirectError{&out};
+        {
+            CORRADE_EXPECT_FAIL_IF(device().properties().name().contains("llvmpipe"),
+                "Mesa llvmpipe never fails an allocation.");
+            CORRADE_EXPECT_FAIL_IF(device().properties().name().contains("NVIDIA"),
+                "NVidia never fails an allocation.");
+            CORRADE_VERIFY(!pool.tryAllocate(layout, 80));
+        }
+        CORRADE_COMPARE(out, "");
+    } {
+        CORRADE_SKIP_IF_NO_ASSERT();
+
+        /* allocate() should assert with ErrorOutOfPoolMemory */
+        Containers::String out;
+        Error redirectError{&out};
+        pool.allocate(layout, 80);
+        {
+            CORRADE_EXPECT_FAIL_IF(device().properties().name().contains("llvmpipe"),
+                "Mesa llvmpipe never fails an allocation.");
+            CORRADE_EXPECT_FAIL_IF(device().properties().name().contains("NVIDIA"),
+                "NVidia never fails an allocation.");
+            CORRADE_COMPARE(out, "Vk::DescriptorPool::allocate(): allocation failed with Vk::Result::ErrorOutOfPoolMemory\n");
+        }
+    }
 }
 
 void DescriptorPoolVkTest::reset() {

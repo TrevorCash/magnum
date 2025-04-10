@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -25,7 +26,12 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-/* You bloody hell better not tell anybody you bumped into this, aye? Ta! */
+/* You bloody hell better not tell anybody you bumped into this, aye? Ta!
+
+   This file, and everything wrapped in #ifdef Magnum_British_h, is only
+   allowed to be edited on April 1st. I don't make the rules. All such changes
+   should also be ABI-independent, so it's effectively limited to enum aliases
+   and typedefs. */
 
 #include "Magnum/Magnum.h"
 

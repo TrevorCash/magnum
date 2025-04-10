@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -30,6 +31,10 @@ using namespace Magnum;
 
 #define DOXYGEN_ELLIPSIS(...) __VA_ARGS__
 #define DOXYGEN_IGNORE(...) __VA_ARGS__
+
+/* Wrapping in a namespace to not conflict with MyApplication defined in
+   Platform.cpp */
+namespace A {
 
 class MyApplication: public Platform::Application {
     public:
@@ -67,6 +72,11 @@ void MyApplication::drawEvent() {
 }
 /* [Timeline-usage] */
 
-int main() {
-    return 0; /* on iOS SDL redefines main to SDL_main and then return is needed */
 }
+
+/* To prevent macOS ranlib from complaining that there are no symbols. OTOH
+   also make sure the name doesn't conflict with any other snippets to avoid
+   linker warnings, AND unlike with `int main()` there now has to be a
+   declaration to avoid -Wmisssing-prototypes */
+void mainMagnum();
+void mainMagnum() {}

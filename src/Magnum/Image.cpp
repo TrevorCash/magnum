@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -31,22 +32,27 @@
 
 namespace Magnum {
 
-template<UnsignedInt dimensions> Image<dimensions>::Image(const PixelStorage storage, const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags) noexcept: Image{storage, format, {}, pixelFormatSize(format), size, Utility::move(data), flags} {}
+template<UnsignedInt dimensions> Image<dimensions>::Image(const PixelStorage storage, const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags) noexcept: Image{storage, format, {}, (CORRADE_CONSTEXPR_ASSERT(!isPixelFormatImplementationSpecific(format), "Image: can't determine size of an implementation-specific pixel format" << Debug::hex << pixelFormatUnwrap(format) << Debug::nospace << ", pass it explicitly"), pixelFormatSize(format)), size, Utility::move(data), flags} {}
 
 template<UnsignedInt dimensions> Image<dimensions>::Image(const PixelStorage storage, const UnsignedInt format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags) noexcept: Image{storage, pixelFormatWrap(format), formatExtra, pixelSize, size, Utility::move(data), flags} {}
 
-template<UnsignedInt dimensions> Image<dimensions>::Image(const PixelStorage storage, const PixelFormat format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags) noexcept: _storage{storage}, _format{format}, _formatExtra{formatExtra}, _pixelSize{pixelSize}, _flags{flags}, _size{size}, _data{Utility::move(data)} {
-    CORRADE_ASSERT(Implementation::imageDataSize(*this) <= _data.size(), "Image: data too small, got" << _data.size() << "but expected at least" << Implementation::imageDataSize(*this) << "bytes", );
+template<UnsignedInt dimensions> Image<dimensions>::Image(const PixelStorage storage, const PixelFormat format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags) noexcept: _storage{storage}, _format{format}, _formatExtra{formatExtra}, _pixelSize{UnsignedByte(pixelSize)}, _flags{flags}, _size{size}, _data{Utility::move(data)} {
     #ifndef CORRADE_NO_ASSERT
+    Implementation::checkPixelSize("Image:", pixelSize);
+    CORRADE_ASSERT(Implementation::imageDataSize(*this) <= _data.size(), "Image: data too small, got" << _data.size() << "but expected at least" << Implementation::imageDataSize(*this) << "bytes", );
     Implementation::checkImageFlagsForSize("Image:", flags, size);
     #endif
 }
 
-template<UnsignedInt dimensions> Image<dimensions>::Image(const PixelStorage storage, const PixelFormat format) noexcept: Image{storage, format, {}, pixelFormatSize(format)} {}
+template<UnsignedInt dimensions> Image<dimensions>::Image(const PixelStorage storage, const PixelFormat format) noexcept: Image{storage, format, {}, (CORRADE_CONSTEXPR_ASSERT(!isPixelFormatImplementationSpecific(format), "Image: can't determine size of an implementation-specific pixel format" << Debug::hex << pixelFormatUnwrap(format) << Debug::nospace << ", pass it explicitly"), pixelFormatSize(format))} {}
 
 template<UnsignedInt dimensions> Image<dimensions>::Image(const PixelStorage storage, const UnsignedInt format, const UnsignedInt formatExtra, const UnsignedInt pixelSize) noexcept: Image{storage, pixelFormatWrap(format), formatExtra, pixelSize} {}
 
-template<UnsignedInt dimensions> Image<dimensions>::Image(const PixelStorage storage, const PixelFormat format, const UnsignedInt formatExtra, const UnsignedInt pixelSize) noexcept: _storage{storage}, _format{format}, _formatExtra{formatExtra}, _pixelSize{pixelSize}, _data{} {}
+template<UnsignedInt dimensions> Image<dimensions>::Image(const PixelStorage storage, const PixelFormat format, const UnsignedInt formatExtra, const UnsignedInt pixelSize) noexcept: _storage{storage}, _format{format}, _formatExtra{formatExtra}, _pixelSize{UnsignedByte(pixelSize)}, _data{} {
+    #ifndef CORRADE_NO_ASSERT
+    Implementation::checkPixelSize("Image:", pixelSize);
+    #endif
+}
 
 template<UnsignedInt dimensions> Image<dimensions>::Image(Image<dimensions>&& other) noexcept: _storage{Utility::move(other._storage)}, _format{Utility::move(other._format)}, _formatExtra{Utility::move(other._formatExtra)}, _pixelSize{Utility::move(other._pixelSize)}, _flags{Utility::move(other._flags)}, _size{Utility::move(other._size)}, _data{Utility::move(other._data)} {
     other._size = {};
@@ -133,7 +139,6 @@ template<UnsignedInt dimensions> Containers::Array<char> CompressedImage<dimensi
     return data;
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 template class MAGNUM_EXPORT Image<1>;
 template class MAGNUM_EXPORT Image<2>;
 template class MAGNUM_EXPORT Image<3>;
@@ -141,6 +146,5 @@ template class MAGNUM_EXPORT Image<3>;
 template class MAGNUM_EXPORT CompressedImage<1>;
 template class MAGNUM_EXPORT CompressedImage<2>;
 template class MAGNUM_EXPORT CompressedImage<3>;
-#endif
 
 }

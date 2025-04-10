@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -26,7 +27,7 @@
 */
 
 /** @file
- * @brief Function @ref Magnum::SceneTools::copy()
+ * @brief Function @ref Magnum::SceneTools::copy(), @ref Magnum::SceneTools::reference(), @ref Magnum::SceneTools::mutableReference()
  * @m_since_latest
  */
 
@@ -47,7 +48,7 @@ through unchanged, the data layout isn't changed in any way. The resulting
 @ref Trade::DataFlag::Mutable.
 @see @ref copy(Trade::SceneData&&)
 */
-MAGNUM_SCENETOOLS_EXPORT Trade::SceneData copy(const Trade::SceneData& material);
+MAGNUM_SCENETOOLS_EXPORT Trade::SceneData copy(const Trade::SceneData& scene);
 
 /**
 @brief Make a scene with owned data
@@ -60,7 +61,30 @@ allocates a copy of @ref Trade::SceneData::data() or
 ownership. The resulting data are always owned and mutable, the data layout
 isn't changed in any way.
 */
-MAGNUM_SCENETOOLS_EXPORT Trade::SceneData copy(Trade::SceneData&& material);
+MAGNUM_SCENETOOLS_EXPORT Trade::SceneData copy(Trade::SceneData&& scene);
+
+/**
+@brief Create an immutable reference on a @ref Trade::SceneData
+@m_since_latest
+
+The returned instance has empty @ref Trade::SceneData::dataFlags() and
+references field data from the @p scene as well. The function performs no
+allocation or data copy. Use @ref copy() for an inverse operation.
+@see @ref mutableReference()
+*/
+MAGNUM_SCENETOOLS_EXPORT Trade::SceneData reference(const Trade::SceneData& scene);
+
+/**
+@brief Create a mutable reference on a @ref Trade::SceneData
+@m_since{2020,06}
+
+The returned instance has @ref Trade::SceneData::dataFlags() set to
+@ref Trade::DataFlag::Mutable. The function performs no allocation or data
+copy. Use @ref copy() for an inverse operation. Expects that @p scene is
+mutable.
+@see @ref reference()
+*/
+MAGNUM_SCENETOOLS_EXPORT Trade::SceneData mutableReference(Trade::SceneData& scene);
 
 }}
 

@@ -15,10 +15,17 @@ executors:
   ubuntu-18_04:
     docker:
     - image: ubuntu:bionic-20220427
-  # Anything below 12.5.1 is deprecated as of August 2023
-  xcode-12_5:
+  # Used by the ThreadSanitizer build. Cannot be a Docker because we need to
+  # disable ASLR which can only be done with a real VM.
+  ubuntu-20_04:
+    machine:
+      image: ubuntu-2004:2024.11.1
+  # Anything below 13.4.1 (and all x86 variants) are deprecated as of June 28th
+  # 2024
+  xcode-13_4:
     macos:
-      xcode: 12.5.1
+      xcode: 13.4.1
+    resource_class: macos.m1.medium.gen1
   emscripten1:
     docker:
     # 1.39.0 is the oldest on Docker. Anything before 1.39.2 is useless as emar
@@ -36,19 +43,24 @@ executors:
     # using some newer version. 2.0.18 to 2.0.24 then fails due to an
     # unresolved malloc dependency of glGetString() (!!!), in 2.0.25 it
     # mysteriously disappears. See https://github.com/mosra/magnum/issues/507.
-    - image: emscripten/emsdk:2.0.25
+    # 2.0.27 is then the first that adds timestamps to events, which are needed
+    # internally by touch events.
+    - image: emscripten/emsdk:2.0.27
   android-29:
     machine:
-      image: android:202102-01
+      image: android:2021.10.1
   arm64:
     machine:
-      image: ubuntu-2004:202101-01
+      image: ubuntu-2004:2023.07.1
     resource_class: arm.medium
 
 commands:
   install-base-linux:
     parameters:
       extra:
+        type: string
+        default: ""
+      sudo:
         type: string
         default: ""
     steps:
@@ -58,24 +70,9 @@ commands:
         name: Update apt and install base packages
         # Git is needed always for cloning Corrade
         command: |
-          apt update
+          << parameters.sudo >> apt update
           if [[ "$CMAKE_CXX_FLAGS" == *"--coverage"* ]]; then export LCOV_PACKAGES="lcov curl"; fi
-          # libidn11 needed by CMake
-          apt install -y git ninja-build libidn11 $LCOV_PACKAGES << parameters.extra >>
-
-  install-base-linux-arm64:
-    parameters:
-      extra:
-        type: string
-        default: ""
-    steps:
-    - run:
-        name: Update apt and install base packages
-        # Compared to Docker images this needs sudo
-        command: |
-          sudo apt update
-          if [[ "$CMAKE_CXX_FLAGS" == *"--coverage"* ]]; then export LCOV_PACKAGES="lcov curl"; fi
-          sudo apt install -y ninja-build gcc cmake $LCOV_PACKAGES << parameters.extra >>
+          << parameters.sudo >> apt install -y git ninja-build $LCOV_PACKAGES << parameters.extra >>
 
   # TODO this might get resolved with 1.11.1:
   #   https://github.com/ninja-build/ninja/pull/1827
@@ -146,35 +143,68 @@ commands:
   # embedded toolchains still use it, for Clang we just pick the version
   # available in the oldest supported distro.
   install-clang:
+    parameters:
+      sudo:
+        type: string
+        default: ""
+      symbolizer-link:
+        type: boolean
+        default: true
     steps:
     - run:
-        # For some reason, CMake needs a working C compiler, so provice CC as
+        # For some reason, CMake needs a working C compiler, so provide CC as
         # well for the case when default gcc isn't installed.
-        #
-        # The llvm-symbolizer link needs to be set in order to have usable
-        # symbols in the output. This affects suppressions as well, meaning
-        # they won't work if the symbols are not resolvable. It's not enough to
-        # just `export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer-6.0`
-        # because it then complains that
-        #
-        #   External symbolizer path is set to '/usr/bin/llvm-symbolizer-6.0'
-        #   which isn't a known symbolizer. Please set the path to the
-        #   llvm-symbolizer binary or other known tool.
-        #
-        # Probably because because it detects tool type based on the filename?
-        # Ugh.
         name: Install Clang
         command: |
-          apt install -y clang
+          << parameters.sudo >> apt install -y clang
           echo 'export CC=clang' >> $BASH_ENV
           echo 'export CXX=clang++' >> $BASH_ENV
-          ls -l /usr/bin/llvm-symbolizer-6.0
-          ln -s /usr/bin/llvm-symbolizer{-6.0,}
+    # With Clang 6 on 18.04, the llvm-symbolizer link needs to be set in order
+    # to have usable symbols in the output. This affects suppressions as well,
+    # meaning they won't work if the symbols are not resolvable. It's not
+    # enough to just `export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer-6.0`
+    # because it then complains that
+    #
+    #   External symbolizer path is set to '/usr/bin/llvm-symbolizer-6.0' which
+    #   isn't a known symbolizer. Please set the path to the llvm-symbolizer
+    #   binary or other known tool.
+    #
+    # Probably because because it detects tool type based on the filename? Ugh.
+    - when:
+        condition: << parameters.symbolizer-link >>
+        steps:
+        - run:
+            name: Create /usr/bin/llvm-symbolizer symlink
+            command: |
+              ls -l /usr/bin/llvm-symbolizer-6.0
+              ln -s /usr/bin/llvm-symbolizer{-6.0,}
+
+  install-nodejs:
+    parameters:
+      version:
+        type: string
+        default: "18"
+    steps:
+    - run:
+        name: Install Node.js << parameters.version >>
+        # cd'ing to the home directory as otherwise it'd download into
+        # /root/project and a checkout would then fail because it's not empty.
+        # Also emsdk forces the PATH to prefer its own nodejs, so explicitly
+        # call /usr/bin/node.
+        command: |
+          cd ~
+          curl -fsSL https://deb.nodesource.com/setup_<< parameters.version >>.x -o nodesource_setup.sh
+          bash nodesource_setup.sh
+          apt-get install -y nodejs
+          /usr/bin/node -v
 
   install-cmake:
     parameters:
       version:
         type: string
+      suffix:
+        type: string
+        default: Linux
       sudo:
         type: string
         default: ""
@@ -186,8 +216,8 @@ commands:
           version_short="${version_short%.*}"
           << parameters.sudo >> apt install -y wget
           mkdir -p $HOME/cmake && cd $HOME/cmake
-          wget -nc --no-check-certificate https://cmake.org/files/v$version_short/cmake-<< parameters.version >>-Linux-x86_64.tar.gz
-          tar --strip-components=1 -xzf cmake-<< parameters.version >>-Linux-x86_64.tar.gz
+          wget -nc --no-check-certificate https://cmake.org/files/v$version_short/cmake-<< parameters.version >>-<< parameters.suffix >>-x86_64.tar.gz
+          tar --strip-components=1 -xzf cmake-<< parameters.version >>-<< parameters.suffix >>-x86_64.tar.gz
           echo 'export PATH=$HOME/cmake/bin:$PATH' >> $BASH_ENV
           source $BASH_ENV
           cmake --version | grep << parameters.version >>
@@ -205,8 +235,8 @@ commands:
         # you could just download the artifacts directly, right? RIGHT?
         command: |
           mkdir -p $HOME/swiftshader && cd $HOME/swiftshader
-          wget https://ci.magnum.graphics/swiftshader-gles-r5464.a6940c8e6e-<< parameters.build >>.zip
-          unzip swiftshader-gles-r5464.a6940c8e6e-<< parameters.build >>.zip
+          wget https://ci.magnum.graphics/swiftshader-gles-r5904.14dcbed947-<< parameters.build >>.zip
+          unzip swiftshader-gles-r5904.14dcbed947-<< parameters.build >>.zip
 
   install-swiftshader-vulkan:
     parameters:
@@ -220,8 +250,8 @@ commands:
         # you could just download the artifacts directly, right? RIGHT?
         command: |
           mkdir -p $HOME/swiftshader && cd $HOME/swiftshader
-          wget https://ci.magnum.graphics/swiftshader-vulkan-r5464.a6940c8e6e-<< parameters.build >>.zip
-          unzip swiftshader-vulkan-r5464.a6940c8e6e-<< parameters.build >>.zip
+          wget https://ci.magnum.graphics/swiftshader-vulkan-r5904.14dcbed947-<< parameters.build >>.zip
+          unzip swiftshader-vulkan-r5904.14dcbed947-<< parameters.build >>.zip
 
   install-vulkan-loader:
     parameters:
@@ -264,7 +294,8 @@ commands:
     steps:
     - run:
         name: Collect code coverage
-        # Keep in sync with PKBUILD-coverage and appveyor-lcov.sh, please
+        # Keep in sync with PKBUILD-coverage and appveyor-desktop-{,mingw}.bat,
+        # please
         command: |
           lcov $LCOV_EXTRA_OPTS --directory . --capture --output-file coverage.info > /dev/null
           lcov $LCOV_EXTRA_OPTS --extract coverage.info "*/src/Magnum*/*" --output-file coverage.info > /dev/null
@@ -310,8 +341,9 @@ jobs:
         -DMAGNUM_WITH_GLXCONTEXT=ON
         -DMAGNUM_WITH_EGLCONTEXT=ON
     steps:
+    # libidn11 needed by CMake
     - install-base-linux:
-        extra: libgl1-mesa-dev libsdl2-dev libglfw3-dev libopenal-dev libvulkan-dev
+        extra: libidn11 libgl1-mesa-dev libsdl2-dev libglfw3-dev libopenal-dev libvulkan-dev
     # In this case it gets stuck even with 16 jobs. Only on GCC, usually when
     # the huge TradeAbstractImporterTest / TradeMaterialDataTest get involved.
     # TODO: revisit when we get rid of more STL / deprecated includes
@@ -339,9 +371,10 @@ jobs:
         -DMAGNUM_WITH_EGLCONTEXT=ON
     steps:
     # Not installing the old GCC 4.8 and CMake 3.5 to speed up. These are
-    # tested more than enough on other jobs.
-    - install-base-linux-arm64:
-        extra: libgl1-mesa-dev libsdl2-dev libglfw3-dev libopenal-dev libvulkan-dev
+    # tested more than enough on other jobs. Machine executors need sudo.
+    - install-base-linux:
+        extra: gcc cmake libgl1-mesa-dev libsdl2-dev libglfw3-dev libopenal-dev libvulkan-dev
+        sudo: sudo
     - setup-null-openal-driver
     - build:
         script: unix-desktop.sh
@@ -356,11 +389,11 @@ jobs:
     steps:
     - install-base-linux:
         extra: cmake libsdl2-dev libglfw3-dev libvulkan-dev wget unzip
-    # In this case it gets stuck even with 24 jobs. Only on GCC, usually when
+    # In this case it gets stuck even with 20 jobs. Only on GCC, usually when
     # the huge TradeAbstractImporterTest / TradeMaterialDataTest get involved.
     # TODO: revisit when we get rid of more STL / deprecated includes
     - cap-ninja-jobs:
-        count: 20
+        count: 16
     - install-gcc-4_8
     - install-swiftshader-vulkan:
         build: ubuntu-18.04
@@ -384,8 +417,9 @@ jobs:
       # STUPID yml interprets unquoted ON as a boolean
       TARGET_GLES2: "ON"
     steps:
+    # libidn11 needed by CMake
     - install-base-linux:
-        extra: libsdl2-dev libglfw3-dev wget unzip
+        extra: libidn11 libsdl2-dev libglfw3-dev wget unzip
     # In this case it gets stuck even with 16 jobs. Only on GCC, usually when
     # the huge TradeAbstractImporterTest / TradeMaterialDataTest get involved.
     # TODO: revisit when we get rid of more STL / deprecated includes
@@ -395,7 +429,7 @@ jobs:
     - install-cmake:
         version: "3.5.2"
     - install-swiftshader-gles:
-        build: ubuntu-16.04
+        build: ubuntu-18.04
     - build:
         script: unix-desktop-gles.sh
     - lcov
@@ -416,8 +450,9 @@ jobs:
       # STUPID yml interprets unquoted OFF as a boolean
       TARGET_GLES2: "OFF"
     steps:
+    # libidn11 needed by CMake
     - install-base-linux:
-        extra: libsdl2-dev libglfw3-dev wget unzip
+        extra: libidn11 libsdl2-dev libglfw3-dev wget unzip
     # In this case it gets stuck even with 16 jobs. Only on GCC, usually when
     # the huge TradeAbstractImporterTest / TradeMaterialDataTest get involved.
     # TODO: revisit when we get rid of more STL / deprecated includes
@@ -427,7 +462,7 @@ jobs:
     - install-cmake:
         version: "3.5.2"
     - install-swiftshader-gles:
-        build: ubuntu-16.04
+        build: ubuntu-18.04
     - build:
         script: unix-desktop-gles.sh
     - lcov
@@ -455,8 +490,9 @@ jobs:
       LCOV_EXTRA_OPTS: --gcov-tool /usr/bin/gcov-4.8
       CONFIGURATION: Debug
     steps:
+    # libidn11 needed by CMake
     - install-base-linux:
-        extra: libgl1-mesa-dev libsdl2-dev libglfw3-dev libopenal-dev libvulkan-dev
+        extra: libidn11 libgl1-mesa-dev libsdl2-dev libglfw3-dev libopenal-dev libvulkan-dev
     # In this case it gets stuck even with 16 jobs, usually when the huge
     # TradeAbstractImporterTest / TradeMaterialDataTest / TradeSceneDataTest
     # get involved.
@@ -486,8 +522,9 @@ jobs:
         -DMAGNUM_WITH_GLXCONTEXT=ON
         -DMAGNUM_WITH_EGLCONTEXT=ON
     steps:
+    # libidn11 needed by CMake
     - install-base-linux:
-        extra: libgl1-mesa-dev libsdl2-dev libglfw3-dev libopenal-dev libvulkan-dev
+        extra: libidn11 libgl1-mesa-dev libsdl2-dev libglfw3-dev libopenal-dev libvulkan-dev
     # In this case it gets stuck even with 20 jobs, usually when the huge
     # TradeAbstractImporterTest / TradeMaterialDataTest / TradeSceneDataTest
     # get involved.
@@ -518,8 +555,10 @@ jobs:
         -DMAGNUM_WITH_GLXCONTEXT=ON
         -DMAGNUM_WITH_EGLCONTEXT=ON
     steps:
+    # libidn11 needed by CMake
     - install-base-linux:
-        extra: libgl1-mesa-dev libegl1-mesa-dev libopenal-dev libvulkan-dev
+        extra: libidn11 libgl1-mesa-dev libegl1-mesa-dev libopenal-dev libvulkan-dev
+    - cap-ninja-jobs
     - install-clang
     - install-cmake:
         version: "3.5.2"
@@ -527,8 +566,21 @@ jobs:
     - build:
         script: unix-desktop.sh
 
+  # https://github.com/google/sanitizers/issues/1716 ; started happening on
+  # 2024-11-08 as CircleCI uses a base system with kernel 6.5 instead of 5.15
+  # for Docker images:
+  #   https://discuss.circleci.com/t/docker-executor-infrastructure-upgrade/52282
+  # This manifests when running corrade-rc already:
+  #   ThreadSanitizer: unexpected memory mapping 0x7e2f226ae000-0x7e2f22b00000
+  # Unfortunately, with Docker images, none of the suggested
+  #   sysctl vm.mmap_rnd_bits=28
+  #   echo 0 | tee /proc/sys/kernel/randomize_va_space
+  # works, complaining about read-only filesystem. The only way to set those is
+  # with a real VM instead of Docker, which is what's done here. It also means
+  # it's not possible to test on 18.04 anymore as those VMs are no longer
+  # provided.
   linux-threadsanitizer:
-    executor: ubuntu-18_04
+    executor: ubuntu-20_04
     environment:
       # STUPID yml interprets unquoted OFF as a boolean. Applications don't
       # have any automated tests, so building them for sanitizers doesn't make
@@ -545,16 +597,26 @@ jobs:
         -DMAGNUM_WITH_EGLCONTEXT=ON
     steps:
     - install-base-linux:
-        extra: libgl1-mesa-dev libegl1-mesa-dev libopenal-dev libvulkan-dev
-    - install-clang
-    - install-cmake:
-        version: "3.5.2"
+        extra: cmake libgl1-mesa-dev libegl1-mesa-dev libopenal-dev libvulkan-dev
+        sudo: sudo
+    - cap-ninja-jobs
+    - install-clang:
+        sudo: sudo
+        symbolizer-link: false
     - setup-null-openal-driver
+    - run:
+        # Right now (2025-01-17) it's already set to 28 so nothing needs to be
+        # changed. This is for the future when it may break again, and yes,
+        # setting it explicitly to 32 causes the above error again.
+        name: Ensure ASLR is compatible with ThreadSanitizer
+        command: |
+          sudo sysctl vm.mmap_rnd_bits
+          sudo sysctl vm.mmap_rnd_bits=28
     - build:
         script: unix-desktop.sh
 
   macos-gl:
-    executor: xcode-12_5
+    executor: xcode-13_4
     environment:
       CMAKE_CXX_FLAGS: --coverage
       CONFIGURATION: Debug
@@ -569,7 +631,7 @@ jobs:
     - lcov
 
   macos-gles3:
-    executor: xcode-12_5
+    executor: xcode-13_4
     environment:
       CMAKE_CXX_FLAGS: --coverage
       CONFIGURATION: Debug
@@ -582,13 +644,13 @@ jobs:
     - install-base-macos:
         extra: sdl2 glfw wget
     - install-swiftshader-gles:
-        build: macos-10.15
+        build: macos12-arm64
     - build:
         script: unix-desktop-gles.sh
     - lcov
 
   macos-vulkan:
-    executor: xcode-12_5
+    executor: xcode-13_4
     environment:
       CMAKE_CXX_FLAGS: --coverage
       CONFIGURATION: Debug
@@ -596,15 +658,15 @@ jobs:
     - install-base-macos:
         extra: sdl2 glfw wget
     - install-swiftshader-vulkan:
-        build: macos-10.15
+        build: macos12-arm64
     - install-vulkan-loader:
-        build: macos-10.15
+        build: macos12-x64-arm64
     - build:
         script: unix-desktop-vulkan.sh
     - lcov
 
   macos-static:
-    executor: xcode-12_5
+    executor: xcode-13_4
     environment:
       # STUPID yml interprets unquoted ON as a boolean
       BUILD_STATIC: "ON"
@@ -630,7 +692,9 @@ jobs:
       TARGET_GLES2: "ON"
     steps:
     - install-base-linux
-    - cap-ninja-jobs
+    # With a Debug build, 16+ is causing OOMs. Release was fine with 24.
+    - cap-ninja-jobs:
+        count: 8
     - build:
         script: emscripten.sh
 
@@ -639,9 +703,17 @@ jobs:
     environment:
       # STUPID yml interprets unquoted OFF as a boolean
       TARGET_GLES2: "OFF"
+      # emsdk forces the PATH to prefer its own nodejs, so explicitly force
+      # /usr/bin/node to be used by CMake
+      EXTRA_OPTS: >
+        -DNODEJS_EXECUTABLE=/usr/bin/node
     steps:
-    - install-base-linux
-    - cap-ninja-jobs
+    - install-base-linux:
+        extra: curl
+    - install-nodejs
+    # With a Debug build, 8+ is causing OOMs. Release was fine with 24.
+    - cap-ninja-jobs:
+        count: 4
     - build:
         script: emscripten.sh
 
@@ -652,10 +724,12 @@ jobs:
       TARGET_GLES2: "ON"
     steps:
     - install-base-android
-    # We need ctest --timeout for flaky adb push, which is since 3.17. The
-    # image had 3.16.3 by default, so it's just a small jump.
+    # CMake older than 3.20 doesn't work with NDK r22+ which removed some
+    # deprecated paths. NDK r21 is only on deprecated CircleCI Android images
+    # now.
     - install-cmake:
-        version: "3.17.5"
+        version: "3.20.6"
+        suffix: linux
         sudo: sudo
     - build:
         script: android-x86-gles.sh
@@ -667,10 +741,12 @@ jobs:
       TARGET_GLES2: "OFF"
     steps:
     - install-base-android
-    # We need ctest --timeout for flaky adb push, which is since 3.17. The
-    # image had 3.16.3 by default, so it's just a small jump.
+    # CMake older than 3.20 doesn't work with NDK r22+ which removed some
+    # deprecated paths. NDK r21 is only on deprecated CircleCI Android images
+    # now.
     - install-cmake:
-        version: "3.17.5"
+        version: "3.20.6"
+        suffix: linux
         sudo: sudo
     - build:
         script: android-x86-gles.sh
@@ -679,16 +755,18 @@ jobs:
     executor: android-29
     steps:
     - install-base-android
-    # We need ctest --timeout for flaky adb push, which is since 3.17. The
-    # image had 3.16.3 by default, so it's just a small jump.
+    # CMake older than 3.20 doesn't work with NDK r22+ which removed some
+    # deprecated paths. NDK r21 is only on deprecated CircleCI Android images
+    # now.
     - install-cmake:
-        version: "3.17.5"
+        version: "3.20.6"
+        suffix: linux
         sudo: sudo
     - build:
         script: android-x86-vulkan.sh
 
   ios-gles3:
-    executor: xcode-12_5
+    executor: xcode-13_4
     environment:
       # STUPID yml interprets unquoted ON as a boolean
       TARGET_GLES2: "OFF"
@@ -741,6 +819,7 @@ workflows:
         - linux-sanitizers
     - macos-gl:
         requires:
+        - linux-arm64
         - linux-gl
         - linux-nondeprecated
     - macos-vulkan:
@@ -782,4 +861,3 @@ workflows:
         requires:
         - macos-gles3
         - macos-static
-        - linux-arm64

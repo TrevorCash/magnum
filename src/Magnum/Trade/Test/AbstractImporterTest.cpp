@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,16 +24,14 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <string> /** @todo remove once file callbacks are std::string-free */
 #include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/String.h>
-#include <Corrade/Containers/StringStl.h> /** @todo remove once Debug is stream-free */
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
 #include <Corrade/TestSuite/Compare/String.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/PixelFormat.h"
@@ -55,6 +54,7 @@
 #include <Corrade/Containers/ArrayTuple.h>
 #include <Corrade/TestSuite/Compare/Container.h>
 #include <Corrade/Utility/Algorithms.h>
+#include <Corrade/Utility/DebugStl.h>
 
 #define _MAGNUM_NO_DEPRECATED_MESHDATA /* So it doesn't yell here */
 #define _MAGNUM_NO_DEPRECATED_OBJECTDATA /* So it doesn't yell here */
@@ -783,12 +783,12 @@ void AbstractImporterTest::setFlagsFileOpened() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.setFlags(ImporterFlag::Verbose);
     importer.addFlags(ImporterFlag::Verbose);
     importer.clearFlags(ImporterFlag::Verbose);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::setFlags(): can't be set while a file is opened\n"
         /* These all call into setFlags(), so the same assert is reused */
         "Trade::AbstractImporter::setFlags(): can't be set while a file is opened\n"
@@ -848,10 +848,10 @@ void AbstractImporterTest::openDataFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.openData(nullptr));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 #ifdef MAGNUM_BUILD_DEPRECATED
@@ -921,10 +921,10 @@ void AbstractImporterTest::openMemoryFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.openMemory(nullptr));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::openFile() {
@@ -959,10 +959,10 @@ void AbstractImporterTest::openFileFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.openFile({}));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::openFileAsData() {
@@ -1006,13 +1006,13 @@ void AbstractImporterTest::openFileAsDataNotFound() {
         bool _opened = false;
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_VERIFY(!importer.openFile("nonexistent.bin"));
     CORRADE_VERIFY(!importer.isOpened());
     /* There's an error message from Path::read() before */
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         "\nTrade::AbstractImporter::openFile(): cannot open file nonexistent.bin\n",
         TestSuite::Compare::StringHasSuffix);
 }
@@ -1026,7 +1026,7 @@ void AbstractImporterTest::openState() {
         void doClose() override { _opened = false; }
 
         void doOpenState(const void* state, Containers::StringView filePath) override {
-            CORRADE_COMPARE(state, reinterpret_cast<const void*>(0xbadcafe));
+            CORRADE_COMPARE(state, reinterpret_cast<const void*>(std::size_t{0xbadcafe}));
             CORRADE_COMPARE(filePath, "yello/foo/");
             _opened = true;
         }
@@ -1035,7 +1035,7 @@ void AbstractImporterTest::openState() {
     } importer;
 
     CORRADE_VERIFY(!importer.isOpened());
-    CORRADE_VERIFY(importer.openState(reinterpret_cast<const void*>(0xbadcafe), "yello/foo/"));
+    CORRADE_VERIFY(importer.openState(reinterpret_cast<const void*>(std::size_t{0xbadcafe}), "yello/foo/"));
     CORRADE_VERIFY(importer.isOpened());
 
     importer.close();
@@ -1054,10 +1054,10 @@ void AbstractImporterTest::openStateFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.openState({}));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::openFileNotImplemented() {
@@ -1069,11 +1069,11 @@ void AbstractImporterTest::openFileNotImplemented() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_VERIFY(!importer.openFile("file.dat"));
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::openFile(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::openFile(): not implemented\n");
 }
 
 void AbstractImporterTest::openDataNotSupported() {
@@ -1085,11 +1085,11 @@ void AbstractImporterTest::openDataNotSupported() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_VERIFY(!importer.openData(nullptr));
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::openData(): feature not supported\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::openData(): feature not supported\n");
 }
 
 void AbstractImporterTest::openDataNotImplemented() {
@@ -1101,11 +1101,11 @@ void AbstractImporterTest::openDataNotImplemented() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_VERIFY(!importer.openData(nullptr));
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::openData(): feature advertised but not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::openData(): feature advertised but not implemented\n");
 }
 
 void AbstractImporterTest::openStateNotSupported() {
@@ -1117,11 +1117,11 @@ void AbstractImporterTest::openStateNotSupported() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_VERIFY(!importer.openState(nullptr));
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::openState(): feature not supported\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::openState(): feature not supported\n");
 }
 
 void AbstractImporterTest::openStateNotImplemented() {
@@ -1133,11 +1133,11 @@ void AbstractImporterTest::openStateNotImplemented() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_VERIFY(!importer.openState(nullptr));
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::openState(): feature advertised but not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::openState(): feature advertised but not implemented\n");
 }
 
 void AbstractImporterTest::setFileCallback() {
@@ -1241,12 +1241,12 @@ void AbstractImporterTest::setFileCallbackFileOpened() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.setFileCallback([](const std::string&, InputFileCallbackPolicy, void*) {
         return Containers::Optional<Containers::ArrayView<const char>>{};
     });
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::setFileCallback(): can't be set while a file is opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::setFileCallback(): can't be set while a file is opened\n");
 }
 
 void AbstractImporterTest::setFileCallbackNotImplemented() {
@@ -1275,14 +1275,14 @@ void AbstractImporterTest::setFileCallbackNotSupported() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     int a;
     importer.setFileCallback([](const std::string&, InputFileCallbackPolicy, void*) {
         return Containers::Optional<Containers::ArrayView<const char>>{};
     }, &a);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::setFileCallback(): importer supports neither loading from data nor via callbacks, callbacks can't be used\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::setFileCallback(): importer supports neither loading from data nor via callbacks, callbacks can't be used\n");
 }
 
 void AbstractImporterTest::setFileCallbackOpenFileDirectly() {
@@ -1392,12 +1392,12 @@ void AbstractImporterTest::setFileCallbackOpenFileThroughBaseImplementationFaile
         return {};
     });
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_VERIFY(!importer.openFile("file.dat"));
     CORRADE_VERIFY(importer.openFileCalled);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::openFile(): cannot open file file.dat\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::openFile(): cannot open file file.dat\n");
 }
 
 void AbstractImporterTest::setFileCallbackOpenFileAsData() {
@@ -1468,12 +1468,12 @@ void AbstractImporterTest::setFileCallbackOpenFileAsDataFailed() {
         return Containers::Optional<Containers::ArrayView<const char>>{};
     });
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_VERIFY(!importer.openFile("file.dat"));
     CORRADE_VERIFY(!importer.openFileCalled);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::openFile(): cannot open file file.dat\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::openFile(): cannot open file file.dat\n");
 }
 
 void AbstractImporterTest::thingCountNotImplemented() {
@@ -1510,7 +1510,7 @@ void AbstractImporterTest::thingCountNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.sceneCount();
@@ -1534,7 +1534,7 @@ void AbstractImporterTest::thingCountNoFile() {
     importer.image3DCount();
     importer.image3DLevelCount(7);
 
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::sceneCount(): no file opened\n"
         "Trade::AbstractImporter::objectCount(): no file opened\n"
         "Trade::AbstractImporter::animationCount(): no file opened\n"
@@ -1591,7 +1591,7 @@ void AbstractImporterTest::thingForNameNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.sceneForName("");
@@ -1611,7 +1611,7 @@ void AbstractImporterTest::thingForNameNoFile() {
     importer.image2DForName("");
     importer.image3DForName("");
 
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::sceneForName(): no file opened\n"
         "Trade::AbstractImporter::objectForName(): no file opened\n"
         "Trade::AbstractImporter::animationForName(): no file opened\n"
@@ -1656,7 +1656,7 @@ void AbstractImporterTest::thingByNameNotFound() {
         UnsignedInt doImage3DCount() const override { return 12; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     {
         Containers::Optional<Error> redirectError;
         if(data.checkMessage) redirectError.emplace(&out);
@@ -1679,7 +1679,7 @@ void AbstractImporterTest::thingByNameNotFound() {
     }
 
     if(data.checkMessage) {
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
             "Trade::AbstractImporter::scene(): scene foobar not found among 1 entries\n"
             "Trade::AbstractImporter::animation(): animation foobar not found among 2 entries\n"
             "Trade::AbstractImporter::light(): light foobar not found among 3 entries\n"
@@ -1707,7 +1707,7 @@ void AbstractImporterTest::thingNameNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.sceneName(42);
@@ -1726,7 +1726,7 @@ void AbstractImporterTest::thingNameNoFile() {
     importer.image2DName(42);
     importer.image3DName(42);
 
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::sceneName(): no file opened\n"
         "Trade::AbstractImporter::animationName(): no file opened\n"
         "Trade::AbstractImporter::lightName(): no file opened\n"
@@ -1753,7 +1753,7 @@ void AbstractImporterTest::thingNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.defaultScene();
@@ -1787,7 +1787,7 @@ void AbstractImporterTest::thingNoFile() {
 
     importer.importerState();
 
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::defaultScene(): no file opened\n"
         "Trade::AbstractImporter::scene(): no file opened\n"
         "Trade::AbstractImporter::scene(): no file opened\n"
@@ -1855,10 +1855,10 @@ void AbstractImporterTest::defaultSceneOutOfRange() {
         Int doDefaultScene() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.defaultScene();
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::defaultScene(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::defaultScene(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 int state;
@@ -1913,10 +1913,10 @@ void AbstractImporterTest::sceneFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.scene(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::object() {
@@ -1953,10 +1953,10 @@ void AbstractImporterTest::sceneForNameOutOfRange() {
         Int doSceneForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.sceneForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::sceneForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::sceneForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::objectForNameOutOfRange() {
@@ -1971,10 +1971,10 @@ void AbstractImporterTest::objectForNameOutOfRange() {
         Long doObjectForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.objectForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::objectForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::objectForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 #ifdef MAGNUM_BUILD_DEPRECATED
@@ -2238,10 +2238,10 @@ void AbstractImporterTest::sceneDeprecatedFallback2D() {
     } {
         /* This one is not contained in any parent hierarchy, so it fails to
            import */
-        std::ostringstream out;
+        Containers::String out;
         Error redirectError{&out};
         CORRADE_VERIFY(!importer.object2D(6));
-        CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object2D(): object 6 not found in any 2D scene hierarchy\n");
+        CORRADE_COMPARE(out, "Trade::AbstractImporter::object2D(): object 6 not found in any 2D scene hierarchy\n");
     }
     CORRADE_IGNORE_DEPRECATED_POP
 }
@@ -2513,10 +2513,10 @@ void AbstractImporterTest::sceneDeprecatedFallback3D() {
     } {
         /* This one is not contained in any parent hierarchy, so it fails to
            import */
-        std::ostringstream out;
+        Containers::String out;
         Error redirectError{&out};
         CORRADE_VERIFY(!importer.object3D(6));
-        CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object3D(): object 6 not found in any 3D scene hierarchy\n");
+        CORRADE_COMPARE(out, "Trade::AbstractImporter::object3D(): object 6 not found in any 3D scene hierarchy\n");
     }
     CORRADE_IGNORE_DEPRECATED_POP
 }
@@ -2577,7 +2577,7 @@ void AbstractImporterTest::sceneDeprecatedFallbackParentless2D() {
         TestSuite::Compare::Container);
     CORRADE_IGNORE_DEPRECATED_POP
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_IGNORE_DEPRECATED_PUSH
     CORRADE_VERIFY(!importer.object2D(0));
@@ -2587,7 +2587,7 @@ void AbstractImporterTest::sceneDeprecatedFallbackParentless2D() {
     CORRADE_VERIFY(!importer.object2D(4));
     CORRADE_VERIFY(!importer.object2D(5));
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::object2D(): object 0 not found in any 2D scene hierarchy\n"
         "Trade::AbstractImporter::object2D(): object 1 not found in any 2D scene hierarchy\n"
         "Trade::AbstractImporter::object2D(): object 2 not found in any 2D scene hierarchy\n"
@@ -2652,7 +2652,7 @@ void AbstractImporterTest::sceneDeprecatedFallbackParentless3D() {
         TestSuite::Compare::Container);
     CORRADE_IGNORE_DEPRECATED_POP
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_IGNORE_DEPRECATED_PUSH
     CORRADE_VERIFY(!importer.object3D(0));
@@ -2662,7 +2662,7 @@ void AbstractImporterTest::sceneDeprecatedFallbackParentless3D() {
     CORRADE_VERIFY(!importer.object3D(4));
     CORRADE_VERIFY(!importer.object3D(5));
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::object3D(): object 0 not found in any 3D scene hierarchy\n"
         "Trade::AbstractImporter::object3D(): object 1 not found in any 3D scene hierarchy\n"
         "Trade::AbstractImporter::object3D(): object 2 not found in any 3D scene hierarchy\n"
@@ -3577,11 +3577,11 @@ void AbstractImporterTest::sceneNameOutOfRange() {
         UnsignedInt doSceneCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.sceneName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::sceneName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::sceneName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::objectNameOutOfRange() {
@@ -3595,11 +3595,11 @@ void AbstractImporterTest::objectNameOutOfRange() {
         UnsignedLong doObjectCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.objectName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::objectName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::objectName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::sceneNameCustomDeleter() {
@@ -3616,10 +3616,10 @@ void AbstractImporterTest::sceneNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.sceneName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::sceneName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::sceneName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::objectNameCustomDeleter() {
@@ -3636,10 +3636,10 @@ void AbstractImporterTest::objectNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.objectName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::objectName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::objectName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::sceneNotImplemented() {
@@ -3653,11 +3653,11 @@ void AbstractImporterTest::sceneNotImplemented() {
         UnsignedInt doSceneCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.scene(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::scene(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::scene(): not implemented\n");
 }
 
 void AbstractImporterTest::sceneOutOfRange() {
@@ -3671,11 +3671,11 @@ void AbstractImporterTest::sceneOutOfRange() {
         UnsignedInt doSceneCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.scene(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::scene(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::scene(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::sceneNonOwningDeleters() {
@@ -3722,12 +3722,12 @@ void AbstractImporterTest::sceneCustomDataDeleter() {
         char data[1];
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.scene(0);
     importer.scene("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::scene(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::scene(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -3749,12 +3749,12 @@ void AbstractImporterTest::sceneCustomFieldDataDeleter() {
         SceneFieldData parents{SceneField::Parent, SceneMappingType::UnsignedInt, nullptr, SceneFieldType::Int, nullptr};
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.scene(0);
     importer.scene("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::scene(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::scene(): implementation is not allowed to use a custom Array deleter\n"
     );
@@ -3805,11 +3805,11 @@ void AbstractImporterTest::sceneFieldNameNotCustom() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.sceneFieldForName("OctreeCell");
     importer.sceneFieldName(SceneField::Translation);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::sceneFieldForName(): implementation-returned Trade::SceneField::Translation is neither custom nor invalid\n"
         "Trade::AbstractImporter::sceneFieldName(): Trade::SceneField::Translation is not custom\n");
 }
@@ -3827,10 +3827,10 @@ void AbstractImporterTest::sceneFieldNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.sceneFieldName(sceneFieldCustom(0));
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::sceneFieldName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::sceneFieldName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::animation() {
@@ -3886,10 +3886,10 @@ void AbstractImporterTest::animationFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.animation(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::animationForNameOutOfRange() {
@@ -3904,10 +3904,10 @@ void AbstractImporterTest::animationForNameOutOfRange() {
         Int doAnimationForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.animationForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::animationForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::animationForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::animationNameNotImplemented() {
@@ -3933,11 +3933,11 @@ void AbstractImporterTest::animationNameOutOfRange() {
         UnsignedInt doAnimationCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.animationName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::animationName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::animationName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::animationNameCustomDeleter() {
@@ -3954,10 +3954,10 @@ void AbstractImporterTest::animationNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.animationName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::animationName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::animationName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::animationNotImplemented() {
@@ -3971,11 +3971,11 @@ void AbstractImporterTest::animationNotImplemented() {
         UnsignedInt doAnimationCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.animation(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::animation(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::animation(): not implemented\n");
 }
 
 void AbstractImporterTest::animationOutOfRange() {
@@ -3989,11 +3989,11 @@ void AbstractImporterTest::animationOutOfRange() {
         UnsignedInt doAnimationCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.animation(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::animation(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::animation(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::animationNonOwningDeleters() {
@@ -4052,12 +4052,12 @@ void AbstractImporterTest::animationCustomDataDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.animation(0);
     importer.animation("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::animation(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::animation(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -4077,12 +4077,12 @@ void AbstractImporterTest::animationCustomTrackDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.animation(0);
     importer.animation("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::animation(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::animation(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -4132,11 +4132,11 @@ void AbstractImporterTest::animationTrackTargetNameNotCustom() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.animationTrackTargetForName("visibility");
     importer.animationTrackTargetName(AnimationTrackTarget::Rotation2D);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::animationTrackTargetForName(): implementation-returned Trade::AnimationTrackTarget::Rotation2D is neither custom nor invalid\n"
         "Trade::AbstractImporter::animationTrackTargetName(): Trade::AnimationTrackTarget::Rotation2D is not custom\n");
 }
@@ -4154,10 +4154,10 @@ void AbstractImporterTest::animationTrackTargetNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.animationTrackTargetName(animationTrackTargetCustom(0));
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::animationTrackTargetName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::animationTrackTargetName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::light() {
@@ -4209,10 +4209,10 @@ void AbstractImporterTest::lightFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.light(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::lightForNameOutOfRange() {
@@ -4227,10 +4227,10 @@ void AbstractImporterTest::lightForNameOutOfRange() {
         Int doLightForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.lightForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::lightForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::lightForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::lightNameNotImplemented() {
@@ -4256,11 +4256,11 @@ void AbstractImporterTest::lightNameOutOfRange() {
         UnsignedInt doLightCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.lightName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::lightName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::lightName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::lightNameCustomDeleter() {
@@ -4277,10 +4277,10 @@ void AbstractImporterTest::lightNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.lightName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::lightName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::lightName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::lightNotImplemented() {
@@ -4294,11 +4294,11 @@ void AbstractImporterTest::lightNotImplemented() {
         UnsignedInt doLightCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.light(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::light(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::light(): not implemented\n");
 }
 
 void AbstractImporterTest::lightOutOfRange() {
@@ -4312,11 +4312,11 @@ void AbstractImporterTest::lightOutOfRange() {
         UnsignedInt doLightCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.light(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::light(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::light(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::camera() {
@@ -4368,10 +4368,10 @@ void AbstractImporterTest::cameraFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.camera(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::cameraForNameOutOfRange() {
@@ -4386,10 +4386,10 @@ void AbstractImporterTest::cameraForNameOutOfRange() {
         Int doCameraForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.cameraForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::cameraForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::cameraForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::cameraNameNotImplemented() {
@@ -4415,11 +4415,11 @@ void AbstractImporterTest::cameraNameOutOfRange() {
         UnsignedInt doCameraCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.cameraName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::cameraName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::cameraName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::cameraNameCustomDeleter() {
@@ -4436,10 +4436,10 @@ void AbstractImporterTest::cameraNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.cameraName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::cameraName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::cameraName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::cameraNotImplemented() {
@@ -4453,11 +4453,11 @@ void AbstractImporterTest::cameraNotImplemented() {
         UnsignedInt doCameraCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.camera(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::camera(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::camera(): not implemented\n");
 }
 
 void AbstractImporterTest::cameraOutOfRange() {
@@ -4471,11 +4471,11 @@ void AbstractImporterTest::cameraOutOfRange() {
         UnsignedInt doCameraCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.camera(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::camera(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::camera(): index 8 out of range for 8 entries\n");
 }
 
 #ifdef MAGNUM_BUILD_DEPRECATED
@@ -4540,13 +4540,13 @@ void AbstractImporterTest::object2DCountNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object2DCount();
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object2DCount(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object2DCount(): no file opened\n");
 }
 
 void AbstractImporterTest::object2DForNameNotImplemented() {
@@ -4570,13 +4570,13 @@ void AbstractImporterTest::object2DForNameNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object2DForName("");
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object2DForName(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object2DForName(): no file opened\n");
 }
 
 void AbstractImporterTest::object2DByNameNotFound() {
@@ -4591,7 +4591,7 @@ void AbstractImporterTest::object2DByNameNotFound() {
         UnsignedInt doObject2DCount() const override { return 5; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     {
         Containers::Optional<Error> redirectError;
         if(data.checkMessage) redirectError.emplace(&out);
@@ -4601,7 +4601,7 @@ void AbstractImporterTest::object2DByNameNotFound() {
         CORRADE_IGNORE_DEPRECATED_POP
     }
 
-    if(data.checkMessage) CORRADE_COMPARE(out.str(),
+    if(data.checkMessage) CORRADE_COMPARE(out,
         "Trade::AbstractImporter::object2D(): object foobar not found among 5 entries\n");
 }
 
@@ -4617,12 +4617,12 @@ void AbstractImporterTest::object2DForNameOutOfRange() {
         Int doObject2DForName(const std::string&) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object2DForName("");
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object2DForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object2DForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::object2DNameNotImplemented() {
@@ -4648,13 +4648,13 @@ void AbstractImporterTest::object2DNameNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object2DName(42);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object2DName(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object2DName(): no file opened\n");
 }
 
 void AbstractImporterTest::object2DNameOutOfRange() {
@@ -4668,13 +4668,13 @@ void AbstractImporterTest::object2DNameOutOfRange() {
         UnsignedInt doObject2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object2DName(8);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object2DName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object2DName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::object2DNotImplemented() {
@@ -4689,7 +4689,7 @@ void AbstractImporterTest::object2DNotImplemented() {
         UnsignedInt doObject2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
@@ -4697,7 +4697,7 @@ void AbstractImporterTest::object2DNotImplemented() {
     CORRADE_IGNORE_DEPRECATED_POP
     /* It delegates to scene(), but since the assert is graceful and returns a
        null optional, it errors out immediately after */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::scene(): not implemented\n"
         "Trade::AbstractImporter::object2D(): object 7 not found in any 2D scene hierarchy\n");
 }
@@ -4711,14 +4711,14 @@ void AbstractImporterTest::object2DNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object2D(42);
     importer.object2D("foo");
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::object2D(): no file opened\n"
         "Trade::AbstractImporter::object2D(): no file opened\n");
 }
@@ -4734,13 +4734,13 @@ void AbstractImporterTest::object2DOutOfRange() {
         UnsignedInt doObject2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object2D(8);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object2D(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object2D(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::object3D() {
@@ -4804,13 +4804,13 @@ void AbstractImporterTest::object3DCountNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object3DCount();
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object3DCount(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object3DCount(): no file opened\n");
 }
 
 void AbstractImporterTest::object3DForNameNotImplemented() {
@@ -4834,13 +4834,13 @@ void AbstractImporterTest::object3DForNameNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object2DForName("");
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object2DForName(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object2DForName(): no file opened\n");
 }
 
 void AbstractImporterTest::object3DByNameNotFound() {
@@ -4855,7 +4855,7 @@ void AbstractImporterTest::object3DByNameNotFound() {
         UnsignedInt doObject3DCount() const override { return 6; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     {
         Containers::Optional<Error> redirectError;
         if(data.checkMessage) redirectError.emplace(&out);
@@ -4865,7 +4865,7 @@ void AbstractImporterTest::object3DByNameNotFound() {
         CORRADE_IGNORE_DEPRECATED_POP
     }
 
-    if(data.checkMessage) CORRADE_COMPARE(out.str(),
+    if(data.checkMessage) CORRADE_COMPARE(out,
         "Trade::AbstractImporter::object3D(): object foobar not found among 6 entries\n");
 }
 
@@ -4881,12 +4881,12 @@ void AbstractImporterTest::object3DForNameOutOfRange() {
         Int doObject3DForName(const std::string&) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object3DForName("");
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object3DForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object3DForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::object3DNameNotImplemented() {
@@ -4912,13 +4912,13 @@ void AbstractImporterTest::object3DNameNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object3DName(42);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object3DName(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object3DName(): no file opened\n");
 }
 
 void AbstractImporterTest::object3DNameOutOfRange() {
@@ -4932,13 +4932,13 @@ void AbstractImporterTest::object3DNameOutOfRange() {
         UnsignedInt doObject3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object3DName(8);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object3DName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object3DName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::object3DNotImplemented() {
@@ -4953,7 +4953,7 @@ void AbstractImporterTest::object3DNotImplemented() {
         UnsignedInt doObject3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
@@ -4961,7 +4961,7 @@ void AbstractImporterTest::object3DNotImplemented() {
     CORRADE_IGNORE_DEPRECATED_POP
     /* It delegates to scene(), but since the assert is graceful and returns a
        null optional, it errors out immediately after */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::scene(): not implemented\n"
         "Trade::AbstractImporter::object3D(): object 7 not found in any 3D scene hierarchy\n");
 }
@@ -4975,14 +4975,14 @@ void AbstractImporterTest::object3DNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object3D(42);
     importer.object3D("foo");
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::object3D(): no file opened\n"
         "Trade::AbstractImporter::object3D(): no file opened\n");
 }
@@ -4998,13 +4998,13 @@ void AbstractImporterTest::object3DOutOfRange() {
         UnsignedInt doObject3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.object3D(8);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::object3D(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::object3D(): index 8 out of range for 8 entries\n");
 }
 #endif
 
@@ -5059,10 +5059,10 @@ void AbstractImporterTest::skin2DFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.skin2D(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::skin2DForNameOutOfRange() {
@@ -5077,10 +5077,10 @@ void AbstractImporterTest::skin2DForNameOutOfRange() {
         Int doSkin2DForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.skin2DForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::skin2DForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::skin2DForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::skin2DNameNotImplemented() {
@@ -5106,11 +5106,11 @@ void AbstractImporterTest::skin2DNameOutOfRange() {
         UnsignedInt doSkin2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin2DName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::skin2DName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::skin2DName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::skin2DNameCustomDeleter() {
@@ -5127,10 +5127,10 @@ void AbstractImporterTest::skin2DNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.skin2DName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::skin2DName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::skin2DName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::skin2DNotImplemented() {
@@ -5144,11 +5144,11 @@ void AbstractImporterTest::skin2DNotImplemented() {
         UnsignedInt doSkin2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin2D(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::skin2D(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::skin2D(): not implemented\n");
 }
 
 void AbstractImporterTest::skin2DOutOfRange() {
@@ -5162,11 +5162,11 @@ void AbstractImporterTest::skin2DOutOfRange() {
         UnsignedInt doSkin2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin2D(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::skin2D(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::skin2D(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::skin2DNonOwningDeleters() {
@@ -5185,7 +5185,7 @@ void AbstractImporterTest::skin2DNonOwningDeleters() {
         Matrix3 inverseBindMatrixData[1]{};
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     auto data = importer.skin2D(0);
@@ -5210,12 +5210,12 @@ void AbstractImporterTest::skin2DCustomJointDataDeleter() {
         UnsignedInt jointData[1]{};
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin2D(0);
     importer.skin2D("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::skin2D(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::skin2D(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -5237,12 +5237,12 @@ void AbstractImporterTest::skin2DCustomInverseBindMatrixDataDeleter() {
         Matrix3 inverseBindMatrixData[1]{};
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin2D(0);
     importer.skin2D("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::skin2D(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::skin2D(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -5298,10 +5298,10 @@ void AbstractImporterTest::skin3DFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.skin3D(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::skin3DForNameOutOfRange() {
@@ -5316,11 +5316,11 @@ void AbstractImporterTest::skin3DForNameOutOfRange() {
         Int doSkin3DForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin3DForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::skin3DForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::skin3DForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::skin3DNameNotImplemented() {
@@ -5346,11 +5346,11 @@ void AbstractImporterTest::skin3DNameOutOfRange() {
         UnsignedInt doSkin3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin3DName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::skin3DName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::skin3DName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::skin3DNameCustomDeleter() {
@@ -5367,10 +5367,10 @@ void AbstractImporterTest::skin3DNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.skin3DName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::skin3DName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::skin3DName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::skin3DNotImplemented() {
@@ -5384,11 +5384,11 @@ void AbstractImporterTest::skin3DNotImplemented() {
         UnsignedInt doSkin3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin3D(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::skin3D(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::skin3D(): not implemented\n");
 }
 
 void AbstractImporterTest::skin3DOutOfRange() {
@@ -5402,11 +5402,11 @@ void AbstractImporterTest::skin3DOutOfRange() {
         UnsignedInt doSkin3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin3D(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::skin3D(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::skin3D(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::skin3DNonOwningDeleters() {
@@ -5425,7 +5425,7 @@ void AbstractImporterTest::skin3DNonOwningDeleters() {
         Matrix4 inverseBindMatrixData[1]{};
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     auto data = importer.skin3D(0);
@@ -5450,12 +5450,12 @@ void AbstractImporterTest::skin3DCustomJointDataDeleter() {
         UnsignedInt jointData[1]{};
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin3D(0);
     importer.skin3D("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::skin3D(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::skin3D(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -5477,12 +5477,12 @@ void AbstractImporterTest::skin3DCustomInverseBindMatrixDataDeleter() {
         Matrix4 inverseBindMatrixData[1]{};
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.skin3D(0);
     importer.skin3D("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::skin3D(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::skin3D(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -5542,10 +5542,10 @@ void AbstractImporterTest::meshFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.mesh(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 #ifdef MAGNUM_BUILD_DEPRECATED
@@ -5610,10 +5610,10 @@ void AbstractImporterTest::meshLevelCountOutOfRange() {
         UnsignedInt doMeshCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.meshLevelCount(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::meshLevelCount(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::meshLevelCount(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::meshLevelCountZero() {
@@ -5629,14 +5629,14 @@ void AbstractImporterTest::meshLevelCountZero() {
         UnsignedInt doMeshLevelCount(UnsignedInt) override { return 0; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.meshLevelCount(7);
     /* This should print a similar message instead of a confusing
        "level 1 out of range for 0 entries" */
     importer.mesh(7, 1);
     importer.mesh("", 1);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::meshLevelCount(): implementation reported zero levels\n"
         "Trade::AbstractImporter::mesh(): implementation reported zero levels\n"
         "Trade::AbstractImporter::mesh(): implementation reported zero levels\n");
@@ -5654,10 +5654,10 @@ void AbstractImporterTest::meshForNameOutOfRange() {
         Int doMeshForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.meshForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::meshForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::meshForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::meshNameNotImplemented() {
@@ -5683,11 +5683,11 @@ void AbstractImporterTest::meshNameOutOfRange() {
         UnsignedInt doMeshCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.meshName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::meshName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::meshName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::meshNameCustomDeleter() {
@@ -5704,10 +5704,10 @@ void AbstractImporterTest::meshNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.meshName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::meshName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::meshName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::meshNotImplemented() {
@@ -5721,11 +5721,11 @@ void AbstractImporterTest::meshNotImplemented() {
         UnsignedInt doMeshCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.mesh(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh(): not implemented\n");
 }
 
 void AbstractImporterTest::meshOutOfRange() {
@@ -5739,11 +5739,11 @@ void AbstractImporterTest::meshOutOfRange() {
         UnsignedInt doMeshCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.mesh(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::meshLevelOutOfRange() {
@@ -5759,11 +5759,11 @@ void AbstractImporterTest::meshLevelOutOfRange() {
         UnsignedInt doMeshLevelCount(UnsignedInt) override { return 3; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.mesh(7, 3);
     importer.mesh("", 3);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::mesh(): level 3 out of range for 3 entries\n"
         "Trade::AbstractImporter::mesh(): level 3 out of range for 3 entries\n");
 }
@@ -5837,12 +5837,12 @@ void AbstractImporterTest::meshCustomIndexDataDeleter() {
         char data[1];
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.mesh(0);
     importer.mesh("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::mesh(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::mesh(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -5862,12 +5862,12 @@ void AbstractImporterTest::meshCustomVertexDataDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.mesh(0);
     importer.mesh("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::mesh(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::mesh(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -5889,12 +5889,12 @@ void AbstractImporterTest::meshCustomAttributesDeleter() {
         MeshAttributeData positions{MeshAttribute::Position, VertexFormat::Vector3, nullptr};
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.mesh(0);
     importer.mesh("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::mesh(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::mesh(): implementation is not allowed to use a custom Array deleter\n"
     );
@@ -5945,11 +5945,11 @@ void AbstractImporterTest::meshAttributeNameNotCustom() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.meshAttributeForName("SMOOTH_GROUP_ID");
     importer.meshAttributeName(MeshAttribute::Position);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::meshAttributeForName(): implementation-returned Trade::MeshAttribute::Position is neither custom nor invalid\n"
         "Trade::AbstractImporter::meshAttributeName(): Trade::MeshAttribute::Position is not custom\n");
 }
@@ -5967,10 +5967,10 @@ void AbstractImporterTest::meshAttributeNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.meshAttributeName(meshAttributeCustom(0));
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::meshAttributeName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::meshAttributeName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 #ifdef MAGNUM_BUILD_DEPRECATED
@@ -6029,13 +6029,13 @@ void AbstractImporterTest::mesh2DCountNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh2DCount();
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh2DCount(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh2DCount(): no file opened\n");
 }
 
 void AbstractImporterTest::mesh2DForNameNotImplemented() {
@@ -6059,13 +6059,13 @@ void AbstractImporterTest::mesh2DForNameNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh2DForName("");
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh2DForName(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh2DForName(): no file opened\n");
 }
 
 void AbstractImporterTest::mesh2DNameNotImplemented() {
@@ -6091,13 +6091,13 @@ void AbstractImporterTest::mesh2DNameNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh2DName(42);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh2DName(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh2DName(): no file opened\n");
 }
 
 void AbstractImporterTest::mesh2DNameOutOfRange() {
@@ -6111,13 +6111,13 @@ void AbstractImporterTest::mesh2DNameOutOfRange() {
         UnsignedInt doMesh2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh2DName(8);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh2DName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh2DName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::mesh2DNotImplemented() {
@@ -6131,13 +6131,13 @@ void AbstractImporterTest::mesh2DNotImplemented() {
         UnsignedInt doMesh2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh2D(7);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh2D(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh2D(): not implemented\n");
 }
 
 void AbstractImporterTest::mesh2DNoFile() {
@@ -6149,13 +6149,13 @@ void AbstractImporterTest::mesh2DNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh2D(42);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh2D(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh2D(): no file opened\n");
 }
 
 void AbstractImporterTest::mesh2DOutOfRange() {
@@ -6169,13 +6169,13 @@ void AbstractImporterTest::mesh2DOutOfRange() {
         UnsignedInt doMesh2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh2D(8);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh2D(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh2D(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::mesh3D() {
@@ -6233,13 +6233,13 @@ void AbstractImporterTest::mesh3DCountNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh3DCount();
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh3DCount(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh3DCount(): no file opened\n");
 }
 
 void AbstractImporterTest::mesh3DForNameNotImplemented() {
@@ -6263,13 +6263,13 @@ void AbstractImporterTest::mesh3DForNameNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh3DForName("");
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh3DForName(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh3DForName(): no file opened\n");
 }
 
 void AbstractImporterTest::mesh3DNameNotImplemented() {
@@ -6295,13 +6295,13 @@ void AbstractImporterTest::mesh3DNameNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh3DName(42);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh3DName(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh3DName(): no file opened\n");
 }
 
 void AbstractImporterTest::mesh3DNameOutOfRange() {
@@ -6315,13 +6315,13 @@ void AbstractImporterTest::mesh3DNameOutOfRange() {
         UnsignedInt doMesh3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh3DName(8);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh3DName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh3DName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::mesh3DNotImplemented() {
@@ -6335,7 +6335,7 @@ void AbstractImporterTest::mesh3DNotImplemented() {
         UnsignedInt doMesh3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
@@ -6343,7 +6343,7 @@ void AbstractImporterTest::mesh3DNotImplemented() {
     CORRADE_IGNORE_DEPRECATED_POP
     /* Not mesh3D() because this one delegates into mesh() for backwards
        compatibility */
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh(): not implemented\n");
 }
 
 void AbstractImporterTest::mesh3DNoFile() {
@@ -6355,13 +6355,13 @@ void AbstractImporterTest::mesh3DNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh3D(42);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh3D(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh3D(): no file opened\n");
 }
 
 void AbstractImporterTest::mesh3DOutOfRange() {
@@ -6375,13 +6375,13 @@ void AbstractImporterTest::mesh3DOutOfRange() {
         UnsignedInt doMesh3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_IGNORE_DEPRECATED_PUSH
     importer.mesh3D(8);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::mesh3D(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::mesh3D(): index 8 out of range for 8 entries\n");
 }
 #endif
 
@@ -6434,10 +6434,10 @@ void AbstractImporterTest::materialFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.material(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 #ifdef MAGNUM_BUILD_DEPRECATED
@@ -6494,10 +6494,10 @@ void AbstractImporterTest::materialForNameOutOfRange() {
         Int doMaterialForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.materialForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::materialForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::materialForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::materialNameNotImplemented() {
@@ -6523,11 +6523,11 @@ void AbstractImporterTest::materialNameOutOfRange() {
         UnsignedInt doMaterialCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.materialName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::materialName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::materialName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::materialNameCustomDeleter() {
@@ -6544,10 +6544,10 @@ void AbstractImporterTest::materialNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.materialName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::materialName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::materialName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::materialNotImplemented() {
@@ -6561,11 +6561,11 @@ void AbstractImporterTest::materialNotImplemented() {
         UnsignedInt doMaterialCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.material(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::material(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::material(): not implemented\n");
 }
 
 void AbstractImporterTest::materialOutOfRange() {
@@ -6579,11 +6579,11 @@ void AbstractImporterTest::materialOutOfRange() {
         UnsignedInt doMaterialCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.material(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::material(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::material(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::materialNonOwningDeleters() {
@@ -6628,12 +6628,12 @@ void AbstractImporterTest::materialCustomAttributeDataDeleter() {
         };
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.material(0);
     importer.material("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::material(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::material(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -6655,12 +6655,12 @@ void AbstractImporterTest::materialCustomLayerDataDeleter() {
         UnsignedInt layerData[1]{};
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.material(0);
     importer.material("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::material(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::material(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -6714,10 +6714,10 @@ void AbstractImporterTest::textureFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.texture(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::textureForNameOutOfRange() {
@@ -6732,10 +6732,10 @@ void AbstractImporterTest::textureForNameOutOfRange() {
         Int doTextureForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.textureForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::textureForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::textureForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::textureNameNotImplemented() {
@@ -6761,11 +6761,11 @@ void AbstractImporterTest::textureNameOutOfRange() {
         UnsignedInt doTextureCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.textureName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::textureName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::textureName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::textureNameCustomDeleter() {
@@ -6782,10 +6782,10 @@ void AbstractImporterTest::textureNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.textureName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::textureName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::textureName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::textureNotImplemented() {
@@ -6799,11 +6799,11 @@ void AbstractImporterTest::textureNotImplemented() {
         UnsignedInt doTextureCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.texture(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::texture(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::texture(): not implemented\n");
 }
 
 void AbstractImporterTest::textureOutOfRange() {
@@ -6817,11 +6817,11 @@ void AbstractImporterTest::textureOutOfRange() {
         UnsignedInt doTextureCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.texture(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::texture(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::texture(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image1D() {
@@ -6878,10 +6878,10 @@ void AbstractImporterTest::image1DFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.image1D(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::image1DLevelCountNotImplemented() {
@@ -6907,10 +6907,10 @@ void AbstractImporterTest::image1DLevelCountOutOfRange() {
         UnsignedInt doImage1DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image1DLevelCount(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image1DLevelCount(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image1DLevelCount(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image1DLevelCountZero() {
@@ -6926,14 +6926,14 @@ void AbstractImporterTest::image1DLevelCountZero() {
         UnsignedInt doImage1DLevelCount(UnsignedInt) override { return 0; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image1DLevelCount(7);
     /* This should print a similar message instead of a confusing
        "level 1 out of range for 0 entries" */
     importer.image1D(7, 1);
     importer.image1D("", 1);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::image1DLevelCount(): implementation reported zero levels\n"
         "Trade::AbstractImporter::image1D(): implementation reported zero levels\n"
         "Trade::AbstractImporter::image1D(): implementation reported zero levels\n");
@@ -6951,10 +6951,10 @@ void AbstractImporterTest::image1DForNameOutOfRange() {
         Int doImage1DForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image1DForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image1DForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image1DForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image1DNameNotImplemented() {
@@ -6980,11 +6980,11 @@ void AbstractImporterTest::image1DNameOutOfRange() {
         UnsignedInt doImage1DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image1DName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image1DName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image1DName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image1DNameCustomDeleter() {
@@ -7001,10 +7001,10 @@ void AbstractImporterTest::image1DNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image1DName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image1DName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image1DName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::image1DNotImplemented() {
@@ -7018,11 +7018,11 @@ void AbstractImporterTest::image1DNotImplemented() {
         UnsignedInt doImage1DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image1D(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image1D(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image1D(): not implemented\n");
 }
 
 void AbstractImporterTest::image1DOutOfRange() {
@@ -7036,11 +7036,11 @@ void AbstractImporterTest::image1DOutOfRange() {
         UnsignedInt doImage1DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image1D(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image1D(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image1D(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image1DLevelOutOfRange() {
@@ -7056,11 +7056,11 @@ void AbstractImporterTest::image1DLevelOutOfRange() {
         UnsignedInt doImage1DLevelCount(UnsignedInt) override { return 3; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image1D(7, 3);
     importer.image1D("", 3);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::image1D(): level 3 out of range for 3 entries\n"
         "Trade::AbstractImporter::image1D(): level 3 out of range for 3 entries\n");
 }
@@ -7118,12 +7118,12 @@ void AbstractImporterTest::image1DCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image1D(0);
     importer.image1D("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::image1D(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::image1D(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -7182,10 +7182,10 @@ void AbstractImporterTest::image2DFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.image2D(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::image2DLevelCountNotImplemented() {
@@ -7211,10 +7211,10 @@ void AbstractImporterTest::image2DLevelCountOutOfRange() {
         UnsignedInt doImage2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image2DLevelCount(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image2DLevelCount(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image2DLevelCount(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image2DLevelCountZero() {
@@ -7230,14 +7230,14 @@ void AbstractImporterTest::image2DLevelCountZero() {
         UnsignedInt doImage2DLevelCount(UnsignedInt) override { return 0; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image2DLevelCount(7);
     /* This should print a similar message instead of a confusing
        "level 1 out of range for 0 entries" */
     importer.image2D(7, 1);
     importer.image2D(7, 1);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::image2DLevelCount(): implementation reported zero levels\n"
         "Trade::AbstractImporter::image2D(): implementation reported zero levels\n"
         "Trade::AbstractImporter::image2D(): implementation reported zero levels\n");
@@ -7255,10 +7255,10 @@ void AbstractImporterTest::image2DForNameOutOfRange() {
         Int doImage2DForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image2DForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image2DForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image2DForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image2DNameNotImplemented() {
@@ -7284,11 +7284,11 @@ void AbstractImporterTest::image2DNameOutOfRange() {
         UnsignedInt doImage2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image2DName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image2DName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image2DName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image2DNameCustomDeleter() {
@@ -7305,10 +7305,10 @@ void AbstractImporterTest::image2DNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image2DName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image2DName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image2DName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::image2DNotImplemented() {
@@ -7322,11 +7322,11 @@ void AbstractImporterTest::image2DNotImplemented() {
         UnsignedInt doImage2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image2D(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image2D(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image2D(): not implemented\n");
 }
 
 void AbstractImporterTest::image2DOutOfRange() {
@@ -7340,11 +7340,11 @@ void AbstractImporterTest::image2DOutOfRange() {
         UnsignedInt doImage2DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image2D(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image2D(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image2D(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image2DLevelOutOfRange() {
@@ -7360,11 +7360,11 @@ void AbstractImporterTest::image2DLevelOutOfRange() {
         UnsignedInt doImage2DLevelCount(UnsignedInt) override { return 3; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image2D(7, 3);
     importer.image2D("", 3);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::image2D(): level 3 out of range for 3 entries\n"
         "Trade::AbstractImporter::image2D(): level 3 out of range for 3 entries\n");
 }
@@ -7422,12 +7422,12 @@ void AbstractImporterTest::image2DCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image2D(0);
     importer.image2D("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::image2D(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::image2D(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -7486,10 +7486,10 @@ void AbstractImporterTest::image3DFailed() {
     } importer;
 
     /* The implementation is expected to print an error message on its own */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer.image3D(0));
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void AbstractImporterTest::image3DForNameOutOfRange() {
@@ -7504,10 +7504,10 @@ void AbstractImporterTest::image3DForNameOutOfRange() {
         Int doImage3DForName(Containers::StringView) override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image3DForName("");
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image3DForName(): implementation-returned index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image3DForName(): implementation-returned index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image3DLevelCountNotImplemented() {
@@ -7533,10 +7533,10 @@ void AbstractImporterTest::image3DLevelCountOutOfRange() {
         UnsignedInt doImage3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image3DLevelCount(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image3DLevelCount(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image3DLevelCount(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image3DLevelCountZero() {
@@ -7552,14 +7552,14 @@ void AbstractImporterTest::image3DLevelCountZero() {
         UnsignedInt doImage3DLevelCount(UnsignedInt) override { return 0; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image3DLevelCount(7);
     /* This should print a similar message instead of a confusing
        "level 1 out of range for 0 entries" */
     importer.image3D(7, 1);
     importer.image3D("", 1);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::image3DLevelCount(): implementation reported zero levels\n"
         "Trade::AbstractImporter::image3D(): implementation reported zero levels\n"
         "Trade::AbstractImporter::image3D(): implementation reported zero levels\n");
@@ -7588,11 +7588,11 @@ void AbstractImporterTest::image3DNameOutOfRange() {
         UnsignedInt doImage3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image3DName(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image3DName(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image3DName(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image3DNameCustomDeleter() {
@@ -7609,10 +7609,10 @@ void AbstractImporterTest::image3DNameCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image3DName(0);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image3DName(): implementation is not allowed to use a custom String deleter\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image3DName(): implementation is not allowed to use a custom String deleter\n");
 }
 
 void AbstractImporterTest::image3DNotImplemented() {
@@ -7626,11 +7626,11 @@ void AbstractImporterTest::image3DNotImplemented() {
         UnsignedInt doImage3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image3D(7);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image3D(): not implemented\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image3D(): not implemented\n");
 }
 
 void AbstractImporterTest::image3DOutOfRange() {
@@ -7644,11 +7644,11 @@ void AbstractImporterTest::image3DOutOfRange() {
         UnsignedInt doImage3DCount() const override { return 8; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image3D(8);
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::image3D(): index 8 out of range for 8 entries\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::image3D(): index 8 out of range for 8 entries\n");
 }
 
 void AbstractImporterTest::image3DLevelOutOfRange() {
@@ -7664,11 +7664,11 @@ void AbstractImporterTest::image3DLevelOutOfRange() {
         UnsignedInt doImage3DLevelCount(UnsignedInt) override { return 3; }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     importer.image3D(7, 3);
     importer.image3D("", 3);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::image3D(): level 3 out of range for 3 entries\n"
         "Trade::AbstractImporter::image3D(): level 3 out of range for 3 entries\n");
 }
@@ -7726,12 +7726,12 @@ void AbstractImporterTest::image3DCustomDeleter() {
         }
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.image3D(0);
     importer.image3D("");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::AbstractImporter::image3D(): implementation is not allowed to use a custom Array deleter\n"
         "Trade::AbstractImporter::image3D(): implementation is not allowed to use a custom Array deleter\n");
 }
@@ -7767,53 +7767,53 @@ void AbstractImporterTest::importerStateNoFile() {
         void doClose() override {}
     } importer;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     importer.importerState();
-    CORRADE_COMPARE(out.str(), "Trade::AbstractImporter::importerState(): no file opened\n");
+    CORRADE_COMPARE(out, "Trade::AbstractImporter::importerState(): no file opened\n");
 }
 
 void AbstractImporterTest::debugFeature() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << ImporterFeature::OpenData << ImporterFeature(0xf0);
-    CORRADE_COMPARE(out.str(), "Trade::ImporterFeature::OpenData Trade::ImporterFeature(0xf0)\n");
+    CORRADE_COMPARE(out, "Trade::ImporterFeature::OpenData Trade::ImporterFeature(0xf0)\n");
 }
 
 void AbstractImporterTest::debugFeaturePacked() {
-    std::ostringstream out;
+    Containers::String out;
     /* Last is not packed, ones before should not make any flags persistent */
     Debug{&out} << Debug::packed << ImporterFeature::OpenData << Debug::packed << ImporterFeature(0xf0) << ImporterFeature::FileCallback;
-    CORRADE_COMPARE(out.str(), "OpenData 0xf0 Trade::ImporterFeature::FileCallback\n");
+    CORRADE_COMPARE(out, "OpenData 0xf0 Trade::ImporterFeature::FileCallback\n");
 }
 
 void AbstractImporterTest::debugFeatures() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << (ImporterFeature::OpenData|ImporterFeature::OpenState) << ImporterFeatures{};
-    CORRADE_COMPARE(out.str(), "Trade::ImporterFeature::OpenData|Trade::ImporterFeature::OpenState Trade::ImporterFeatures{}\n");
+    CORRADE_COMPARE(out, "Trade::ImporterFeature::OpenData|Trade::ImporterFeature::OpenState Trade::ImporterFeatures{}\n");
 }
 
 void AbstractImporterTest::debugFeaturesPacked() {
-    std::ostringstream out;
+    Containers::String out;
     /* Last is not packed, ones before should not make any flags persistent */
     Debug{&out} << Debug::packed << (ImporterFeature::OpenData|ImporterFeature::OpenState) << Debug::packed << ImporterFeatures{} << ImporterFeature::FileCallback;
-    CORRADE_COMPARE(out.str(), "OpenData|OpenState {} Trade::ImporterFeature::FileCallback\n");
+    CORRADE_COMPARE(out, "OpenData|OpenState {} Trade::ImporterFeature::FileCallback\n");
 }
 
 void AbstractImporterTest::debugFlag() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << ImporterFlag::Verbose << ImporterFlag(0xf0);
-    CORRADE_COMPARE(out.str(), "Trade::ImporterFlag::Verbose Trade::ImporterFlag(0xf0)\n");
+    CORRADE_COMPARE(out, "Trade::ImporterFlag::Verbose Trade::ImporterFlag(0xf0)\n");
 }
 
 void AbstractImporterTest::debugFlags() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << (ImporterFlag::Verbose|ImporterFlag(0xf0)) << ImporterFlags{};
-    CORRADE_COMPARE(out.str(), "Trade::ImporterFlag::Verbose|Trade::ImporterFlag(0xf0) Trade::ImporterFlags{}\n");
+    CORRADE_COMPARE(out, "Trade::ImporterFlag::Verbose|Trade::ImporterFlag(0xf0) Trade::ImporterFlags{}\n");
 }
 
 }}}}

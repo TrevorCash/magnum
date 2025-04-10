@@ -4,7 +4,9 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
+    Copyright © 2021 nodoteve <nodoteve@yandex.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -89,12 +91,9 @@ together with a troubleshooting guide is available in @ref platforms-android.
 @section Platform-AndroidApplication-usage General usage
 
 This application library is built if `MAGNUM_WITH_ANDROIDAPPLICATION` is
-enabled when building Magnum. To use this library with CMake, put
-[FindEGL.cmake](https://github.com/mosra/magnum/blob/master/modules/FindEGL.cmake)
-and [FindOpenGLES2.cmake](https://github.com/mosra/magnum/blob/master/modules/FindOpenGLES2.cmake) (or
-[FindOpenGLES3.cmake](https://github.com/mosra/magnum/blob/master/modules/FindOpenGLES3.cmake))
-into your `modules/` directory, request the `AndroidApplication` component of
-the `Magnum` package and link to the `Magnum::AndroidApplication` target:
+enabled when building Magnum. To use this library with CMake, request the
+`AndroidApplication` component of the `Magnum` package and link to the
+`Magnum::AndroidApplication` target:
 
 @code{.cmake}
 find_package(Magnum REQUIRED)
@@ -162,6 +161,42 @@ The application by default redirects @ref Corrade::Utility::Debug "Debug",
 output to Android log buffer with tag `"magnum"`, which can be then accessed
 through `logcat` utility. See also @ref Corrade::Utility::AndroidLogStreamBuffer
 for more information.
+
+@section Platform-AndroidApplication-touch Touch input on Android
+
+The application recognizes touch and pen input and reports it as
+@ref Pointer::Finger, @ref Pointer::Pen, @ref Pointer::Eraser with
+@ref PointerEventSource::Touch and @ref PointerEventSource::Pen.
+
+In case of a multi-touch scenario, @ref PointerEvent::isPrimary() /
+@ref PointerMoveEvent::isPrimary() can be used to distinguish the primary touch
+from secondary. For example, if an application doesn't need to recognize
+gestures like pinch to zoom or rotate, it can ignore all non-primary pointer
+events. @ref PointerEventSource::Mouse and @ref PointerEventSource::Pen events
+are always marked as primary, for touch input the first pressed finger is
+marked as primary and all following pressed fingers are non-primary. Note that
+there can be up to one primary pointer for each pointer event source, e.g. a
+finger, pen and a mouse press may all be marked as primary. On the other hand,
+in a multi-touch scenario, if the first (and thus primary) finger is lifted, no
+other finger becomes primary until all others are lifted as well. This is
+consistent with the logic in @ref Sdl2Application and @ref EmscriptenApplication
+but may not necessarily match what other Android applications do.
+
+If gesture recognition is desirable, @ref PointerEvent::id() /
+@ref PointerMoveEvent::id() contains a pointer ID that's unique among all
+pointer event sources, which can be used to track movements of secondary,
+tertiary and further touch points. The ID allocation isn't defined and you
+can't rely on it to be contiguous or in any bounded range --- for example,
+each new touch may generate a new ID that's only used until given finger is
+lifted, and then never again, or the IDs may get heavily reused, being unique
+only for the period given finger is pressed. For @ref PointerEventSource::Mouse
+and @ref PointerEventSource::Pen  the ID is a constant, as there's always just
+a single mouse cursor or a pen stylus.
+
+See also @ref platform-windowed-pointer-events for general information about
+handling pointer input in a portable way. There's also a
+@ref Platform::TwoFingerGesture helper for recognition of common two-finger
+gestures for zoom, rotation and pan.
 */
 class AndroidApplication {
     public:
@@ -172,8 +207,27 @@ class AndroidApplication {
         class GLConfiguration;
         class ViewportEvent;
         class InputEvent;
+        class PointerEvent;
+        class PointerMoveEvent;
+        #ifdef MAGNUM_BUILD_DEPRECATED
         class MouseEvent;
         class MouseMoveEvent;
+        #endif
+
+        /* The damn thing cannot handle forward enum declarations */
+        #ifndef DOXYGEN_GENERATING_OUTPUT
+        enum class PointerEventSource: UnsignedByte;
+        enum class Pointer: UnsignedByte;
+        #endif
+
+        /**
+         * @brief Set of pointer types
+         * @m_since_latest
+         *
+         * @see @ref PointerMoveEvent::pointers(),
+         *      @ref platform-windowed-pointer-events
+         */
+        typedef Containers::EnumSet<Pointer> Pointers;
 
         /**
          * @brief Execute the application
@@ -189,7 +243,7 @@ class AndroidApplication {
         #endif
 
         /**
-         * @brief Construct with given configuration for OpenGL context
+         * @brief Construct with an OpenGL context
          * @param arguments         Application arguments
          * @param configuration     Application configuration
          * @param glConfiguration   OpenGL context configuration
@@ -202,20 +256,17 @@ class AndroidApplication {
         explicit AndroidApplication(const Arguments& arguments, const Configuration& configuration, const GLConfiguration& glConfiguration);
 
         /**
-         * @brief Construct with given configuration
+         * @brief Construct without explicit GPU context configuration
          *
          * Equivalent to calling @ref AndroidApplication(const Arguments&, const Configuration&, const GLConfiguration&)
          * with default-constructed @ref GLConfiguration.
          */
+        #ifdef DOXYGEN_GENERATING_OUTPUT
+        explicit AndroidApplication(const Arguments& arguments, const Configuration& configuration = Configuration{});
+        #else
         explicit AndroidApplication(const Arguments& arguments, const Configuration& configuration);
-
-        /**
-         * @brief Construct with default configuration
-         *
-         * Equivalent to calling @ref AndroidApplication(const Arguments&, const Configuration&)
-         * with default-constructed @ref Configuration.
-         */
         explicit AndroidApplication(const Arguments& arguments);
+        #endif
 
         /**
          * @brief Construct without creating a window
@@ -376,6 +427,7 @@ class AndroidApplication {
          * via @ref framebufferSize() and DPI scaling using @ref dpiScaling().
          * See @ref Platform-GlfwApplication-dpi for detailed info about these
          * values.
+         * @see @ref platform-windowed-viewport-events
          */
         virtual void viewportEvent(ViewportEvent& event);
 
@@ -388,31 +440,99 @@ class AndroidApplication {
          * @}
          */
 
-        /** @{ @name Mouse handling */
+        /** @{ @name Pointer handling */
 
     private:
         /**
-         * @brief Mouse press event
+         * @brief Pointer press event
+         * @m_since_latest
          *
-         * Called when mouse button is pressed. Default implementation does
+         * Called when a mouse is pressed. Note that if at least one mouse
+         * button is already pressed and another button gets pressed in
+         * addition, @ref pointerMoveEvent() with the new combination is
+         * called, not this function.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mousePressEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
          * nothing.
+         * @see @ref platform-windowed-pointer-events,
+         *      @ref Platform-AndroidApplication-touch
          */
-        virtual void mousePressEvent(MouseEvent& event);
+        virtual void pointerPressEvent(PointerEvent& event);
 
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse press event
+         * @m_deprecated_since_latest Use @ref pointerPressEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use pointerPressEvent() instead") void mousePressEvent(MouseEvent& event);
+        #endif
+
+        /**
+         * @brief Pointer release event
+         * @m_since_latest
+         *
+         * Called when a mouse is released. Note that if multiple mouse buttons
+         * are pressed and one of these is released, @ref pointerMoveEvent()
+         * with the new combination is called, not this function.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mouseReleaseEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
+         * nothing.
+         * @see @ref platform-windowed-pointer-events,
+         *      @ref Platform-AndroidApplication-touch
+         */
+        virtual void pointerReleaseEvent(PointerEvent& event);
+
+        #ifdef MAGNUM_BUILD_DEPRECATED
         /**
          * @brief Mouse release event
+         * @m_deprecated_since_latest Use @ref pointerReleaseEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
          *
-         * Called when mouse button is released. Default implementation does
-         * nothing.
+         * Default implementation does nothing.
          */
-        virtual void mouseReleaseEvent(MouseEvent& event);
+        virtual CORRADE_DEPRECATED("use pointerReleaseEvent() instead") void mouseReleaseEvent(MouseEvent& event);
+        #endif
 
         /**
-         * @brief Mouse move event
+         * @brief Pointer move event
+         * @m_since_latest
          *
-         * Called when mouse is moved. Default implementation does nothing.
+         * Called when any of the currently pressed pointers is moved or
+         * changes its properties. Gets called also if the set of pressed mouse
+         * buttons changes.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mouseMoveEvent(), or if
+         * @ref PointerMoveEvent::pointer() is not
+         * @relativeref{Corrade,Containers::NullOpt}, to either
+         * @ref mousePressEvent() or @ref mouseReleaseEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
+         * nothing.
+         * @see @ref platform-windowed-pointer-events,
+         *      @ref Platform-AndroidApplication-touch
          */
-        virtual void mouseMoveEvent(MouseMoveEvent& event);
+        virtual void pointerMoveEvent(PointerMoveEvent& event);
+
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse move event
+         * @m_deprecated_since_latest Use @ref pointerMoveEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use pointerMoveEvent() instead") void mouseMoveEvent(MouseMoveEvent& event);
+        #endif
 
         /* Since 1.8.17, the original short-hand group closing doesn't work
            anymore. FFS. */
@@ -421,6 +541,14 @@ class AndroidApplication {
          */
 
     private:
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /* Calls the base pointer*Event() in order to delegate to deprecated
+           mouse events */
+        template<class> friend class BasicScreenedApplication;
+        /* Not ApplicationScrollEventMixin, as this class doesn't have the
+           deprecated mouseScrollEvent() */
+        #endif
+
         struct LogOutput;
 
         enum class Flag: UnsignedByte;
@@ -435,7 +563,24 @@ class AndroidApplication {
         EGLDisplay _display;
         EGLSurface _surface;
         EGLContext _glContext;
-        Vector2i _previousMouseMovePosition{-1};
+
+        /* We have no way to query previous pointer positions, so we have to
+           maintain them like this. For pointers capable of hover (mouse, pen)
+           the _previousHoverPointerPosition is used, NaN signalling that the
+           previous position is unknown. */
+        Vector2 _previousHoverPointerPosition{Constants::nan()};
+        /* For touches the _previousTouches array is used. The id is ~Int{} if
+           given slot is unused, 32 "should be enough" and is consistent with
+           what EmscriptenApplication does here. */
+        struct {
+            Int id = ~Int{};
+            Vector2 position;
+        } _previousTouches[32];
+        Int _primaryFingerId = ~Int{};
+
+        /* In order to know which mouse button was pressed / released in
+           current event. Contains just the Mouse* values. */
+        Pointers _previousPressedButtons;
 
         /* Has to be in an Optional because it gets explicitly destroyed before
            the GL context */
@@ -444,6 +589,117 @@ class AndroidApplication {
 
         CORRADE_ENUMSET_FRIEND_OPERATORS(Flags)
 };
+
+/**
+@brief Pointer event source
+@m_since_latest
+
+@see @ref PointerEvent::source(), @ref PointerMoveEvent::source(),
+    @ref platform-windowed-pointer-events,
+    @ref Platform-AndroidApplication-touch
+*/
+enum class AndroidApplication::PointerEventSource: UnsignedByte {
+    /**
+     * The event source is unknown. Corresponds to
+     * `AMOTION_EVENT_TOOL_TYPE_UNKNOWN` and other types not listed below.
+     * @see @ref Pointer::Unknown
+     */
+    Unknown,
+
+    /**
+     * The event is coming from a mouse. Corresponds to
+     * `AMOTION_EVENT_TOOL_TYPE_MOUSE`.
+     * @see @ref Pointer::MouseLeft, @ref Pointer::MouseMiddle,
+     *      @ref Pointer::MouseRight
+     */
+    Mouse,
+
+    /**
+     * The event is coming from a touch contact, Corresponds to
+     * `AMOTION_EVENT_TOOL_TYPE_FINGER`.
+     * @see @ref Pointer::Finger
+     */
+    Touch,
+
+    /**
+     * The event is coming from a pen stylus. Corresponds to
+     * `AMOTION_EVENT_TOOL_TYPE_STYLUS` and `AMOTION_EVENT_TOOL_TYPE_ERASER`.
+     * @see @ref Pointer::Pen, @ref Pointer::Eraser
+     */
+    Pen
+};
+
+/**
+@brief Pointer type
+@m_since_latest
+
+@see @ref Pointers, @ref PointerEvent::pointer(),
+    @ref PointerMoveEvent::pointer(), @ref PointerMoveEvent::pointers(),
+    @ref platform-windowed-pointer-events,
+    @ref Platform-AndroidApplication-touch
+*/
+enum class AndroidApplication::Pointer: UnsignedByte {
+    /**
+     * Unknown. Corresponds to `AMOTION_EVENT_TOOL_TYPE_UNKNOWN` and other
+     * types not listed below.
+     * @see @ref PointerEventSource::Unknown
+     */
+    Unknown = 1 << 0,
+
+    /**
+     * Left mouse button. Corresponds to `AMOTION_EVENT_TOOL_TYPE_MOUSE` and
+     * `AMOTION_EVENT_BUTTON_PRIMARY`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseLeft = 1 << 1,
+
+    /**
+     * Middle mouse button. Corresponds to `AMOTION_EVENT_TOOL_TYPE_MOUSE` and
+     * `AMOTION_EVENT_BUTTON_SECONDARY`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseMiddle = 1 << 2,
+
+    /**
+     * Right mouse button. Corresponds to `AMOTION_EVENT_TOOL_TYPE_MOUSE` and
+     * `AMOTION_EVENT_BUTTON_TERTIARY`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseRight = 1 << 3,
+
+    /** @todo AMOTION_EVENT_BUTTON_BACK, AMOTION_EVENT_BUTTON_FORWARD once it's
+        possible to verify they match MouseButton4 / MouseButton5 in
+        GlfwApplication and Sdl2Application */
+
+    /**
+     * Finger. Corresponds to `AMOTION_EVENT_TOOL_TYPE_FINGER`.
+     * @see @ref PointerEventSource::Touch
+     */
+    Finger = 1 << 4,
+
+    /** @todo There's AMOTION_EVENT_TOOL_TYPE_PALM, but no corresponding
+        constant on the Java MotionEvent class, and all links to it broken.
+        Accidental omission? Some scrapped feature with leftover traces? */
+
+    /**
+     * Pen. Corresponds to `AMOTION_EVENT_TOOL_TYPE_STYLUS`.
+     * @see @ref PointerEventSource::Pen
+     */
+    Pen = 1 << 5,
+
+    /** @todo There's AMOTION_EVENT_BUTTON_STYLUS_PRIMARY and
+        AMOTION_EVENT_BUTTON_STYLUS_SECONDARY, expose once similar constants
+        exist for EmscriptenApplication / Sdl3Application; implement chorded
+        behavior for those like w/ mouse buttons */
+
+    /**
+     * Eraser. Corresponds to `AMOTION_EVENT_TOOL_TYPE_ERASER`.
+     * @see @ref PointerEventSource::Pen
+     */
+    Eraser = 1 << 6
+};
+
+CORRADE_ENUMSET_OPERATORS(AndroidApplication::Pointers)
 
 /**
 @brief OpenGL context configuration
@@ -491,7 +747,7 @@ class AndroidApplication::GLConfiguration: public GL::Context::Configuration {
         /**
          * @brief Context flags
          *
-         * @see @ref setFlags(), @ref Context::Flags
+         * @see @ref setFlags(), @ref GL::Context::Flags
          */
         typedef Containers::EnumSet<Flag> Flags;
 
@@ -646,7 +902,7 @@ class AndroidApplication::Configuration {
 /**
 @brief Viewport event
 
-@see @ref viewportEvent()
+@see @ref viewportEvent(), @ref platform-windowed-viewport-events
 */
 class AndroidApplication::ViewportEvent {
     public:
@@ -696,8 +952,8 @@ class AndroidApplication::ViewportEvent {
 /**
 @brief Base for input events
 
-@see @ref MouseEvent, @ref MouseMoveEvent, @ref mousePressEvent(),
-    @ref mouseReleaseEvent(), @ref mouseMoveEvent()
+@see @ref PointerEvent, @ref PointerMoveEvent, @ref pointerPressEvent(),
+    @ref pointerReleaseEvent(), @ref pointerMoveEvent()
 */
 class AndroidApplication::InputEvent {
     public:
@@ -740,11 +996,87 @@ class AndroidApplication::InputEvent {
 };
 
 /**
+@brief Pointer event
+@m_since_latest
+
+@see @ref PointerMoveEvent, @ref pointerPressEvent(),
+    @ref pointerReleaseEvent(), @ref platform-windowed-pointer-events,
+    @ref Platform-AndroidApplication-touch
+*/
+class AndroidApplication::PointerEvent: public InputEvent {
+    public:
+        /** @brief Copying is not allowed */
+        PointerEvent(const PointerEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerEvent(PointerEvent&&) = delete;
+
+        /** @brief Copying is not allowed */
+        PointerEvent& operator=(const PointerEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerEvent& operator=(PointerEvent&&) = delete;
+
+        /** @brief Pointer event source */
+        PointerEventSource source() const { return _source; }
+
+        /** @brief Pointer type that was pressed or released */
+        Pointer pointer() const { return _pointer; }
+
+        /**
+         * @brief Whether the pointer is primary
+         *
+         * Useful to distinguish among multiple pointers in a multi-touch
+         * scenario. See @ref Platform-AndroidApplication-touch for more
+         * information.
+         */
+        bool isPrimary() const { return _primary; }
+
+        /**
+         * @brief Pointer ID
+         *
+         * Useful to distinguish among multiple pointers in a multi-touch
+         * scenario. See @ref Platform-AndroidApplication-touch for more
+         * information.
+         */
+        /* Long is for consistency with Sdl2Application, Android uses just an
+           Int */
+        Long id() const { return _id; }
+
+        /**
+         * @brief Position
+         *
+         * May return fractional values if the touch hardware has sub-pixel
+         * precision. Use @ref Math::round() to snap them to the nearest window
+         * pixel.
+         */
+        Vector2 position() const {
+            return {AMotionEvent_getX(_event, _i),
+                    AMotionEvent_getY(_event, _i)};
+        }
+
+    private:
+        friend AndroidApplication;
+
+        explicit PointerEvent(AInputEvent* event, UnsignedByte i, PointerEventSource source, Pointer pointer, bool primary, Int id): InputEvent(event), _source{source}, _pointer{pointer}, _primary{primary}, _i{i}, _id{id} {}
+
+        const PointerEventSource _source;
+        const Pointer _pointer;
+        const bool _primary;
+        const UnsignedByte _i; /* Pointer index, not ID */
+        const Int _id;
+};
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+/**
 @brief Mouse event
+@m_deprecated_since_latest Use @ref PointerEvent, @ref pointerPressEvent() and
+    @ref pointerReleaseEvent() instead, which is a better abstraction for
+    covering both mouse and touch / pen input.
 
 @see @ref MouseMoveEvent, @ref mousePressEvent(), @ref mouseReleaseEvent()
 */
-class AndroidApplication::MouseEvent: public InputEvent {
+class CORRADE_DEPRECATED("use PointerEvent, pointerPressEvent() and pointerReleaseEvent() instead") AndroidApplication::MouseEvent: public InputEvent {
     friend AndroidApplication;
 
     public:
@@ -760,45 +1092,19 @@ class AndroidApplication::MouseEvent: public InputEvent {
             /**
              * Left mouse button. Note that this button is not set if only
              * touch or stylus event occurred.
-             * @attention Available since Android 4.0 (API level 14), not
-             *      detectable in earlier versions.
              */
-            #if defined(DOXYGEN_GENERATING_OUTPUT) || __ANDROID_API__ >= 14
             Left = AMOTION_EVENT_BUTTON_PRIMARY,
-            #else
-            Left = 1 << 0,
-            #endif
 
-            /**
-             * Middle mouse button or second stylus button
-             * @attention Available since Android 4.0 (API level 14), not
-             *      detectable in earlier versions.
-             */
-            #if defined(DOXYGEN_GENERATING_OUTPUT) || __ANDROID_API__ >= 14
+            /** Middle mouse button or second stylus button */
             Middle = AMOTION_EVENT_BUTTON_TERTIARY,
-            #else
-            Middle = 1 << 1,
-            #endif
 
-            /**
-             * Right mouse button or first stylus button
-             * @attention Available since Android 4.0 (API level 14), not
-             *      detectable in earlier versions.
-             */
-            #if defined(DOXYGEN_GENERATING_OUTPUT) || __ANDROID_API__ >= 14
+            /** Right mouse button or first stylus button */
             Right = AMOTION_EVENT_BUTTON_SECONDARY
-            #else
-            Right = 1 << 2
-            #endif
         };
 
         /** @brief Button */
         Button button() {
-            #if __ANDROID_API__ >= 14
             return Button(AMotionEvent_getButtonState(_event));
-            #else
-            return Button::None;
-            #endif
         }
 
         /** @brief Position */
@@ -810,13 +1116,128 @@ class AndroidApplication::MouseEvent: public InputEvent {
     private:
         explicit MouseEvent(AInputEvent* event): InputEvent(event) {}
 };
+#endif
 
 /**
+@brief Pointer move event
+@m_since_latest
+
+@see @ref PointerEvent, @ref pointerMoveEvent(),
+    @ref platform-windowed-pointer-events,
+    @ref Platform-AndroidApplication-touch
+*/
+class AndroidApplication::PointerMoveEvent: public InputEvent {
+    public:
+        /** @brief Copying is not allowed */
+        PointerMoveEvent(const PointerMoveEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerMoveEvent(PointerMoveEvent&&) = delete;
+
+        /** @brief Copying is not allowed */
+        PointerMoveEvent& operator=(const PointerMoveEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerMoveEvent& operator=(PointerMoveEvent&&) = delete;
+
+        /**
+         * @brief Pointer event source
+         *
+         * Can be used to distinguish which source the event is coming from in
+         * case it's a movement with both @ref pointer() and @ref pointers()
+         * being empty.
+         */
+        PointerEventSource source() const { return _source; }
+
+        /**
+         * @brief Pointer type that was added or removed from the set of pressed pointers
+         *
+         * Use @ref pointers() to query the set of pointers pressed in this
+         * event. This field is is non-empty only in case a mouse button was
+         * pressed in addition to an already pressed button, or if one mouse
+         * button from multiple pressed buttons was released. If non-empty and
+         * @ref pointers() don't contain given @ref Pointer value, the button
+         * was released, if they contain given value, the button was pressed.
+         * @see @ref source()
+         */
+        Containers::Optional<Pointer> pointer() const { return _pointer; }
+
+        /**
+         * @brief Pointer types pressed in this event
+         *
+         * Returns an empty set if no pointers are pressed, which happens for
+         * example when a mouse is just moved around.
+         * @see @ref pointer()
+         */
+        Pointers pointers() const { return _pointers; }
+
+        /**
+         * @brief Whether the pointer is primary
+         *
+         * Useful to distinguish among multiple pointers in a multi-touch
+         * scenario. See @ref Platform-AndroidApplication-touch for more
+         * information.
+         */
+        bool isPrimary() const { return _primary; }
+
+        /**
+         * @brief Pointer ID
+         *
+         * Useful to distinguish among multiple pointers in a multi-touch
+         * scenario. See @ref Platform-AndroidApplication-touch for more
+         * information.
+         */
+        /* Long is for consistency with Sdl2Application, Android uses just an
+           Int */
+        Long id() const { return _id; }
+
+        /**
+         * @brief Position
+         *
+         * May return fractional values if the touch hardware has sub-pixel
+         * precision. Use @ref Math::round() to snap them to the nearest window
+         * pixel.
+         */
+        Vector2 position() const {
+            return {AMotionEvent_getX(_event, _i),
+                    AMotionEvent_getY(_event, _i)};
+        }
+
+        /**
+         * @brief Position relative to the previous touch event
+         *
+         * May return fractional values if the touch hardware has sub-pixel
+         * precision. Use @ref Math::round() to snap them to the nearest window
+         * pixel. Unlike @ref Sdl2Application, Android APIs don't provide
+         * relative position directly, so this is calculated explicitly as a
+         * delta from previous move event position.
+         */
+        Vector2 relativePosition() const { return _relativePosition; }
+
+    private:
+        friend AndroidApplication;
+
+        explicit PointerMoveEvent(AInputEvent* event, UnsignedByte i, PointerEventSource source, Containers::Optional<Pointer> pointer, Pointers pointers, bool primary, Int id, const Vector2& relativePosition): InputEvent{event}, _source{source}, _pointer{pointer}, _pointers{pointers}, _primary{primary}, _i{i}, _id{id}, _relativePosition{relativePosition} {}
+
+        const PointerEventSource _source;
+        const Containers::Optional<Pointer> _pointer;
+        const Pointers _pointers;
+        const bool _primary;
+        const UnsignedByte _i; /* Pointer index, not ID */
+        const Int _id;
+        const Vector2 _relativePosition;
+};
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+/**
 @brief Mouse move event
+@m_deprecated_since_latest Use @ref PointerMoveEvent and
+    @ref pointerMoveEvent() instead, which is a better abstraction for covering
+    both mouse and touch / pen input.
 
 @see @ref MouseEvent, @ref mouseMoveEvent()
 */
-class AndroidApplication::MouseMoveEvent: public InputEvent {
+class CORRADE_DEPRECATED("use PointerMoveEvent and pointerMoveEvent() instead") AndroidApplication::MouseMoveEvent: public InputEvent {
     friend AndroidApplication;
 
     public:
@@ -829,36 +1250,14 @@ class AndroidApplication::MouseMoveEvent: public InputEvent {
             /**
              * Left mouse button. Note that this button is not set if only
              * touch or stylus event occurred.
-             * @attention Available since Android 4.0 (API level 14), not
-             *      detectable in earlier versions.
              */
-            #if defined(DOXYGEN_GENERATING_OUTPUT) || __ANDROID_API__ >= 14
             Left = AMOTION_EVENT_BUTTON_PRIMARY,
-            #else
-            Left = 1 << 0,
-            #endif
 
-            /**
-             * Middle mouse button or second stylus button
-             * @attention Available since Android 4.0 (API level 14), not
-             *      detectable in earlier versions.
-             */
-            #if defined(DOXYGEN_GENERATING_OUTPUT) || __ANDROID_API__ >= 14
+            /** Middle mouse button or second stylus button */
             Middle = AMOTION_EVENT_BUTTON_TERTIARY,
-            #else
-            Middle = 1 << 1,
-            #endif
 
-            /**
-             * Right mouse button or first stylus button
-             * @attention Available since Android 4.0 (API level 14), not
-             *      detectable in earlier versions.
-             */
-            #if defined(DOXYGEN_GENERATING_OUTPUT) || __ANDROID_API__ >= 14
+            /** Right mouse button or first stylus button */
             Right = AMOTION_EVENT_BUTTON_SECONDARY
-            #else
-            Right = 1 << 2
-            #endif
         };
 
         /**
@@ -887,11 +1286,7 @@ class AndroidApplication::MouseMoveEvent: public InputEvent {
 
         /** @brief Mouse buttons */
         Buttons buttons() const {
-            #if __ANDROID_API__ >= 14
             return Button(AMotionEvent_getButtonState(_event));
-            #else
-            return {};
-            #endif
         }
 
     private:
@@ -900,7 +1295,10 @@ class AndroidApplication::MouseMoveEvent: public InputEvent {
         const Vector2i _relativePosition;
 };
 
+CORRADE_IGNORE_DEPRECATED_PUSH
 CORRADE_ENUMSET_OPERATORS(AndroidApplication::MouseMoveEvent::Buttons)
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
 
 /** @hideinitializer
 @brief Entry point for Android applications

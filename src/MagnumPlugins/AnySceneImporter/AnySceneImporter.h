@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -70,8 +71,8 @@ tries to open the file with it. Supported formats:
 -   DirectX X (`*.x`), loaded with any plugin that provides `DirectXImporter`
 -   AutoCAD DXF (`*.dxf`), loaded with any plugin that provides `DxfImporter`
 -   Autodesk FBX (`*.fbx`), loaded with any plugin that provides `FbxImporter`
--   glTF (`*.gltf`, `*.glb`), loaded with @ref GltfImporter or any other plugin
-    that provides it
+-   glTF (`*.gltf`, `*.glb`) and [VRM](https://vrm.dev/en/) (`*.vrm`), loaded
+    with @ref GltfImporter or any other plugin that provides it
 -   Industry Foundation Classes (IFC/Step) (`*.ifc`), loaded with any plugin
     that provides `IfcImporter`
 -   Irrlicht Mesh and Scene (`*.irrmesh`, `*.irr`), loaded with any plugin that
@@ -83,7 +84,10 @@ tries to open the file with it. Supported formats:
     `MilkshapeImporter`
 -   Wavefront OBJ (`*.obj`), loaded with @ref ObjImporter or any other plugin
     that provides it
--   Ogre XML (`*.xml`), loaded with any plugin that provides `OgreImporter`
+-   OGRE XML (`*.mesh.xml`), loaded with any plugin that provides
+    `OgreImporter`. The `*.mesh` extension isn't recognized because it's used
+    by [Meshwork](http://justsolve.archiveteam.org/wiki/Meshwork_model) as
+    well.
 -   OpenGEX (`*.ogex`), loaded with @ref OpenGexImporter or any other plugin
     that provides it
 -   Stanford (`*.ply`), loaded with @ref StanfordImporter or any other plugin
@@ -92,10 +96,21 @@ tries to open the file with it. Supported formats:
     `StlImporter`
 -   TrueSpace (`*.cob`, `*.scn`), loaded with any plugin that provides
     `TrueSpaceImporter`
+-   [Universal Scene Description (USD)](https://en.wikipedia.org/wiki/Universal_Scene_Description)
+    (`*.usd`, `*.usda`, `*.usdc`, `*.usdz`), loaded with any plugin that
+    provides `UsdImporter`
 -   Unreal (`*.3d`), loaded with any plugin that provides `UnrealImporter`
 -   Valve Model (`*.smd`, `*.vta`), loaded with any plugin that provides
     `ValveImporter`
 -   XGL (`*.xgl`, `*.zgl`), loaded with any plugin that provides `XglImporter`
+
+@note
+    Note that this list is not exhaustive, in particular the
+    @ref AssimpImporter lists many more file extensions. Not all can be
+    supported by this plugin because they're either very generic or used by
+    multiple different formats, such as `*.mdl` used for both Quake I and 3D
+    GameStudio. If file opening fails with this plugin, you can try directly
+    with a concrete plugin such as the @ref AssimpImporter as a fallback.
 
 Only loading from files is supported as the filename is used to detect the
 format, however @ref ImporterFeature::FileCallback is supported as well.

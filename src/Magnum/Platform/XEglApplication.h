@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -57,9 +58,8 @@ more information.
 
 This application library depends on **X11** and **EGL** libraries and is built
 if `MAGNUM_WITH_XEGLAPPLICATION` is enabled when building Magnum. To use this
-library from CMake, put [FindEGL.cmake](https://github.com/mosra/magnum/blob/master/modules/FindEGL.cmake)
-into your `modules/` directory, request the `XEglApplication` component of the
-`Magnum` package and link to the `Magnum::XEglApplication` target:
+library from CMake, request the `XEglApplication` component of the `Magnum`
+package and link to the `Magnum::XEglApplication` target:
 
 @code{.cmake}
 find_package(Magnum REQUIRED XEglApplication)
@@ -104,7 +104,7 @@ If no other application header is included, this class is also aliased to
 class XEglApplication: public AbstractXApplication {
     public:
         /**
-         * @brief Construct with given configuration for OpenGL context
+         * @brief Construct with an OpenGL context
          * @param arguments         Application arguments
          * @param configuration     Application configuration
          * @param glConfiguration   OpenGL context configuration

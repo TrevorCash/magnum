@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -29,6 +30,7 @@
  * @brief Class @ref Magnum::Animation::Track, @ref Magnum::Animation::TrackViewStorage, @ref Magnum::Animation::TrackView
  */
 
+#include <utility> /** @todo remove usage of std::pair from here */
 #include <Corrade/Containers/Array.h>
 
 #include "Magnum/Animation/Animation.h"
@@ -51,7 +53,7 @@ the @ref Player class, but it's possible to use it separately as well.
 Animation track is defined by a list of keyframes (time+value pairs),
 interpolator function and extrapolation behavior.
 
-@snippet MagnumAnimation.cpp Track-usage
+@snippet Animation.cpp Track-usage
 
 @section Animation-Track-interpolators Types and interpolators
 
@@ -80,7 +82,7 @@ The @ref Track and @ref TrackView classes are fully stateless and the
 the beginning every time. You can use @ref at(K, std::size_t&) const to
 remember last used keyframe index and pass it in the next iteration as a hint:
 
-@snippet MagnumAnimation.cpp Track-performance-hint
+@snippet Animation.cpp Track-performance-hint
 
 @subsection Animation-Track-performance-strict Strict interpolation
 
@@ -91,7 +93,7 @@ implicit @ref Extrapolation::Extrapolated behavior and assumes there are always
 at least two keyframes, resulting in more compact interpolation code. If your
 animation data satisfy the prerequisites, simply use it in place of @ref at():
 
-@snippet MagnumAnimation.cpp Track-performance-strict
+@snippet Animation.cpp Track-performance-strict
 
 @subsection Animation-Track-performance-cache Cache-efficient data layout
 
@@ -102,7 +104,7 @@ interleaving the data and passing them using
 instead of having data duplicated scattered across disjoint allocations of
 @ref Track instances:
 
-@snippet MagnumAnimation.cpp Track-performance-cache
+@snippet Animation.cpp Track-performance-cache
 
 @subsection Animation-Track-performance-interpolator Interpolator function choice
 
@@ -732,7 +734,11 @@ template<class K, class V, class R
         /** @brief Convert a mutable view to a const one */
         /* This is the only variant that works on MSVC 2015, std::remove_const
            in the signature didn't work there */
-        template<class K2, class V2, class = typename std::enable_if<std::is_same<const K2, K>::value && std::is_same<const V2, V>::value>::type> /*implicit*/ TrackView(const TrackView<K2, V2, R>& other) noexcept: TrackViewStorage<K>{other._keys, other._values, other._interpolation, other._interpolator, other._before, other._after} {}
+        template<class K2, class V2
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_same<const K2, K>::value && std::is_same<const V2, V>::value, int>::type = 0
+            #endif
+        > /*implicit*/ TrackView(const TrackView<K2, V2, R>& other) noexcept: TrackViewStorage<K>{other._keys, other._values, other._interpolation, other._interpolator, other._before, other._after} {}
 
         /**
          * @brief Interpolation function

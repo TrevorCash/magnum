@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -181,9 +182,13 @@ FramebufferState::FramebufferState(Context& context, Containers::StaticArrayView
     #endif
 
     /* DSA/non-DSA implementation for framebuffer clearing. Yes, it's because
-       Intel Windows drivers are shit. */
+       Intel Windows drivers are shit, and Mesa 24 seems to be stealing bugs
+       from the wrong driver. Doesn't happen on 23 and will hopefully be fixed
+       on 25? */
     #ifndef MAGNUM_TARGET_GLES
     if(context.isExtensionSupported<Extensions::ARB::direct_state_access>()
+        && (!context.versionString().contains("Mesa 24.") ||
+            context.isDriverWorkaroundDisabled("mesa-broken-dsa-framebuffer-clear"_s))
         #ifdef CORRADE_TARGET_WINDOWS
         && (!(context.detectedDriver() & Context::DetectedDriver::IntelWindows) ||
             context.isDriverWorkaroundDisabled("intel-windows-broken-dsa-framebuffer-clear"_s))

@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
 #   copy of this software and associated documentation files (the "Software"),
@@ -31,7 +32,6 @@ find_package(Corrade REQUIRED PluginManager)
 
 # Files shared between main library and unit test library
 set(MagnumText_SRCS
-    Alignment.cpp
     Direction.cpp)
 
 # Files compiled with different flags for main library and unit test library
@@ -40,6 +40,7 @@ set(MagnumText_GracefulAssert_SRCS
     AbstractFontConverter.cpp
     AbstractGlyphCache.cpp
     AbstractShaper.cpp
+    Alignment.cpp
     Feature.cpp
     Renderer.cpp
     Script.cpp)
@@ -59,16 +60,23 @@ set(MagnumText_HEADERS
     visibility.h)
 
 set(MagnumText_PRIVATE_HEADERS
-    Implementation/printFourCC.h)
+    Implementation/printFourCC.h
+    Implementation/rendererState.h)
 
 if(MAGNUM_TARGET_GL)
-    list(APPEND MagnumText_SRCS
-        GlyphCache.cpp)
     list(APPEND MagnumText_GracefulAssert_SRCS
-        DistanceFieldGlyphCache.cpp)
+        DistanceFieldGlyphCacheGL.cpp
+        GlyphCacheGL.cpp
+        RendererGL.cpp)
     list(APPEND MagnumText_HEADERS
-        DistanceFieldGlyphCache.h
-        GlyphCache.h)
+        DistanceFieldGlyphCacheGL.h
+        GlyphCacheGL.h
+        RendererGL.h)
+    if(MAGNUM_BUILD_DEPRECATED)
+        list(APPEND MagnumText_HEADERS
+            DistanceFieldGlyphCache.h
+            GlyphCache.h)
+    endif()
 else()
     # So MagnumTextObjects has at least something
     list(APPEND MagnumText_SRCS ${PROJECT_SOURCE_DIR}/src/dummy.cpp)
@@ -85,11 +93,14 @@ add_library(MagnumTextObjects OBJECT
     ${MagnumText_HEADERS}
     ${MagnumText_PRIVATE_HEADERS})
 target_include_directories(MagnumTextObjects PUBLIC
-    $<TARGET_PROPERTY:Corrade::PluginManager,INTERFACE_INCLUDE_DIRECTORIES>
     $<TARGET_PROPERTY:Magnum,INTERFACE_INCLUDE_DIRECTORIES>)
 if(MAGNUM_TARGET_GL)
     target_include_directories(MagnumTextObjects PUBLIC $<TARGET_PROPERTY:MagnumGL,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
+# Include dependencies after Magnum itself, to avoid stale installed Magnum
+# headers being preferred over the project-local ones
+target_include_directories(MagnumTextObjects PUBLIC
+    $<TARGET_PROPERTY:Corrade::PluginManager,INTERFACE_INCLUDE_DIRECTORIES>)
 if(NOT MAGNUM_BUILD_STATIC)
     target_compile_definitions(MagnumTextObjects PRIVATE "MagnumTextObjects_EXPORTS")
 endif()
@@ -109,11 +120,13 @@ elseif(MAGNUM_BUILD_STATIC_PIC)
 endif()
 target_link_libraries(MagnumText PUBLIC
     Magnum
-    MagnumTextureTools
-    Corrade::PluginManager)
+    MagnumTextureTools)
 if(MAGNUM_TARGET_GL)
     target_link_libraries(MagnumText PUBLIC MagnumGL)
 endif()
+# Include dependencies after Magnum itself, to avoid stale installed Magnum
+# headers being preferred over the project-local ones
+target_link_libraries(MagnumText PUBLIC Corrade::PluginManager)
 
 install(TARGETS MagnumText
     RUNTIME DESTINATION ${MAGNUM_BINARY_INSTALL_DIR}

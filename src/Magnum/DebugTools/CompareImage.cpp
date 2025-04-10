@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -782,7 +783,7 @@ void ImageComparatorBase::saveDiagnostic(TestSuite::ComparisonStatusFlags, Utili
     }
 
     const ImageView2D image{PixelStorage{}.setAlignment(1), _state->actualFormat, Vector2i{Int(pixels.size()[1]), Int(pixels.size()[0])}, data};
-    const Containers::String filename = Utility::Path::join(path, Utility::Path::split(_state->expectedFilename).second());
+    const Containers::String filename = Utility::Path::join(path, Utility::Path::filename(_state->expectedFilename));
 
     /* Export the data the base view/view comparator saved. Ignore failures,
        we're in the middle of a fail anyway (and everything will print messages

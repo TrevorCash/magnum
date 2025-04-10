@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -24,9 +25,8 @@
 */
 
 #include <new>
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Vk/Device.h"
 #include "Magnum/Vk/Image.h"
@@ -109,7 +109,7 @@ ImageViewTest::ImageViewTest() {
 
 /* The double reinterpret_cast is needed because the handle is an uint64_t
    instead of a pointer on 32-bit builds and only this works on both */
-const VkImage imageHandle{reinterpret_cast<VkImage>(reinterpret_cast<void*>(0xdeadbeef))};
+const VkImage imageHandle{reinterpret_cast<VkImage>(reinterpret_cast<void*>(std::size_t{0xdeadbeef}))};
 
 template<class T> void ImageViewTest::createInfoConstruct() {
     /** @todo use a real flag once it exists */
@@ -148,10 +148,10 @@ void ImageViewTest::createInfoConstructFromImageFormatUknown() {
     Device device{NoCreate};
     Image image = Image::wrap(device, imageHandle, PixelFormat{});
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     ImageViewCreateInfo{VK_IMAGE_VIEW_TYPE_2D, image};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Vk::ImageViewCreateInfo: the image has unknown format, you have to specify it explicitly\n"
         /* The second assert won't appear for the user, it's here only because
            the graceful assert can't do an early exist in a delegeated

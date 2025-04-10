@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -26,7 +27,7 @@
 */
 
 /** @file
- * @brief Class @ref Magnum::Math::Half, literal @link Magnum::Math::Literals::operator""_h() @endlink
+ * @brief Class @ref Magnum::Math::Half, literal @link Magnum::Math::Literals::HalfLiterals::operator""_h() @endlink
  */
 
 #ifndef CORRADE_SINGLES_NO_DEBUG
@@ -59,17 +60,17 @@ thus the operations would be done faster in a regular single-precision
 
 The class provides explicit conversion from and to @ref Magnum::Float "Float",
 equality comparison with correct treatment of NaN values, promotion and
-negation operator, an @link Literals::operator""_h() operator""_h() @endlink
+negation operator, a @link Literals::HalfLiterals::operator""_h() @endlink
 literal and an @ref operator<<(Debug&, Half) debug operator. Internally the
 class uses @ref packHalf() and @ref unpackHalf(). Example usage:
 
-@snippet MagnumMath.cpp Half-usage
+@snippet Math.cpp Half-usage
 
 Note that it is also possible to use this type inside @ref Vector classes,
 though, again, only for passing data around and converting them, without any
 arithmetic operations:
 
-@snippet MagnumMath.cpp Half-usage-vector
+@snippet Math.cpp Half-usage-vector
 
 @see @ref Magnum::Half
 */
@@ -111,7 +112,9 @@ class Half {
          * @brief Equality comparison
          *
          * Returns `false` if one of the values is half-float representation of
-         * NaN, otherwise does bitwise comparison.
+         * NaN, otherwise does bitwise comparison. Note that, unlike with other
+         * floating-point Magnum math types, due to the limited precision of
+         * half floats it's *not* a fuzzy compare.
          */
         constexpr bool operator==(Half other) const {
             return (((      _data & 0x7c00) == 0x7c00 && (      _data & 0x03ff)) ||
@@ -165,16 +168,46 @@ class Half {
         UnsignedShort _data;
 };
 
+/* Unlike STL, where there's e.g. std::literals::string_literals with both
+   being inline, here's just the second inline because making both would cause
+   the literals to be implicitly available to all code in Math. Which isn't
+   great if there are eventually going to be conflicts. In case of STL the
+   expected use case was that literals are available to anybody who does
+   `using namespace std;`, that doesn't apply here as most APIs are in
+   subnamespaces that *should not* be pulled in via `using` as a whole. */
 namespace Literals {
+    /** @todoc The inline causes "error: non-const getClassDef() called on
+        aliased member. Please report as a bug." on Doxygen 1.8.18, plus the
+        fork I have doesn't even mark them as inline in the XML output yet. And
+        it also duplicates the literal reference to parent namespace, adding
+        extra noise. Revisit once upgrading to a newer version. */
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    inline
+    #endif
+    namespace HalfLiterals {
 
+/* According to https://wg21.link/CWG2521, space between "" and literal name is
+   deprecated because _Uppercase or __double names could be treated as reserved
+   depending on whether the space was present or not, and whitespace is not
+   load-bearing in any other contexts. Clang 17+ adds an off-by-default warning
+   for this; GCC 4.8 however *requires* the space there, so until GCC 4.8
+   support is dropped, we suppress this warning instead of removing the
+   space. */
+#if defined(CORRADE_TARGET_CLANG) && __clang_major__ >= 17
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-literal-operator"
+#endif
 /** @relatesalso Magnum::Math::Half
 @brief Half-float literal
 
 See @ref Half for more information.
 */
-inline Half operator "" _h(long double value) { return Half(Float(value)); }
+inline Half operator"" _h(long double value) { return Half(Float(value)); }
+#if defined(CORRADE_TARGET_CLANG) && __clang_major__ >= 17
+#pragma clang diagnostic pop
+#endif
 
-}
+}}
 
 #ifndef CORRADE_SINGLES_NO_DEBUG
 /**
@@ -208,7 +241,7 @@ namespace Corrade { namespace Utility {
 /**
 @tweakableliteral{Magnum::Math::Half}
 
-Parses the @link Magnum::Math::Literals::operator""_h @endlink literal.
+Parses the @link Magnum::Math::Literals::HalfLiterals::operator""_h @endlink literal.
 */
 template<> struct MAGNUM_EXPORT TweakableParser<Magnum::Math::Half> {
     TweakableParser() = delete;

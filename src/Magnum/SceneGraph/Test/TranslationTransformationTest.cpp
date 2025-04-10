@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/SceneGraph/Object.hpp"
 #include "Magnum/SceneGraph/TranslationTransformation.h"
@@ -91,10 +91,10 @@ template<class T> void TranslationTransformationTest::fromMatrixInvalid() {
 
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream o;
-    Error redirectError{&o};
+    Containers::String out;
+    Error redirectError{&out};
     Implementation::Transformation<BasicTranslationTransformation2D<T>>::fromMatrix(Math::Matrix3<T>::scaling(Math::Vector2<T>{T(4.0)}));
-    CORRADE_COMPARE(o.str(), "SceneGraph::TranslationTransformation: the matrix doesn't represent pure translation\n");
+    CORRADE_COMPARE(out, "SceneGraph::TranslationTransformation: the matrix doesn't represent pure translation\n");
 }
 
 template<class T> void TranslationTransformationTest::toMatrix() {

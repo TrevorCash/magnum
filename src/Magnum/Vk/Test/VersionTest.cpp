@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/Utility/Configuration.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Magnum.h"
 #include "Magnum/Vk/Version.h"
@@ -126,11 +125,11 @@ void VersionTest::comparison() {
 }
 
 void VersionTest::debug() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Version::Vk12 << version(1, 5, 789) << Version::None
         /* packed should omit "Vulkan" */
         << Debug::packed << version(20, 6);
-    CORRADE_COMPARE(out.str(), "Vulkan 1.2 Vulkan 1.5.789 Vulkan 1023.1023.4095 20.6\n");
+    CORRADE_COMPARE(out, "Vulkan 1.2 Vulkan 1.5.789 Vulkan 1023.1023.4095 20.6\n");
 }
 
 void VersionTest::configuration() {

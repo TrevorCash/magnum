@@ -4,10 +4,12 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2016, 2018 Jonathan Hale <squareys@googlemail.com>
     Copyright © 2019 Konstantinos Chatzilygeroudis <costashatz@gmail.com>
     Copyright © 2019, 2020 Marco Melorio <m.melorio@icloud.com>
+    Copyright © 2022 Andreas Leroux <andreas.leroux@epitech.eu>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -98,11 +100,9 @@ See @ref cmake for more information.
 
 @section Platform-GlfwApplication-usage General usage
 
-This application library depends on the [GLFW](http://glfw.org) library and is
-built if `MAGNUM_WITH_GLFWAPPLICATION` is enabled when building Magnum. To use
-this library with CMake, put
-[FindGLFW.cmake](https://github.com/mosra/magnum/blob/master/modules/FindGLFW.cmake)
-into your `modules/` directory, request the `GlfwApplication` component of the
+This application library depends on [GLFW](http://glfw.org) 3.2 and newer and
+is built if `MAGNUM_WITH_GLFWAPPLICATION` is enabled when building Magnum. To use
+this library with CMake, request the `GlfwApplication` component of the
 `Magnum` package and link to the `Magnum::GlfwApplication` target:
 
 @code{.cmake}
@@ -121,7 +121,7 @@ necessary.
 
 @code{.cmake}
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-# These two will be off-by-default when GLFW 3.4 gets released
+# These two are be off-by-default and thus no longer needed with GLFW 3.4+
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(glfw EXCLUDE_FROM_ALL)
@@ -178,14 +178,47 @@ class GlfwApplication {
         class ViewportEvent;
         class InputEvent;
         class KeyEvent;
+        class PointerEvent;
+        class PointerMoveEvent;
+        class ScrollEvent;
+        #ifdef MAGNUM_BUILD_DEPRECATED
         class MouseEvent;
         class MouseMoveEvent;
         class MouseScrollEvent;
+        #endif
         class TextInputEvent;
+
+        /* The damn thing cannot handle forward enum declarations */
+        #ifndef DOXYGEN_GENERATING_OUTPUT
+        enum class Modifier: Int;
+        enum class Key: Int;
+        enum class PointerEventSource: UnsignedByte;
+        enum class Pointer: UnsignedByte;
+        #endif
+
+        /**
+         * @brief Set of keyboard modifiers
+         * @m_since_latest
+         *
+         * @see @ref KeyEvent::modifiers(), @ref PointerEvent::modifiers(),
+         *      @ref PointerMoveEvent::modifiers(),
+         *      @ref ScrollEvent::modifiers(),
+         *      @ref platform-windowed-key-events
+         */
+        typedef Containers::EnumSet<Modifier> Modifiers;
+
+        /**
+         * @brief Set of pointer types
+         * @m_since_latest
+         *
+         * @see @ref PointerMoveEvent::pointers(),
+         *      @ref platform-windowed-pointer-events
+         */
+        typedef Containers::EnumSet<Pointer> Pointers;
 
         #ifdef MAGNUM_TARGET_GL
         /**
-         * @brief Construct with given configuration for OpenGL context
+         * @brief Construct with an OpenGL context
          * @param arguments         Application arguments
          * @param configuration     Application configuration
          * @param glConfiguration   OpenGL context configuration
@@ -203,7 +236,7 @@ class GlfwApplication {
         #endif
 
         /**
-         * @brief Construct with given configuration
+         * @brief Construct without explicit GPU context configuration
          *
          * If @ref Configuration::WindowFlag::Contextless is present or Magnum
          * was not built with @ref MAGNUM_TARGET_GL, this creates a window
@@ -216,15 +249,13 @@ class GlfwApplication {
          *
          * See also @ref building-features for more information.
          */
+        #ifdef DOXYGEN_GENERATING_OUTPUT
+        explicit GlfwApplication(const Arguments& arguments, const Configuration& configuration = Configuration{});
+        #else
+        /* Configuration is only forward-declared at this point */
         explicit GlfwApplication(const Arguments& arguments, const Configuration& configuration);
-
-        /**
-         * @brief Construct with default configuration
-         *
-         * Equivalent to calling @ref GlfwApplication(const Arguments&, const Configuration&)
-         * with default-constructed @ref Configuration.
-         */
         explicit GlfwApplication(const Arguments& arguments);
+        #endif
 
         /**
          * @brief Construct without creating a window
@@ -246,6 +277,43 @@ class GlfwApplication {
 
         /** @brief Moving is not allowed */
         GlfwApplication& operator=(GlfwApplication&&) = delete;
+
+        /**
+         * @brief Name for given key
+         * @m_since_latest
+         *
+         * Human-readable localized UTF-8 name for given @p key, intended for
+         * displaying to the user in e.g. a key binding configuration. For
+         * @ref Key::Unknown, a concrete @p scanCode can be passed. If there is
+         * no name for given key, an empty string is returned. If non-empty,
+         * the returned view is always
+         * @relativeref{Corrade,Containers::StringViewFlag::NullTerminated} and
+         * is valid until the keyboard layout is changed or the application
+         * exits.
+         *
+         * Unlike e.g. @ref Sdl2Application::keyName(), the function isn't
+         * @cpp static @ce because it relies on GLFW being initialized.
+         * @see @ref KeyEvent::keyName(), @ref keyToScanCode()
+         */
+        Containers::StringView keyName(Key key, UnsignedInt scanCode = 0) const;
+
+        #if GLFW_VERSION_MAJOR*100 + GLFW_VERSION_MINOR >= 303 || defined(DOXYGEN_GENERATING_OUTPUT)
+        /**
+         * @brief Scan code for given key
+         * @m_since_latest
+         *
+         * If @p key doesn't correspond to a physical key supported on given
+         * platform, returns @relativeref{Corrade,Containers::NullOpt}. Unlike
+         * e.g. @ref Sdl2Application::scanCodeToKey(), GLFW doesn't provide any
+         * way to map from a scan code to a key.
+         *
+         * Unlike e.g. @ref Sdl2Application::keyToScanCode(), the function
+         * isn't @cpp static @ce because it relies on GLFW being initialized.
+         * @note Available since GLFW 3.3.
+         * @see @ref KeyEvent::key(), @ref KeyEvent::scanCode(), @ref keyName()
+         */
+        Containers::Optional<UnsignedInt> keyToScanCode(Key key) const;
+        #endif
 
         /**
          * @brief Execute main loop
@@ -291,7 +359,7 @@ class GlfwApplication {
          * you need to explicitly @cpp return @ce after calling it, as it can't
          * exit the constructor on its own:
          *
-         * @snippet MagnumPlatform.cpp exit-from-constructor
+         * @snippet Platform.cpp exit-from-constructor
          */
         void exit(int exitCode = 0);
 
@@ -402,7 +470,6 @@ class GlfwApplication {
          */
         void setWindowSize(const Vector2i& size);
 
-        #if GLFW_VERSION_MAJOR*100 + GLFW_VERSION_MINOR >= 302 || defined(DOXYGEN_GENERATING_OUTPUT)
         /**
          * @brief Set window minimum size
          * @param size    The minimum size, in screen coordinates
@@ -412,7 +479,6 @@ class GlfwApplication {
          * corresponding limit. To make the sizing work independently of the
          * display DPI, @p size is internally multiplied with @ref dpiScaling()
          * before getting applied. Expects that a window is already created.
-         * @note Supported since GLFW 3.2.
          * @see @ref setMaxWindowSize(), @ref setWindowSize()
          */
         void setMinWindowSize(const Vector2i& size = {-1, -1});
@@ -426,11 +492,9 @@ class GlfwApplication {
          * corresponding limit. To make the sizing work independently of the
          * display DPI, @p size is internally multiplied with @ref dpiScaling()
          * before getting applied. Expects that a window is already created.
-         * @note Supported since GLFW 3.2.
          * @see @ref setMinWindowSize(), @ref setMaxWindowSize()
          */
         void setMaxWindowSize(const Vector2i& size = {-1, -1});
-        #endif
 
         #if defined(MAGNUM_TARGET_GL) || defined(DOXYGEN_GENERATING_OUTPUT)
         /**
@@ -480,7 +544,6 @@ class GlfwApplication {
          */
         void setWindowTitle(Containers::StringView title);
 
-        #if GLFW_VERSION_MAJOR*100 + GLFW_VERSION_MINOR >= 302 || defined(DOXYGEN_GENERATING_OUTPUT)
         /**
          * @brief Set window icon
          * @m_since_latest
@@ -491,8 +554,8 @@ class GlfwApplication {
          * @ref PixelFormat::RGBA8Unorm or @ref PixelFormat::RGBA8Srgb formats.
          * If you have just one image, you can use
          * @ref setWindowIcon(const ImageView2D&) instead.
-         * @note Available since GLFW 3.2. The function has no effect on macOS
-         *      / Wayland, see @m_class{m-doc-external} [glfwSetWindowIcon()](https://www.glfw.org/docs/latest/group__window.html#gadd7ccd39fe7a7d1f0904666ae5932dc5)
+         * @note The function has no effect on macOS / Wayland, see
+         *      @m_class{m-doc-external} [glfwSetWindowIcon()](https://www.glfw.org/docs/latest/group__window.html#gadd7ccd39fe7a7d1f0904666ae5932dc5)
          *      for more information.
          * @see @ref platform-windows-icon "Excecutable icon on Windows",
          *      @ref Trade::IcoImporter "IcoImporter"
@@ -510,7 +573,6 @@ class GlfwApplication {
          * @m_since{2020,06}
          */
         void setWindowIcon(const ImageView2D& image);
-        #endif
 
         /**
          * @brief Swap buffers
@@ -531,6 +593,25 @@ class GlfwApplication {
          *      @ref Sdl2Application::swapInterval().
          */
         void setSwapInterval(Int interval);
+
+        /**
+         * @brief Set minimal loop period
+         * @m_since_latest
+         *
+         * This setting reduces the main loop frequency in case
+         * @ref setSwapInterval() wasn't called at all, was called with
+         * @cpp 0 @ce, or no drawing is done and just @ref tickEvent() is being
+         * executed. The @p time is expected to be non-negative, default is
+         * @cpp 0_nsec @ce (i.e., looping at maximum frequency). If the
+         * application is drawing on the screen and VSync was enabled by
+         * calling @ref setSwapInterval(), this setting is ignored.
+         *
+         * Note that as the VSync default is driver-dependent,
+         * @ref setSwapInterval() has to be explicitly called to make the
+         * interaction between the two work correctly.
+         * @see @ref setSwapInterval()
+         */
+        void setMinimalLoopPeriod(Nanoseconds time);
 
         /** @copydoc Sdl2Application::redraw() */
         void redraw();
@@ -553,6 +634,7 @@ class GlfwApplication {
          * via @ref framebufferSize() and DPI scaling using @ref dpiScaling().
          * See @ref Platform-GlfwApplication-dpi for detailed info about these
          * values.
+         * @see @ref platform-windowed-viewport-events
          */
         virtual void viewportEvent(ViewportEvent& event);
 
@@ -567,10 +649,20 @@ class GlfwApplication {
 
         /** @{ @name Keyboard handling */
 
-        /** @copydoc Sdl2Application::keyPressEvent() */
+        /**
+         * @brief Key press event
+         *
+         * Called when a key is pressed. Default implementation does nothing.
+         * @see @ref platform-windowed-key-events
+         */
         virtual void keyPressEvent(KeyEvent& event);
 
-        /** @copydoc Sdl2Application::keyReleaseEvent() */
+        /**
+         * @brief Key release event
+         *
+         * Called when a key is released. Default implementation does nothing.
+         * @see @ref platform-windowed-key-events
+         */
         virtual void keyReleaseEvent(KeyEvent& event);
 
         /* Since 1.8.17, the original short-hand group closing doesn't work
@@ -579,7 +671,7 @@ class GlfwApplication {
          * @}
          */
 
-        /** @{ @name Mouse handling */
+        /** @{ @name Pointer handling */
 
     public:
         /**
@@ -657,22 +749,119 @@ class GlfwApplication {
         }
 
     private:
-        /** @copydoc Sdl2Application::mousePressEvent() */
-        virtual void mousePressEvent(MouseEvent& event);
+        /**
+         * @brief Pointer press event
+         * @m_since_latest
+         *
+         * Called when a mouse is pressed. Note that if at least one mouse
+         * button is already pressed and another button gets pressed in
+         * addition, @ref pointerMoveEvent() with the new combination is
+         * called, not this function.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mousePressEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
+         * nothing.
+         * @see @ref platform-windowed-pointer-events
+         */
+        virtual void pointerPressEvent(PointerEvent& event);
 
-        /** @copydoc Sdl2Application::mouseReleaseEvent() */
-        virtual void mouseReleaseEvent(MouseEvent& event);
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse press event
+         * @m_deprecated_since_latest Use @ref pointerPressEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use pointerPressEvent() instead") void mousePressEvent(MouseEvent& event);
+        #endif
 
         /**
-         * @brief Mouse move event
+         * @brief Pointer release event
+         * @m_since_latest
          *
-         * Called when any mouse button is pressed and mouse is moved. Default
-         * implementation does nothing.
+         * Called when a mouse is released. Note that if multiple mouse buttons
+         * are pressed and one of these is released, @ref pointerMoveEvent()
+         * with the new combination is called, not this function.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mouseReleaseEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
+         * nothing.
+         * @see @ref platform-windowed-pointer-events
          */
-        virtual void mouseMoveEvent(MouseMoveEvent& event);
+        virtual void pointerReleaseEvent(PointerEvent& event);
 
-        /** @copydoc Sdl2Application::mouseScrollEvent() */
-        virtual void mouseScrollEvent(MouseScrollEvent& event);
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse release event
+         * @m_deprecated_since_latest Use @ref pointerReleaseEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use pointerReleaseEvent() instead") void mouseReleaseEvent(MouseEvent& event);
+        #endif
+
+        /**
+         * @brief Pointer move event
+         * @m_since_latest
+         *
+         * Called when any of the currently pressed pointers is moved or
+         * changes its properties. Gets called also if the set of pressed mouse
+         * buttons changes.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mouseMoveEvent(), or if
+         * @ref PointerMoveEvent::pointer() is not
+         * @relativeref{Corrade,Containers::NullOpt}, to either
+         * @ref mousePressEvent() or @ref mouseReleaseEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
+         * nothing.
+         * @see @ref platform-windowed-pointer-events
+         */
+        virtual void pointerMoveEvent(PointerMoveEvent& event);
+
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse move event
+         * @m_deprecated_since_latest Use @ref pointerMoveEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use pointerMoveEvent() instead") void mouseMoveEvent(MouseMoveEvent& event);
+        #endif
+
+        /**
+         * @brief Scroll event
+         * @m_since_latest
+         *
+         * Called when a scrolling device is used (mouse wheel or scrolling
+         * area on a touchpad).
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mouseScrollEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
+         * nothing.
+         * @see @ref platform-windowed-pointer-events
+         */
+        virtual void scrollEvent(ScrollEvent& event);
+
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse move event
+         * @m_deprecated_since_latest Use @ref scrollEvent() instead, which
+         *      isn't semantically tied to just a mouse.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use scrollEvent() instead") void mouseScrollEvent(MouseScrollEvent& event);
+        #endif
 
         /* Since 1.8.17, the original short-hand group closing doesn't work
            anymore. FFS. */
@@ -687,7 +876,8 @@ class GlfwApplication {
          *
          * If text input is active, text input events go to
          * @ref textInputEvent().
-         * @see @ref startTextInput(), @ref stopTextInput()
+         * @see @ref startTextInput(), @ref stopTextInput(),
+         *      @ref platform-windowed-key-events
          */
         bool isTextInputActive() const;
 
@@ -695,7 +885,8 @@ class GlfwApplication {
          * @brief Start text input
          *
          * Starts text input that will go to @ref textInputEvent().
-         * @see @ref stopTextInput(), @ref isTextInputActive()
+         * @see @ref stopTextInput(), @ref isTextInputActive(),
+         *      @ref platform-windowed-key-events
          */
         void startTextInput();
 
@@ -704,7 +895,7 @@ class GlfwApplication {
          *
          * Stops text input that went to @ref textInputEvent().
          * @see @ref startTextInput(), @ref isTextInputActive(),
-         *      @ref textInputEvent()
+         *      @ref textInputEvent(), @ref platform-windowed-key-events
          */
         void stopTextInput();
 
@@ -713,7 +904,7 @@ class GlfwApplication {
          * @brief Text input event
          *
          * Called when text input is active and the text is being input.
-         * @see @ref isTextInputActive()
+         * @see @ref isTextInputActive(), @ref platform-windowed-key-events
          */
         virtual void textInputEvent(TextInputEvent& event);
 
@@ -742,7 +933,49 @@ class GlfwApplication {
          * @}
          */
 
+    protected:
+        /**
+         * @brief Tick event
+         * @m_since_latest
+         *
+         * If implemented, this function is called periodically after
+         * processing all input events and before draw event even though there
+         * might be no input events and redraw is not requested. Useful e.g.
+         * for asynchronous task polling. Use @ref setMinimalLoopPeriod() /
+         * @ref setSwapInterval() to control main loop frequency.
+         *
+         * If this implementation gets called from its @cpp override @ce, it
+         * will effectively stop the tick event from being fired and the app
+         * returns back to waiting for input events. This can be used to
+         * disable the tick event when not needed.
+         *
+         * @m_class{m-block m-success}
+         *
+         * @par Opting out of tick events at runtime
+         *      Unlike other event handlers, this function isn't @cpp private @ce
+         *      in order to allow subclasses to conditionally disable the tick
+         *      event by calling the base implementation. To the application it
+         *      looks the same as if the tick event wasn't overriden at all,
+         *      which effectively results in the function not being called ever
+         *      again. This is useful for example with
+         *      @relativeref{Corrade,Utility::Tweakable}, where periodical
+         *      polling for file updates doesn't need to be done if tweakable
+         *      constants aren't enabled at all.
+         * @par
+         *      @snippet Platform.cpp tickEvent-conditional
+         * @par
+         *      It's not possible to re-enable the tick event afterwards.
+         */
+        virtual void tickEvent();
+
     private:
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /* Calls the base pointer*Event() in order to delegate to deprecated
+           mouse events */
+        template<class> friend class BasicScreenedApplication;
+        template<class, bool> friend struct Implementation::ApplicationScrollEventMixin;
+        #endif
+
         enum class Flag: UnsignedByte;
         typedef Containers::EnumSet<Flag> Flags;
         CORRADE_ENUMSET_FRIEND_OPERATORS(Flags)
@@ -769,6 +1002,8 @@ class GlfwApplication {
         Vector2 _commandLineDpiScaling, _configurationDpiScaling;
 
         GLFWwindow* _window{nullptr};
+        /* Not using Nanoseconds as that would require including Time.h */
+        UnsignedInt _minimalLoopPeriodNanoseconds{};
         Flags _flags;
         #ifdef MAGNUM_TARGET_GL
         /* Has to be in an Optional because we delay-create it in a constructor
@@ -779,8 +1014,369 @@ class GlfwApplication {
         int _exitCode = 0;
 
         Vector2i _minWindowSize, _maxWindowSize;
-        Vector2i _previousMouseMovePosition{-1};
+        Vector2 _previousMouseMovePosition{Constants::nan()};
 };
+
+/**
+@brief Keyboard modifier
+@m_since_latest
+
+@see @ref Modifiers, @ref KeyEvent::modifiers(),
+    @ref PointerEvent::modifiers(), @ref PointerMoveEvent::modifiers(),
+    @ref ScrollEvent::modifiers(), @ref platform-windowed-key-events
+*/
+enum class GlfwApplication::Modifier: Int {
+    /**
+     * Shift
+     *
+     * @see @ref KeyEvent::Key::LeftShift, @ref KeyEvent::Key::RightShift
+     */
+    Shift = GLFW_MOD_SHIFT,
+
+    /**
+     * Ctrl
+     *
+     * @see @ref KeyEvent::Key::LeftCtrl, @ref KeyEvent::Key::RightCtrl
+     */
+    Ctrl = GLFW_MOD_CONTROL,
+
+    /**
+     * Alt
+     *
+     * @see @ref KeyEvent::Key::LeftAlt, @ref KeyEvent::Key::RightAlt
+     */
+    Alt = GLFW_MOD_ALT,
+
+    /**
+     * Super key (Windows/⌘)
+     *
+     * @see @ref KeyEvent::Key::LeftSuper, @ref KeyEvent::Key::RightSuper
+     */
+    Super = GLFW_MOD_SUPER
+};
+
+CORRADE_ENUMSET_OPERATORS(GlfwApplication::Modifiers)
+
+/**
+@brief Key
+@m_since_latest
+
+@see @ref KeyEvent::key(), @ref platform-windowed-key-events
+*/
+enum class GlfwApplication::Key: Int {
+    Unknown = GLFW_KEY_UNKNOWN,         /**< Unknown key */
+
+    /**
+     * Left Shift
+     *
+     * @see @ref InputEvent::Modifier::Shift
+     */
+    LeftShift = GLFW_KEY_LEFT_SHIFT,
+
+    /**
+     * Right Shift
+     *
+     * @see @ref InputEvent::Modifier::Shift
+     */
+    RightShift = GLFW_KEY_RIGHT_SHIFT,
+
+    /**
+     * Left Ctrl
+     *
+     * @see @ref InputEvent::Modifier::Ctrl
+     */
+    LeftCtrl = GLFW_KEY_LEFT_CONTROL,
+
+    /**
+     * Right Ctrl
+     *
+     * @see @ref InputEvent::Modifier::Ctrl
+     */
+    RightCtrl = GLFW_KEY_RIGHT_CONTROL,
+
+    /**
+     * Left Alt
+     *
+     * @see @ref InputEvent::Modifier::Alt
+     */
+    LeftAlt = GLFW_KEY_LEFT_ALT,
+
+    /**
+     * Right Alt
+     *
+     * @see @ref InputEvent::Modifier::Alt
+     */
+    RightAlt = GLFW_KEY_RIGHT_ALT,
+
+    /**
+     * Left Super key (Windows/⌘)
+     *
+     * @see @ref InputEvent::Modifier::Super
+     */
+    LeftSuper = GLFW_KEY_LEFT_SUPER,
+
+    /**
+     * Right Super key (Windows/⌘)
+     *
+     * @see @ref InputEvent::Modifier::Super
+     */
+    RightSuper = GLFW_KEY_RIGHT_SUPER,
+
+    /* no equivalent for Sdl2Application's AltGr */
+
+    Enter = GLFW_KEY_ENTER,             /**< Enter */
+    Esc = GLFW_KEY_ESCAPE,              /**< Escape */
+
+    Up = GLFW_KEY_UP,                   /**< Up arrow */
+    Down = GLFW_KEY_DOWN,               /**< Down arrow */
+    Left = GLFW_KEY_LEFT,               /**< Left arrow */
+    Right = GLFW_KEY_RIGHT,             /**< Right arrow */
+    Home = GLFW_KEY_HOME,               /**< Home */
+    End = GLFW_KEY_END,                 /**< End */
+    PageUp = GLFW_KEY_PAGE_UP,          /**< Page up */
+    PageDown = GLFW_KEY_PAGE_DOWN,      /**< Page down */
+    Backspace = GLFW_KEY_BACKSPACE,     /**< Backspace */
+    Insert = GLFW_KEY_INSERT,           /**< Insert */
+    Delete = GLFW_KEY_DELETE,           /**< Delete */
+
+    F1 = GLFW_KEY_F1,                   /**< F1 */
+    F2 = GLFW_KEY_F2,                   /**< F2 */
+    F3 = GLFW_KEY_F3,                   /**< F3 */
+    F4 = GLFW_KEY_F4,                   /**< F4 */
+    F5 = GLFW_KEY_F5,                   /**< F5 */
+    F6 = GLFW_KEY_F6,                   /**< F6 */
+    F7 = GLFW_KEY_F7,                   /**< F7 */
+    F8 = GLFW_KEY_F8,                   /**< F8 */
+    F9 = GLFW_KEY_F9,                   /**< F9 */
+    F10 = GLFW_KEY_F10,                 /**< F10 */
+    F11 = GLFW_KEY_F11,                 /**< F11 */
+    F12 = GLFW_KEY_F12,                 /**< F12 */
+
+    Space = GLFW_KEY_SPACE,             /**< Space */
+    Tab = GLFW_KEY_TAB,                 /**< Tab */
+
+    /**
+     * Quote (<tt>'</tt>)
+     * @m_since{2020,06}
+     */
+    Quote = GLFW_KEY_APOSTROPHE,
+
+    Comma = GLFW_KEY_COMMA,             /**< Comma */
+    Period = GLFW_KEY_PERIOD,           /**< Period */
+    Minus = GLFW_KEY_MINUS,             /**< Minus */
+
+    /**
+     * Plus. On the US keyboard layout this may only be representable as
+     * @m_class{m-label m-warning} **Shift** @m_class{m-label m-default} <b>=</b>.
+     */
+    Plus = '+',
+
+    Slash = GLFW_KEY_SLASH,             /**< Slash */
+
+    /**
+     * Percent. On the US keyboard layout this may only be representable as
+     * @m_class{m-label m-warning} **Shift** @m_class{m-label m-default} **5**.
+     */
+    Percent = '%',
+
+    Semicolon = GLFW_KEY_SEMICOLON,     /**< Semicolon (`;`) */
+    Equal = GLFW_KEY_EQUAL,             /**< Equal */
+
+    /**
+     * Left bracket (`[`)
+     * @m_since{2020,06}
+     */
+    LeftBracket = GLFW_KEY_LEFT_BRACKET,
+
+    /**
+     * Right bracket (`]`)
+     * @m_since{2020,06}
+     */
+    RightBracket = GLFW_KEY_RIGHT_BRACKET,
+
+    /**
+     * Backslash (`\`)
+     * @see @ref Key::World1, @ref Key::World2
+     * @m_since{2020,06}
+     */
+    Backslash = GLFW_KEY_BACKSLASH,
+
+    /**
+     * Backquote (<tt>`</tt>)
+     * @m_since{2020,06}
+     */
+    Backquote = GLFW_KEY_GRAVE_ACCENT,
+
+    /**
+     * Non-US \#1. Can be for example a backslash (`\`) next to left Shift.
+     * @see @ref Key::Backslash
+     * @m_since{2020,06}
+     * @todo Revisit / rename together with World2 once
+     *      https://github.com/glfw/glfw/issues/2481 is resolved. SDL
+     *      scancode for this key is SDL_SCANCODE_NONUSBACKSLASH, HTML5
+     *      names it IntlBackslash.
+     */
+    World1 = GLFW_KEY_WORLD_1,
+
+    /**
+     * Non-US \#2
+     * @see @ref Key::Backslash
+     * @m_since{2020,06}
+     */
+    World2 = GLFW_KEY_WORLD_2,
+
+    Zero = GLFW_KEY_0,                  /**< Zero */
+    One = GLFW_KEY_1,                   /**< One */
+    Two = GLFW_KEY_2,                   /**< Two */
+    Three = GLFW_KEY_3,                 /**< Three */
+    Four = GLFW_KEY_4,                  /**< Four */
+    Five = GLFW_KEY_5,                  /**< Five */
+    Six = GLFW_KEY_6,                   /**< Six */
+    Seven = GLFW_KEY_7,                 /**< Seven */
+    Eight = GLFW_KEY_8,                 /**< Eight */
+    Nine = GLFW_KEY_9,                  /**< Nine */
+
+    A = GLFW_KEY_A,                     /**< Letter A */
+    B = GLFW_KEY_B,                     /**< Letter B */
+    C = GLFW_KEY_C,                     /**< Letter C */
+    D = GLFW_KEY_D,                     /**< Letter D */
+    E = GLFW_KEY_E,                     /**< Letter E */
+    F = GLFW_KEY_F,                     /**< Letter F */
+    G = GLFW_KEY_G,                     /**< Letter G */
+    H = GLFW_KEY_H,                     /**< Letter H */
+    I = GLFW_KEY_I,                     /**< Letter I */
+    J = GLFW_KEY_J,                     /**< Letter J */
+    K = GLFW_KEY_K,                     /**< Letter K */
+    L = GLFW_KEY_L,                     /**< Letter L */
+    M = GLFW_KEY_M,                     /**< Letter M */
+    N = GLFW_KEY_N,                     /**< Letter N */
+    O = GLFW_KEY_O,                     /**< Letter O */
+    P = GLFW_KEY_P,                     /**< Letter P */
+    Q = GLFW_KEY_Q,                     /**< Letter Q */
+    R = GLFW_KEY_R,                     /**< Letter R */
+    S = GLFW_KEY_S,                     /**< Letter S */
+    T = GLFW_KEY_T,                     /**< Letter T */
+    U = GLFW_KEY_U,                     /**< Letter U */
+    V = GLFW_KEY_V,                     /**< Letter V */
+    W = GLFW_KEY_W,                     /**< Letter W */
+    X = GLFW_KEY_X,                     /**< Letter X */
+    Y = GLFW_KEY_Y,                     /**< Letter Y */
+    Z = GLFW_KEY_Z,                     /**< Letter Z */
+
+    CapsLock = GLFW_KEY_CAPS_LOCK,      /**< Caps lock */
+    ScrollLock = GLFW_KEY_SCROLL_LOCK,  /**< Scroll lock */
+    NumLock = GLFW_KEY_NUM_LOCK,        /**< Num lock */
+    PrintScreen = GLFW_KEY_PRINT_SCREEN,/**< Print screen */
+    Pause = GLFW_KEY_PAUSE,             /**< Pause */
+    Menu = GLFW_KEY_MENU,               /**< Menu */
+
+    NumZero = GLFW_KEY_KP_0,            /**< Numpad zero */
+    NumOne = GLFW_KEY_KP_1,             /**< Numpad one */
+    NumTwo = GLFW_KEY_KP_2,             /**< Numpad two */
+    NumThree = GLFW_KEY_KP_3,           /**< Numpad three */
+    NumFour = GLFW_KEY_KP_4,            /**< Numpad four */
+    NumFive = GLFW_KEY_KP_5,            /**< Numpad five */
+    NumSix = GLFW_KEY_KP_6,             /**< Numpad six */
+    NumSeven = GLFW_KEY_KP_7,           /**< Numpad seven */
+    NumEight = GLFW_KEY_KP_8,           /**< Numpad eight */
+    NumNine = GLFW_KEY_KP_9,            /**< Numpad nine */
+    NumDecimal = GLFW_KEY_KP_DECIMAL,   /**< Numpad decimal */
+    NumDivide = GLFW_KEY_KP_DIVIDE,     /**< Numpad divide */
+    NumMultiply = GLFW_KEY_KP_MULTIPLY, /**< Numpad multiply */
+    NumSubtract = GLFW_KEY_KP_SUBTRACT, /**< Numpad subtract */
+    NumAdd = GLFW_KEY_KP_ADD,           /**< Numpad add */
+    NumEnter = GLFW_KEY_KP_ENTER,       /**< Numpad enter */
+    NumEqual = GLFW_KEY_KP_EQUAL        /**< Numpad equal */
+};
+
+/**
+@brief Pointer event source
+@m_since_latest
+
+@see @ref PointerEvent::source(), @ref PointerMoveEvent::source(),
+    @ref platform-windowed-pointer-events
+*/
+enum class GlfwApplication::PointerEventSource: UnsignedByte {
+    /**
+     * The event is coming from a mouse
+     * @see @ref Pointer::MouseLeft, @ref Pointer::MouseMiddle,
+     *      @ref Pointer::MouseRight, @ref Pointer::MouseButton4,
+     *      @ref Pointer::MouseButton5, @ref Pointer::MouseButton6,
+     *      @ref Pointer::MouseButton7, @ref Pointer::MouseButton8
+     */
+    Mouse
+};
+
+/**
+@brief Pointer type
+@m_since_latest
+
+@see @ref Pointers, @ref PointerEvent::pointer(),
+    @ref PointerMoveEvent::pointer(), @ref PointerMoveEvent::pointers(),
+    @ref platform-windowed-pointer-events
+*/
+enum class GlfwApplication::Pointer: UnsignedByte {
+    /**
+     * Left mouse button. Corresponds to `GLFW_MOUSE_BUTTON_LEFT` or
+     * `GLFW_MOUSE_BUTTON_1`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseLeft = 1 << 0,
+
+    /**
+     * Middle mouse button. Corresponds to `GLFW_MOUSE_BUTTON_MIDDLE` or
+     * `GLFW_MOUSE_BUTTON_2`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseMiddle = 1 << 1,
+
+    /**
+     * Right mouse button. Corresponds to `GLFW_MOUSE_BUTTON_RIGHT` or
+     * `GLFW_MOUSE_BUTTON_3`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseRight = 1 << 2,
+
+    /**
+     * Fourth mouse button, such as wheel left. Corresponds to
+     * `GLFW_MOUSE_BUTTON_4`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseButton4 = 1 << 3,
+
+    /**
+     * Fifth mouse button, such as wheel right. Corresponds to
+     * `GLFW_MOUSE_BUTTON_5`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseButton5 = 1 << 4,
+
+    /**
+     * Sixth mouse button. Corresponds to `GLFW_MOUSE_BUTTON_6`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseButton6 = 1 << 5,
+
+    /**
+     * Seventh mouse button. Corresponds to `GLFW_MOUSE_BUTTON_7`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseButton7 = 1 << 6,
+
+    /**
+     * Eighth mouse button. Corresponds to `GLFW_MOUSE_BUTTON_8`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseButton8 = 1 << 7
+
+    /** @todo look into touch / pen input once anything from
+        https://github.com/glfw/glfw/issues/42
+        https://github.com/glfw/glfw/issues/403
+        https://github.com/glfw/glfw/pull/1445
+        https://github.com/glfw/glfw/pull/1736 gets any updates */
+};
+
+CORRADE_ENUMSET_OPERATORS(GlfwApplication::Pointers)
 
 #ifdef MAGNUM_TARGET_GL
 /**
@@ -815,7 +1411,6 @@ class GlfwApplication::GLConfiguration: public GL::Context::Configuration {
             ForwardCompatible = 1 << 0,
             #endif
 
-            #if defined(DOXYGEN_GENERATING_OUTPUT) || defined(GLFW_CONTEXT_NO_ERROR)
             /**
              * Context without error reporting. Might result in better
              * performance, but situations that would have generated errors
@@ -823,11 +1418,8 @@ class GlfwApplication::GLConfiguration: public GL::Context::Configuration {
              * supported by the driver and the @ref Flag::GpuValidationNoError
              * flag is set or if the `--magnum-gpu-validation` @ref GL-Context-usage-command-line "command-line option"
              * is set to `no-error`.
-             *
-             * @note Supported since GLFW 3.2.
              */
             NoError = 1 << 1,
-            #endif
 
             /**
              * Debug context. Enabled automatically if supported by the driver
@@ -1070,15 +1662,7 @@ class GlfwApplication::Configuration {
 
             Resizable = 1 << 2,    /**< Resizable window */
             Hidden = 1 << 3,       /**< Hidden window */
-
-            #if defined(DOXYGEN_GENERATING_OUTPUT) || defined(GLFW_MAXIMIZED)
-            /**
-             * Maximized window
-             *
-             * @note Supported since GLFW 3.2.
-             */
-            Maximized = 1 << 4,
-            #endif
+            Maximized = 1 << 4,    /**< Maximized window */
 
             Minimized = 1 << 5,    /**< Minimized window */
 
@@ -1109,19 +1693,17 @@ class GlfwApplication::Configuration {
              */
             Focused = 1 << 8,
 
-            #if defined(DOXYGEN_GENERATING_OUTPUT) || defined(GLFW_NO_API)
             /**
              * Do not create any GPU context. Use together with
-             * @ref GlfwApplication(const Arguments&),
              * @ref GlfwApplication(const Arguments&, const Configuration&),
              * @ref create(const Configuration&) or
              * @ref tryCreate(const Configuration&) to prevent implicit
-             * creation of an OpenGL context.
-             *
-             * @note Supported since GLFW 3.2.
+             * creation of an OpenGL context. Can't be used with
+             * @ref GlfwApplication(const Arguments&, const Configuration&, const GLConfiguration&),
+             * @ref create(const Configuration&, const GLConfiguration&) or
+             * @ref tryCreate(const Configuration&, const GLConfiguration&).
              */
             Contextless = 1 << 9
-            #endif
         };
 
         /**
@@ -1436,7 +2018,7 @@ class GlfwApplication::ExitEvent {
 /**
 @brief Viewport event
 
-@see @ref viewportEvent()
+@see @ref viewportEvent(), @ref platform-windowed-viewport-events
 */
 class GlfwApplication::ViewportEvent {
     public:
@@ -1513,54 +2095,27 @@ class GlfwApplication::ViewportEvent {
 /**
 @brief Base for input events
 
-@see @ref KeyEvent, @ref MouseEvent, @ref MouseMoveEvent, @ref keyPressEvent(),
-    @ref mousePressEvent(), @ref mouseReleaseEvent(), @ref mouseMoveEvent()
+@see @ref KeyEvent, @ref PointerEvent, @ref PointerMoveEvent, @ref ScrollEvent,
+    @ref keyPressEvent(), @ref keyReleaseEvent(), @ref pointerPressEvent(),
+    @ref pointerReleaseEvent(), @ref pointerMoveEvent(), @ref scrollEvent()
 */
 class GlfwApplication::InputEvent {
     public:
+        #ifdef MAGNUM_BUILD_DEPRECATED
         /**
-         * @brief Modifier
-         *
-         * @see @ref Modifiers, @ref KeyEvent::modifiers(),
-         *      @ref MouseEvent::modifiers()
+         * @brief @copybrief GlfwApplication::Modifier
+         * @m_deprecated_since_latest Use @ref GlfwApplication::Modifier
+         *      instead.
          */
-        enum class Modifier: Int {
-            /**
-             * Shift
-             *
-             * @see @ref KeyEvent::Key::LeftShift, @ref KeyEvent::Key::RightShift
-             */
-            Shift = GLFW_MOD_SHIFT,
-
-            /**
-             * Ctrl
-             *
-             * @see @ref KeyEvent::Key::LeftCtrl, @ref KeyEvent::Key::RightCtrl
-             */
-            Ctrl = GLFW_MOD_CONTROL,
-
-            /**
-             * Alt
-             *
-             * @see @ref KeyEvent::Key::LeftAlt, @ref KeyEvent::Key::RightAlt
-             */
-            Alt = GLFW_MOD_ALT,
-
-            /**
-             * Super key (Windows/⌘)
-             *
-             * @see @ref KeyEvent::Key::LeftSuper, @ref KeyEvent::Key::RightSuper
-             */
-            Super = GLFW_MOD_SUPER
-        };
+        typedef CORRADE_DEPRECATED("use GlfwApplication::Modifier instead") GlfwApplication::Modifier Modifier;
 
         /**
-         * @brief Set of modifiers
-         *
-         * @see @ref KeyEvent::modifiers(), @ref MouseEvent::modifiers(),
-         *      @ref MouseMoveEvent::modifiers()
+         * @brief @copybrief GlfwApplication::Modifiers
+         * @m_deprecated_since_latest Use @ref GlfwApplication::Modifiers
+         *      instead.
          */
-        typedef Containers::EnumSet<Modifier> Modifiers;
+        typedef CORRADE_DEPRECATED("use GlfwApplication::Modifiers instead") GlfwApplication::Modifiers Modifiers;
+        #endif
 
         /** @brief Copying is not allowed */
         InputEvent(const InputEvent&) = delete;
@@ -1589,275 +2144,63 @@ class GlfwApplication::InputEvent {
         bool _accepted;
 };
 
-CORRADE_ENUMSET_OPERATORS(GlfwApplication::InputEvent::Modifiers)
-
 /**
 @brief Key event
 
-@see @ref keyPressEvent(), @ref keyReleaseEvent()
+@see @ref keyPressEvent(), @ref keyReleaseEvent(),
+    @ref platform-windowed-key-events
 */
 class GlfwApplication::KeyEvent: public GlfwApplication::InputEvent {
     public:
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief @copybrief GlfwApplication::Key
+         * @m_deprecated_since_latest Use @ref GlfwApplication::Key instead.
+         */
+        typedef CORRADE_DEPRECATED("use GlfwApplication::Key instead") GlfwApplication::Key Key;
+
+        /**
+         * @brief @copybrief GlfwApplication::keyName()
+         * @m_deprecated_since_latest Use @ref GlfwApplication::keyName()
+         *      instead.
+         */
+        CORRADE_DEPRECATED("use GlfwApplication::keyName() instead") static Containers::StringView keyName(GlfwApplication::Key key);
+        #endif
+
         /**
          * @brief Key
          *
-         * @see @ref key()
+         * Layout-dependent name of given key. Use @ref scanCode() to get a
+         * platform-specific but layout-independent identifier of given key.
+         * @see @ref keyName() const
          */
-        enum class Key: Int {
-            Unknown = GLFW_KEY_UNKNOWN,         /**< Unknown key */
+        GlfwApplication::Key key() const { return _key; }
 
-            /**
-             * Left Shift
-             *
-             * @see @ref InputEvent::Modifier::Shift
-             */
-            LeftShift = GLFW_KEY_LEFT_SHIFT,
-
-            /**
-             * Right Shift
-             *
-             * @see @ref InputEvent::Modifier::Shift
-             */
-            RightShift = GLFW_KEY_RIGHT_SHIFT,
-
-            /**
-             * Left Ctrl
-             *
-             * @see @ref InputEvent::Modifier::Ctrl
-             */
-            LeftCtrl = GLFW_KEY_LEFT_CONTROL,
-
-            /**
-             * Right Ctrl
-             *
-             * @see @ref InputEvent::Modifier::Ctrl
-             */
-            RightCtrl = GLFW_KEY_RIGHT_CONTROL,
-
-            /**
-             * Left Alt
-             *
-             * @see @ref InputEvent::Modifier::Alt
-             */
-            LeftAlt = GLFW_KEY_LEFT_ALT,
-
-            /**
-             * Right Alt
-             *
-             * @see @ref InputEvent::Modifier::Alt
-             */
-            RightAlt = GLFW_KEY_RIGHT_ALT,
-
-            /**
-             * Left Super key (Windows/⌘)
-             *
-             * @see @ref InputEvent::Modifier::Super
-             */
-            LeftSuper = GLFW_KEY_LEFT_SUPER,
-
-            /**
-             * Right Super key (Windows/⌘)
-             *
-             * @see @ref InputEvent::Modifier::Super
-             */
-            RightSuper = GLFW_KEY_RIGHT_SUPER,
-
-            /* no equivalent for Sdl2Application's AltGr */
-
-            Enter = GLFW_KEY_ENTER,             /**< Enter */
-            Esc = GLFW_KEY_ESCAPE,              /**< Escape */
-
-            Up = GLFW_KEY_UP,                   /**< Up arrow */
-            Down = GLFW_KEY_DOWN,               /**< Down arrow */
-            Left = GLFW_KEY_LEFT,               /**< Left arrow */
-            Right = GLFW_KEY_RIGHT,             /**< Right arrow */
-            Home = GLFW_KEY_HOME,               /**< Home */
-            End = GLFW_KEY_END,                 /**< End */
-            PageUp = GLFW_KEY_PAGE_UP,          /**< Page up */
-            PageDown = GLFW_KEY_PAGE_DOWN,      /**< Page down */
-            Backspace = GLFW_KEY_BACKSPACE,     /**< Backspace */
-            Insert = GLFW_KEY_INSERT,           /**< Insert */
-            Delete = GLFW_KEY_DELETE,           /**< Delete */
-
-            F1 = GLFW_KEY_F1,                   /**< F1 */
-            F2 = GLFW_KEY_F2,                   /**< F2 */
-            F3 = GLFW_KEY_F3,                   /**< F3 */
-            F4 = GLFW_KEY_F4,                   /**< F4 */
-            F5 = GLFW_KEY_F5,                   /**< F5 */
-            F6 = GLFW_KEY_F6,                   /**< F6 */
-            F7 = GLFW_KEY_F7,                   /**< F7 */
-            F8 = GLFW_KEY_F8,                   /**< F8 */
-            F9 = GLFW_KEY_F9,                   /**< F9 */
-            F10 = GLFW_KEY_F10,                 /**< F10 */
-            F11 = GLFW_KEY_F11,                 /**< F11 */
-            F12 = GLFW_KEY_F12,                 /**< F12 */
-
-            Space = GLFW_KEY_SPACE,             /**< Space */
-            Tab = GLFW_KEY_TAB,                 /**< Tab */
-
-            /**
-             * Quote (<tt>'</tt>)
-             * @m_since{2020,06}
-             */
-            Quote = GLFW_KEY_APOSTROPHE,
-
-            Comma = GLFW_KEY_COMMA,             /**< Comma */
-            Period = GLFW_KEY_PERIOD,           /**< Period */
-            Minus = GLFW_KEY_MINUS,             /**< Minus */
-            /* Note: This may only be represented as SHIFT + = */
-            Plus = '+',                         /**< Plus */
-            Slash = GLFW_KEY_SLASH,             /**< Slash */
-            /* Note: This may only be represented as SHIFT + 5 */
-            Percent = '%',                      /**< Percent */
-            Semicolon = GLFW_KEY_SEMICOLON,     /**< Semicolon (`;`) */
-
-            #ifdef MAGNUM_BUILD_DEPRECATED
-            /** Semicolon (`;`)
-             * @m_deprecated_since{2019,01} Use @ref Key::Semicolon instead.
-             */
-            Smicolon CORRADE_DEPRECATED_ENUM("use Key::Semicolon instead") = Semicolon,
-            #endif
-
-            Equal = GLFW_KEY_EQUAL,             /**< Equal */
-
-            /**
-             * Left bracket (`[`)
-             * @m_since{2020,06}
-             */
-            LeftBracket = GLFW_KEY_LEFT_BRACKET,
-
-            /**
-             * Right bracket (`]`)
-             * @m_since{2020,06}
-             */
-            RightBracket = GLFW_KEY_RIGHT_BRACKET,
-
-            /**
-             * Backslash (`\`)
-             * @m_since{2020,06}
-             */
-            Backslash = GLFW_KEY_BACKSLASH,
-
-            /**
-             * Backquote (<tt>`</tt>)
-             * @m_since{2020,06}
-             */
-            Backquote = GLFW_KEY_GRAVE_ACCENT,
-
-            /**
-             * Non-US \#1
-             * @m_since{2020,06}
-             */
-            World1 = GLFW_KEY_WORLD_1,
-
-            /**
-             * Non-US \#2
-             * @m_since{2020,06}
-             */
-            World2 = GLFW_KEY_WORLD_2,
-
-            Zero = GLFW_KEY_0,                  /**< Zero */
-            One = GLFW_KEY_1,                   /**< One */
-            Two = GLFW_KEY_2,                   /**< Two */
-            Three = GLFW_KEY_3,                 /**< Three */
-            Four = GLFW_KEY_4,                  /**< Four */
-            Five = GLFW_KEY_5,                  /**< Five */
-            Six = GLFW_KEY_6,                   /**< Six */
-            Seven = GLFW_KEY_7,                 /**< Seven */
-            Eight = GLFW_KEY_8,                 /**< Eight */
-            Nine = GLFW_KEY_9,                  /**< Nine */
-
-            A = GLFW_KEY_A,                     /**< Letter A */
-            B = GLFW_KEY_B,                     /**< Letter B */
-            C = GLFW_KEY_C,                     /**< Letter C */
-            D = GLFW_KEY_D,                     /**< Letter D */
-            E = GLFW_KEY_E,                     /**< Letter E */
-            F = GLFW_KEY_F,                     /**< Letter F */
-            G = GLFW_KEY_G,                     /**< Letter G */
-            H = GLFW_KEY_H,                     /**< Letter H */
-            I = GLFW_KEY_I,                     /**< Letter I */
-            J = GLFW_KEY_J,                     /**< Letter J */
-            K = GLFW_KEY_K,                     /**< Letter K */
-            L = GLFW_KEY_L,                     /**< Letter L */
-            M = GLFW_KEY_M,                     /**< Letter M */
-            N = GLFW_KEY_N,                     /**< Letter N */
-            O = GLFW_KEY_O,                     /**< Letter O */
-            P = GLFW_KEY_P,                     /**< Letter P */
-            Q = GLFW_KEY_Q,                     /**< Letter Q */
-            R = GLFW_KEY_R,                     /**< Letter R */
-            S = GLFW_KEY_S,                     /**< Letter S */
-            T = GLFW_KEY_T,                     /**< Letter T */
-            U = GLFW_KEY_U,                     /**< Letter U */
-            V = GLFW_KEY_V,                     /**< Letter V */
-            W = GLFW_KEY_W,                     /**< Letter W */
-            X = GLFW_KEY_X,                     /**< Letter X */
-            Y = GLFW_KEY_Y,                     /**< Letter Y */
-            Z = GLFW_KEY_Z,                     /**< Letter Z */
-
-            CapsLock = GLFW_KEY_CAPS_LOCK,      /**< Caps lock */
-            ScrollLock = GLFW_KEY_SCROLL_LOCK,  /**< Scroll lock */
-            NumLock = GLFW_KEY_NUM_LOCK,        /**< Num lock */
-            PrintScreen = GLFW_KEY_PRINT_SCREEN,/**< Print screen */
-            Pause = GLFW_KEY_PAUSE,             /**< Pause */
-            Menu = GLFW_KEY_MENU,               /**< Menu */
-
-            NumZero = GLFW_KEY_KP_0,            /**< Numpad zero */
-            NumOne = GLFW_KEY_KP_1,             /**< Numpad one */
-            NumTwo = GLFW_KEY_KP_2,             /**< Numpad two */
-            NumThree = GLFW_KEY_KP_3,           /**< Numpad three */
-            NumFour = GLFW_KEY_KP_4,            /**< Numpad four */
-            NumFive = GLFW_KEY_KP_5,            /**< Numpad five */
-            NumSix = GLFW_KEY_KP_6,             /**< Numpad six */
-            NumSeven = GLFW_KEY_KP_7,           /**< Numpad seven */
-            NumEight = GLFW_KEY_KP_8,           /**< Numpad eight */
-            NumNine = GLFW_KEY_KP_9,            /**< Numpad nine */
-            NumDecimal = GLFW_KEY_KP_DECIMAL,   /**< Numpad decimal */
-            NumDivide = GLFW_KEY_KP_DIVIDE,     /**< Numpad divide */
-            NumMultiply = GLFW_KEY_KP_MULTIPLY, /**< Numpad multiply */
-            NumSubtract = GLFW_KEY_KP_SUBTRACT, /**< Numpad subtract */
-            NumAdd = GLFW_KEY_KP_ADD,           /**< Numpad add */
-            NumEnter = GLFW_KEY_KP_ENTER,       /**< Numpad enter */
-            NumEqual = GLFW_KEY_KP_EQUAL        /**< Numpad equal */
-        };
-
-        #if defined(DOXYGEN_GENERATING_OUTPUT) || GLFW_VERSION_MAJOR*100 + GLFW_VERSION_MINOR >= 302
         /**
-         * @brief Name for given key
+         * @brief Scancode
+         * @m_since_latest
          *
-         * Human-readable localized UTF-8 name for given @p key, intended for
-         * displaying to the user in e.g. key binding configuration. If there
-         * is no name for given key, empty string is returned. The returned
-         * view is always @relativeref{Corrade,Containers::StringViewFlag::NullTerminated}
-         * and is valid until the keyboard layout is changed or the application
-         * exits.
-         * @see @ref keyName(Key)
-         * @note Supported since GLFW 3.2.
+         * Platform-specific but layout-independent identifier of given key.
+         * Use @ref key() to get a key name in the currently used layout.
          */
-        static Containers::StringView keyName(Key key);
-        #endif
+        UnsignedInt scanCode() const { return _scancode; }
 
-        /** @copydoc Sdl2Application::KeyEvent::key() */
-        Key key() const { return _key; }
-
-        #if defined(DOXYGEN_GENERATING_OUTPUT) || GLFW_VERSION_MAJOR*100 + GLFW_VERSION_MINOR >= 302
         /**
          * @brief Key name
          *
          * Human-readable localized UTF-8 name for the key returned by
-         * @ref key(), intended for displaying to the user in e.g.
-         * key binding configuration. If there is no name for that key, empty
-         * string is returned. The returned view is always
-         * @relativeref{Corrade,Containers::StringViewFlag::NullTerminated} and
-         * is valid until the keyboard layout is changed or the application
+         * @ref key() and @ref scanCode(), intended for displaying to the user
+         * in e.g. key binding configuration. If there is no name for that key,
+         * an empty string is returned. If non-empty, the returned view is
+         * always @relativeref{Corrade,Containers::StringViewFlag::NullTerminated}
+         * and is valid until the keyboard layout is changed or the application
          * exits.
          * @see @ref keyName(Key)
-         * @note Supported since GLFW 3.2.
          */
         Containers::StringView keyName() const;
-        #endif
 
-        /** @brief Modifiers */
-        Modifiers modifiers() const { return _modifiers; }
+        /** @brief Keyboard modifiers */
+        GlfwApplication::Modifiers modifiers() const { return _modifiers; }
 
         /** @copydoc Sdl2Application::KeyEvent::isRepeated() */
         bool isRepeated() const { return _repeated; }
@@ -1865,20 +2208,98 @@ class GlfwApplication::KeyEvent: public GlfwApplication::InputEvent {
     private:
         friend GlfwApplication;
 
-        explicit KeyEvent(Key key, Modifiers modifiers, bool repeated): _key{key}, _modifiers{modifiers}, _repeated{repeated} {}
+        explicit KeyEvent(GlfwApplication::Key key, UnsignedInt scancode, GlfwApplication::Modifiers modifiers, bool repeated): _repeated{repeated}, _modifiers{modifiers}, _key{key}, _scancode{scancode} {}
 
-        const Key _key;
-        const Modifiers _modifiers;
         const bool _repeated;
+        const GlfwApplication::Modifiers _modifiers;
+        const GlfwApplication::Key _key;
+        const UnsignedInt _scancode;
 };
 
 /**
+@brief Pointer event
+@m_since_latest
+
+@see @ref PointerMoveEvent, @ref ScrollEvent, @ref pointerPressEvent(),
+    @ref pointerReleaseEvent(), @ref platform-windowed-pointer-events
+*/
+class GlfwApplication::PointerEvent: public InputEvent {
+    public:
+        /** @brief Copying is not allowed */
+        PointerEvent(const PointerEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerEvent(PointerEvent&&) = delete;
+
+        /** @brief Copying is not allowed */
+        PointerEvent& operator=(const PointerEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerEvent& operator=(PointerEvent&&) = delete;
+
+        /**
+         * @brief Pointer event source
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @ref PointerEventSource::Mouse.
+         */
+        PointerEventSource source() const { return PointerEventSource::Mouse; }
+
+        /** @brief Pointer type that was pressed or released */
+        Pointer pointer() const { return _pointer; }
+
+        /**
+         * @brief Whether the pointer is primary
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @cpp true @ce.
+         */
+        bool isPrimary() const { return true; }
+
+        /**
+         * @brief Pointer ID
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @cpp 0 @ce.
+         */
+        Long id() const { return 0; }
+
+        /**
+         * @brief Position
+         *
+         * May return fractional values for example on HiDPI systems where
+         * window size is smaller than actual framebuffer size. Use
+         * @ref Math::round() to snap them to the nearest window pixel.
+         */
+        Vector2 position() const { return _position; }
+
+        /** @brief Keyboard modifiers */
+        GlfwApplication::Modifiers modifiers() const { return _modifiers; }
+
+    private:
+        friend GlfwApplication;
+
+        explicit PointerEvent(Pointer pointer, const Vector2& position, GlfwApplication::Modifiers modifiers): _pointer(pointer), _position{position}, _modifiers{modifiers} {}
+
+        const Pointer _pointer;
+        const Vector2 _position;
+        const GlfwApplication::Modifiers _modifiers;
+};
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+/**
 @brief Mouse event
+@m_deprecated_since_latest Use @ref PointerEvent, @ref pointerPressEvent() and
+    @ref pointerReleaseEvent() instead, which is a better abstraction for
+    covering both mouse and touch input.
 
 @see @ref MouseMoveEvent, @ref MouseScrollEvent, @ref mousePressEvent(),
     @ref mouseReleaseEvent()
 */
-class GlfwApplication::MouseEvent: public GlfwApplication::InputEvent {
+class CORRADE_DEPRECATED("use PointerEvent, pointerPressEvent() and pointerReleaseEvent() instead") GlfwApplication::MouseEvent: public InputEvent {
     public:
         /**
          * @brief Mouse button
@@ -1905,25 +2326,141 @@ class GlfwApplication::MouseEvent: public GlfwApplication::InputEvent {
         /** @brief Position */
         Vector2i position() const { return _position; }
 
-        /** @brief Modifiers */
-        Modifiers modifiers() const { return _modifiers; }
+        /** @brief Keyboard modifiers */
+        GlfwApplication::Modifiers modifiers() const { return _modifiers; }
 
     private:
         friend GlfwApplication;
 
-        explicit MouseEvent(Button button, const Vector2i& position, Modifiers modifiers): _button{button}, _position{position}, _modifiers{modifiers} {}
+        explicit MouseEvent(Button button, const Vector2i& position, GlfwApplication::Modifiers modifiers): _button{button}, _position{position}, _modifiers{modifiers} {}
 
         const Button _button;
         const Vector2i _position;
-        const Modifiers _modifiers;
+        const GlfwApplication::Modifiers _modifiers;
 };
+#endif
 
 /**
+@brief Pointer move event
+@m_since_latest
+
+@see @ref PointerEvent, @ref ScrollEvent, @ref pointerMoveEvent(),
+    @ref platform-windowed-pointer-events
+*/
+class GlfwApplication::PointerMoveEvent: public InputEvent {
+    public:
+        /** @brief Copying is not allowed */
+        PointerMoveEvent(const PointerMoveEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerMoveEvent(PointerMoveEvent&&) = delete;
+
+        /** @brief Copying is not allowed */
+        PointerMoveEvent& operator=(const PointerMoveEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerMoveEvent& operator=(PointerMoveEvent&&) = delete;
+
+        /**
+         * @brief Pointer event source
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @ref PointerEventSource::Mouse.
+         */
+        PointerEventSource source() const { return PointerEventSource::Mouse; }
+
+        /**
+         * @brief Pointer type that was added or removed from the set of pressed pointers
+         *
+         * Use @ref pointers() to query the set of pointers pressed in this
+         * event. This field is is non-empty only in case a mouse button was
+         * pressed in addition to an already pressed button, or if one mouse
+         * button from multiple pressed buttons was released. If non-empty and
+         * @ref pointers() don't contain given @ref Pointer value, the button
+         * was released, if they contain given value, the button was pressed.
+         * @see @ref source()
+         */
+        Containers::Optional<Pointer> pointer() const { return _pointer; }
+
+        /**
+         * @brief Pointer types pressed in this event
+         *
+         * Returns an empty set if no pointers are pressed, which happens for
+         * example when a mouse is just moved around. Lazily populated on first
+         * request.
+         * @see @ref pointer()
+         */
+        Pointers pointers();
+
+        /**
+         * @brief Whether the pointer is primary
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @cpp true @ce.
+         */
+        bool isPrimary() const { return true; }
+
+        /**
+         * @brief Pointer ID
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @cpp 0 @ce.
+         */
+        Long id() const { return 0; }
+
+        /**
+         * @brief Position
+         *
+         * May return fractional values for example on HiDPI systems where
+         * window size is smaller than actual framebuffer size. Use
+         * @ref Math::round() to snap them to the nearest window pixel.
+         */
+        Vector2 position() const { return _position; }
+
+        /**
+         * @brief Position relative to the previous touch event
+         *
+         * May return fractional values for example on HiDPI systems where
+         * window size is smaller than actual framebuffer size. Use
+         * @ref Math::round() to snap them to the nearest window pixel. Unlike
+         * @ref Sdl2Application, GLFW doesn't provide relative position
+         * directly, so this is calculated explicitly as a delta from previous
+         * move event position.
+         */
+        Vector2 relativePosition() const { return _relativePosition; }
+
+        /**
+         * @brief Keyboard modifiers
+         *
+         * Lazily populated on first request.
+         */
+        GlfwApplication::Modifiers modifiers();
+
+    private:
+        friend GlfwApplication;
+
+        explicit PointerMoveEvent(GLFWwindow* window, Containers::Optional<Pointer> pointer, const Vector2& position, const Vector2& relativePosition): _window{window}, _pointer{pointer}, _position{position}, _relativePosition{relativePosition} {}
+
+        GLFWwindow* const _window;
+        const Containers::Optional<Pointer> _pointer;
+        Containers::Optional<Pointers> _pointers;
+        const Vector2 _position, _relativePosition;
+        Containers::Optional<GlfwApplication::Modifiers> _modifiers;
+};
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+/**
 @brief Mouse move event
+@m_deprecated_since_latest Use @ref PointerMoveEvent and
+    @ref pointerMoveEvent() instead, which is a better abstraction for covering
+    both mouse and touch / pen input.
 
 @see @ref MouseEvent, @ref MouseScrollEvent, @ref mouseMoveEvent()
 */
-class GlfwApplication::MouseMoveEvent: public GlfwApplication::InputEvent {
+class CORRADE_DEPRECATED("use PointerMoveEvent and pointerMoveEvent() instead") GlfwApplication::MouseMoveEvent: public GlfwApplication::InputEvent {
     public:
         /**
          * @brief Mouse button
@@ -1965,11 +2502,11 @@ class GlfwApplication::MouseMoveEvent: public GlfwApplication::InputEvent {
         Vector2i relativePosition() const { return _relativePosition; }
 
         /**
-         * @brief Modifiers
+         * @brief Keyboard modifiers
          *
          * Lazily populated on first request.
          */
-        Modifiers modifiers();
+        GlfwApplication::Modifiers modifiers();
 
     private:
         friend GlfwApplication;
@@ -1979,17 +2516,63 @@ class GlfwApplication::MouseMoveEvent: public GlfwApplication::InputEvent {
         GLFWwindow* const _window;
         const Vector2i _position, _relativePosition;
         Containers::Optional<Buttons> _buttons;
-        Containers::Optional<Modifiers> _modifiers;
+        Containers::Optional<GlfwApplication::Modifiers> _modifiers;
 };
 
+CORRADE_IGNORE_DEPRECATED_PUSH
 CORRADE_ENUMSET_OPERATORS(GlfwApplication::MouseMoveEvent::Buttons)
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
 
 /**
+@brief Scroll event
+@m_since_latest
+
+@see @ref PointerEvent, @ref PointerMoveEvent, @ref scrollEvent(),
+    @ref platform-windowed-pointer-events
+*/
+class GlfwApplication::ScrollEvent: public InputEvent {
+    public:
+        /** @brief Scroll offset */
+        Vector2 offset() const { return _offset; }
+
+        /**
+         * @brief Position
+         *
+         * May return fractional values for example on HiDPI systems where
+         * window size is smaller than actual framebuffer size. Use
+         * @ref Math::round() to snap them to the nearest window pixel. Lazily
+         * populated on first request.
+         */
+        Vector2 position();
+
+        /**
+         * @brief Keyboard modifiers
+         *
+         * Lazily populated on first request.
+         */
+        GlfwApplication::Modifiers modifiers();
+
+    private:
+        friend GlfwApplication;
+
+        explicit ScrollEvent(GLFWwindow* window, const Vector2& offset): _window{window}, _offset{offset} {}
+
+        GLFWwindow* const _window;
+        const Vector2 _offset;
+        Containers::Optional<Vector2> _position;
+        Containers::Optional<GlfwApplication::Modifiers> _modifiers;
+};
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+/**
 @brief Mouse scroll event
+@m_deprecated_since_latest Use @ref ScrollEvent and @ref scrollEvent() instead,
+    which isn't semantically tied to just a mouse.
 
 @see @ref MouseEvent, @ref MouseMoveEvent, @ref mouseScrollEvent()
 */
-class GlfwApplication::MouseScrollEvent: public GlfwApplication::InputEvent {
+class CORRADE_DEPRECATED("use ScrollEvent and scrollEvent() instead") GlfwApplication::MouseScrollEvent: public GlfwApplication::InputEvent {
     public:
         /** @brief Scroll offset */
         Vector2 offset() const { return _offset; }
@@ -2002,11 +2585,11 @@ class GlfwApplication::MouseScrollEvent: public GlfwApplication::InputEvent {
         Vector2i position();
 
         /**
-         * @brief Modifiers
+         * @brief Keyboard modifiers
          *
          * Lazily populated on first request.
          */
-        Modifiers modifiers();
+        GlfwApplication::Modifiers modifiers();
 
     private:
         friend GlfwApplication;
@@ -2016,13 +2599,14 @@ class GlfwApplication::MouseScrollEvent: public GlfwApplication::InputEvent {
         GLFWwindow* const _window;
         const Vector2 _offset;
         Containers::Optional<Vector2i> _position;
-        Containers::Optional<Modifiers> _modifiers;
+        Containers::Optional<GlfwApplication::Modifiers> _modifiers;
 };
+#endif
 
 /**
 @brief Text input event
 
-@see @ref textInputEvent()
+@see @ref textInputEvent(), @ref platform-windowed-key-events
 */
 class GlfwApplication::TextInputEvent {
     public:

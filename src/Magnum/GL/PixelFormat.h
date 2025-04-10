@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -701,7 +702,9 @@ MAGNUM_GL_EXPORT PixelType pixelType(Magnum::PixelFormat format, UnsignedInt ext
 /**
 @brief Size of a pixel for given format/type combination in bytes
 
-@see @ref Magnum::pixelFormatSize(), @ref PixelStorage::dataProperties()
+@see @ref Magnum::pixelFormatSize(), @ref compressedPixelFormatBlockSize(),
+    @ref compressedPixelFormatBlockDataSize(),
+    @ref PixelStorage::dataProperties()
 */
 MAGNUM_GL_EXPORT UnsignedInt pixelFormatSize(PixelFormat format, PixelType type);
 
@@ -719,10 +722,10 @@ CORRADE_DEPRECATED("use pixelFormatSize() instead") inline UnsignedInt pixelSize
 @brief Convert OpenGL pixel format and type combination to a generic pixel format
 @m_since_latest
 
-Returns @ref Containers::NullOpt if given combination doesn't match any generic
-pixel format. Otherwise the returned value will result in the same @p format
-and @p type when passed back to @ref pixelFormat(Magnum::PixelFormat) and
-@ref pixelType(Magnum::PixelFormat, UnsignedInt).
+Returns @relativeref{Corrade,Containers::NullOpt} if given combination doesn't
+match any generic pixel format. Otherwise the returned value will result in the
+same @p format and @p type when passed back to @ref pixelFormat(Magnum::PixelFormat)
+and @ref pixelType(Magnum::PixelFormat, UnsignedInt).
 
 An exception is sRGB formats --- those map to the same OpenGL format + type
 combination, e.g. @ref Magnum::PixelFormat::RGBA8Unorm and
@@ -2157,12 +2160,40 @@ The mapping operation is done with an @f$ \mathcal{O}(1) @f$ complexity.
 MAGNUM_GL_EXPORT CompressedPixelFormat compressedPixelFormat(Magnum::CompressedPixelFormat format);
 
 /**
+@brief Block size of given compressed pixel format, in pixels
+@m_since_latest
+
+Expects that @p format is not one of the generic
+@ref CompressedPixelFormat::Red, @relativeref{CompressedPixelFormat,RG},
+@relativeref{CompressedPixelFormat,RGB} or
+@relativeref{CompressedPixelFormat,RGBA} formats for which properties are
+unspecified. For 2D formats the Z dimension is always 1.
+@see @ref compressedPixelFormatBlockDataSize(),
+    @ref Magnum::compressedPixelFormatBlockSize(), @ref pixelFormatSize()
+*/
+MAGNUM_GL_EXPORT Vector3i compressedPixelFormatBlockSize(CompressedPixelFormat format);
+
+/**
+@brief Block size of given compressed pixel format, in bytes
+@m_since_latest
+
+Expects that @p format is not one of the generic
+@ref CompressedPixelFormat::Red, @relativeref{CompressedPixelFormat,RG},
+@relativeref{CompressedPixelFormat,RGB} or
+@relativeref{CompressedPixelFormat,RGBA} formats for which properties are
+unspecified.
+@see @ref compressedPixelFormatBlockSize(),
+    @ref Magnum::compressedPixelFormatBlockDataSize(), @ref pixelFormatSize()
+*/
+MAGNUM_GL_EXPORT UnsignedInt compressedPixelFormatBlockDataSize(CompressedPixelFormat format);
+
+/**
 @brief Convert OpenGL compressed pixel format to a generic compressed pixel format
 @m_since_latest
 
-Returns @ref Containers::NullOpt if given format doesn't match any generic
-pixel format. Otherwise the returned value will result in the same @p format
-when passed back to @ref compressedPixelFormat(Magnum::CompressedPixelFormat).
+Returns @relativeref{Corrade,Containers::NullOpt} if given format doesn't match
+any generic pixel format. Otherwise the returned value will result in the same
+@p format when passed back to @ref compressedPixelFormat(Magnum::CompressedPixelFormat).
 
 An exception is ASTC float and normalized formats --- those map to the same
 OpenGL format, e.g. @ref Magnum::CompressedPixelFormat::Astc4x4RGBAUnorm and

@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -93,8 +94,9 @@ namespace Magnum { namespace Math {
 @m_since{2019,10}
 
 Equivalent to @ref std::true_type for all builtin scalar integer and
-floating-point types and in addition also @ref Half, @ref Deg and @ref Rad;
-equivalent to @ref std::false_type otherwise.
+floating-point types and in addition also @ref Half, @ref Deg, @ref Rad,
+@ref Nanoseconds and @ref Seconds; equivalent to @ref std::false_type
+otherwise.
 
 Note that this is *different* from @ref std::is_scalar, which is @cpp true @ce
 also for enums or pointers --- it's rather closer to @ref std::is_arithmetic,
@@ -130,6 +132,8 @@ template<> struct IsScalar<long double>: std::true_type {};
 template<template<class> class Derived, class T> struct IsScalar<Unit<Derived, T>>: std::true_type {};
 template<class T> struct IsScalar<Deg<T>>: std::true_type {};
 template<class T> struct IsScalar<Rad<T>>: std::true_type {};
+template<> struct IsScalar<Nanoseconds<Long>>: std::true_type {};
+template<> struct IsScalar<Seconds<Float>>: std::true_type {};
 #endif
 
 /**
@@ -162,7 +166,8 @@ template<class T> struct IsVector<Color4<T>>: std::true_type {};
 @m_since{2019,10}
 
 Equivalent to @ref std::true_type for all integral scalar and vector types
-supported by Magnum math; equivalent to @ref std::false_type otherwise.
+supported by Magnum math including @ref Magnum::Nanoseconds; equivalent to
+@ref std::false_type otherwise.
 
 Unlike @ref std::is_integral this is @ref std::false_type for @cpp bool @ce.
 @see @ref IsFloatingPoint, @ref IsScalar, @ref IsVector
@@ -189,6 +194,7 @@ template<> struct IsIntegral<unsigned long>: std::true_type {};
 template<> struct IsIntegral<long long>: std::true_type {};
 template<> struct IsIntegral<unsigned long long>: std::true_type {};
 template<std::size_t size, class T> struct IsIntegral<Vector<size, T>>: IsIntegral<T> {};
+template<> struct IsIntegral<Nanoseconds<Long>>: std::true_type {};
 template<class T> struct IsIntegral<Vector2<T>>: IsIntegral<T> {};
 template<class T> struct IsIntegral<Vector3<T>>: IsIntegral<T> {};
 template<class T> struct IsIntegral<Vector4<T>>: IsIntegral<T> {};
@@ -202,8 +208,8 @@ template<class T> struct IsIntegral<Color4<T>>: IsIntegral<T> {};
 @m_since{2019,10}
 
 Equivalent to @ref std::true_type for all floating-point scalar and vector
-types supported by Magnum math including @ref Half, @ref Deg and @ref Rad;
-equivalent to @ref std::false_type otherwise.
+types supported by Magnum math including @ref Half, @ref Deg, @ref Rad and
+@ref Seconds; equivalent to @ref std::false_type otherwise.
 @see @ref IsIntegral, @ref IsScalar, @ref IsVector, @ref std::is_floating_point
 */
 template<class T> struct IsFloatingPoint
@@ -228,6 +234,7 @@ template<class T> struct IsFloatingPoint<Color4<T>>: IsFloatingPoint<T> {};
 template<template<class> class Derived, class T> struct IsFloatingPoint<Unit<Derived, T>>: IsFloatingPoint<T> {};
 template<class T> struct IsFloatingPoint<Deg<T>>: IsFloatingPoint<T> {};
 template<class T> struct IsFloatingPoint<Rad<T>>: IsFloatingPoint<T> {};
+template<> struct IsFloatingPoint<Seconds<Float>>: std::true_type {};
 #endif
 
 /**
@@ -235,9 +242,10 @@ template<class T> struct IsFloatingPoint<Rad<T>>: IsFloatingPoint<T> {};
 @m_since{2019,10}
 
 Equivalent to @ref std::true_type for scalar or vector types that have an
-unitless underlying type (i.e., not @ref Deg or @ref Rad); @ref std::false_type
-otherwise. Some math functions such as @ref sqrt() or @ref log() work only with
-unitless types because the resulting unit couldn't be expressed otherwise.
+unitless underlying type (i.e., not @ref Deg, @ref Rad, @ref Nanoseconds or
+@ref Seconds); @ref std::false_type otherwise. Some math functions such as
+@ref sqrt() or @ref log() work only with unitless types because the resulting
+unit couldn't be expressed otherwise.
 @see @ref IsScalar, @ref IsVector
 */
 template<class T> struct IsUnitless
@@ -248,6 +256,8 @@ template<class T> struct IsUnitless
 template<template<class> class Derived, class T> struct IsUnitless<Unit<Derived, T>>: std::false_type {};
 template<class T> struct IsUnitless<Deg<T>>: std::false_type {};
 template<class T> struct IsUnitless<Rad<T>>: std::false_type {};
+template<class T> struct IsUnitless<Nanoseconds<T>>: std::false_type {};
+template<class T> struct IsUnitless<Seconds<T>>: std::false_type {};
 
 namespace Implementation {
     template<class T> struct UnderlyingType {
@@ -259,6 +269,8 @@ namespace Implementation {
     };
     template<class T> struct UnderlyingType<Deg<T>> { typedef T Type; };
     template<class T> struct UnderlyingType<Rad<T>> { typedef T Type; };
+    template<class T> struct UnderlyingType<Nanoseconds<T>> { typedef T Type; };
+    template<class T> struct UnderlyingType<Seconds<T>> { typedef T Type; };
     template<std::size_t size, class T> struct UnderlyingType<Vector<size, T>> {
         typedef T Type;
     };
@@ -346,14 +358,15 @@ template<class T> struct TypeTraits: Implementation::TypeTraitsDefault<T> {
      * integer types and
      *
      * -    @cpp 1.0e-5f @ce for @cpp float @ce,
-     * -    @cpp 1.0e-15 @ce for @cpp double @ce,
+     * -    @cpp 1.0e-14 @ce for @cpp double @ce,
      * -    @cpp 1.0e-17l @ce for @cpp long double @ce on platforms where it is
      *      80-bit, and @cpp 1.0e-14l @ce on platforms
      *      @ref CORRADE_LONG_DOUBLE_SAME_AS_DOUBLE "where it is 64-bit".
      *
      * This matches fuzzy comparison precision in
      * @relativeref{Corrade,TestSuite} and is always one digit less than how
-     * @ref Debug or @ref Utility::format() prints given type.
+     * @ref Debug, @relativeref{Corrade,Utility::format()} or
+     * @relativeref{Corrade,Utility::JsonWriter} prints given type.
      */
     constexpr static T epsilon();
 
@@ -378,7 +391,7 @@ template<class T> struct TypeTraits: Implementation::TypeTraitsDefault<T> {
      * the magnitude of original values so the epsilon can be properly scaled.
      * In other words, the following lines are equivalent:
      *
-     * @snippet MagnumMath.cpp TypeTraits-equalsZero
+     * @snippet Math.cpp TypeTraits-equalsZero
      */
     static bool equalsZero(T a, T magnitude);
     #endif
@@ -392,7 +405,11 @@ Calls @ref TypeTraits<T>::equals() --- using fuzzy compare for floating-point
 types and doing equality comparison on integral types. Scalar complement to
 @ref equal(const Vector<size, T>& a, const Vector<size, T>&).
 */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, bool>::type equal(T a, T b) {
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline bool equal(T a, T b) {
     return TypeTraits<T>::equals(a, b);
 }
 
@@ -404,7 +421,11 @@ Calls @ref TypeTraits<T>::equals() --- using fuzzy compare for floating-point
 types and doing equality comparison on integral types. Scalar complement to
 @ref notEqual(const Vector<size, T>& a, const Vector<size, T>&).
 */
-template<class T> inline typename std::enable_if<IsScalar<T>::value, bool>::type notEqual(T a, T b) {
+template<class T
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<IsScalar<T>::value, int>::type = 0
+    #endif
+> inline bool notEqual(T a, T b) {
     return !TypeTraits<T>::equals(a, b);
 }
 

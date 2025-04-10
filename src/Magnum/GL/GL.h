@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -37,11 +38,9 @@
 typedef int GLint; /* Needed for sampler enums */
 typedef unsigned int GLenum; /* Needed for *Format and *Type enums */
 typedef unsigned int GLuint; /* Needed by Implementation/State.h */
-#endif
 
 namespace Magnum { namespace GL {
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 namespace Implementation {
     /* Needed by Context as well as all Implementation::*State classes */
     enum: std::size_t {
@@ -49,9 +48,9 @@ namespace Implementation {
             #ifndef MAGNUM_TARGET_GLES
             192
             #elif !defined(MAGNUM_TARGET_WEBGL)
-            160
+            168
             #else
-            48
+            64
             #endif
     };
 }
@@ -150,7 +149,7 @@ enum class SamplerCompareMode: GLenum;
 #if !(defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2))
 enum class SamplerCompareFunction: GLenum;
 #endif
-#if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
+#ifndef MAGNUM_TARGET_GLES2
 enum class SamplerDepthStencilMode: GLenum;
 #endif
 
@@ -181,9 +180,9 @@ class TransformFeedback;
 #endif
 
 enum class Version: Int;
-#endif
 
 }}
+#endif
 
 #endif
 

@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #   Copyright © 2020 Pablo Escobar <mail@rvrs.in>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
@@ -29,6 +30,8 @@
 set(CMAKE_FOLDER "Magnum/Platform/Test")
 
 find_package(Corrade REQUIRED Main)
+
+corrade_add_test(PlatformGestureTest GestureTest.cpp LIBRARIES Magnum)
 
 # Icons for SDL/GLFW
 if(NOT CORRADE_TARGET_EMSCRIPTEN AND (MAGNUM_WITH_SDL2APPLICATION OR MAGNUM_WITH_GLFWAPPLICATION))
@@ -119,7 +122,8 @@ if(MAGNUM_WITH_GLFWAPPLICATION)
 endif()
 
 if(MAGNUM_WITH_GLXAPPLICATION)
-    add_executable(PlatformGlxApplicationTest GlxApplicationTest.cpp)
+    add_executable(PlatformGlxApplicationTest AbstractXApplicationTest.cpp)
+    target_compile_definitions(PlatformGlxApplicationTest PRIVATE BUILD_GLXAPPLICATION)
     target_link_libraries(PlatformGlxApplicationTest PRIVATE MagnumGlxApplication)
 endif()
 
@@ -160,7 +164,8 @@ if(MAGNUM_WITH_SDL2APPLICATION)
 endif()
 
 if(MAGNUM_WITH_XEGLAPPLICATION)
-    add_executable(PlatformXEglApplicationTest XEglApplicationTest.cpp)
+    add_executable(PlatformXEglApplicationTest AbstractXApplicationTest.cpp)
+    target_compile_definitions(PlatformXEglApplicationTest PRIVATE BUILD_XEGLAPPLICATION)
     target_link_libraries(PlatformXEglApplicationTest PRIVATE MagnumXEglApplication)
 endif()
 

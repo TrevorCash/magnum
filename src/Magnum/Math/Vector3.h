@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -54,7 +55,8 @@ gives the direction of its normal, and
 is its area. Length of a cross product is also related to a distance of a point
 and a line, see @ref Distance::linePoint(const Vector3<T>&, const Vector3<T>&, const Vector3<T>&)
 for more information.
-@see @ref cross(const Vector2<T>&, const Vector2<T>&), @ref planeEquation()
+@see @ref cross(const Vector2<T>&, const Vector2<T>&), @ref planeEquation(),
+    @ref dot(const Vector<size, T>&, const Vector<size, T>&)
 */
 template<class T> inline Vector3<T> cross(const Vector3<T>& a, const Vector3<T>& b) {
     return {
@@ -68,7 +70,8 @@ template<class T> inline Vector3<T> cross(const Vector3<T>& a, const Vector3<T>&
 @brief Three-component vector
 @tparam T   Data type
 
-See @ref matrix-vector for brief introduction.
+See @ref matrix-vector for brief introduction. The vectors are columns, see
+@ref Matrix3x1 for a row vector.
 @see @ref Magnum::Vector3, @ref Magnum::Vector3h, @ref Magnum::Vector3d,
     @ref Magnum::Vector3ub, @ref Magnum::Vector3b, @ref Magnum::Vector3us,
     @ref Magnum::Vector3s, @ref Magnum::Vector3ui, @ref Magnum::Vector3i
@@ -81,7 +84,7 @@ template<class T> class Vector3: public Vector<3, T> {
          *
          * Usable for translation or rotation along given axis, for example:
          *
-         * @snippet MagnumMath.cpp Vector3-xAxis
+         * @snippet Math.cpp Vector3-xAxis
          *
          * @see @ref yAxis(), @ref zAxis(), @ref xScale(), @ref Color3::red(),
          *      @ref Matrix4::right()
@@ -109,7 +112,7 @@ template<class T> class Vector3: public Vector<3, T> {
          *
          * Usable for scaling along given direction, for example:
          *
-         * @snippet MagnumMath.cpp Vector3-xScale
+         * @snippet Math.cpp Vector3-xScale
          *
          * @see @ref yScale(), @ref zScale(), @ref Color3::cyan(), @ref xAxis()
          */
@@ -165,11 +168,22 @@ template<class T> class Vector3: public Vector<3, T> {
          */
         constexpr /*implicit*/ Vector3(const Vector2<T>& xy, T z) noexcept: Vector<3, T>(xy[0], xy[1], z) {}
 
+        /** @copydoc Vector::Vector(const T(&)[size_]) */
+        #if !defined(CORRADE_TARGET_GCC) || defined(CORRADE_TARGET_CLANG) || __GNUC__ >= 5
+        template<std::size_t size_> constexpr explicit Vector3(const T(&data)[size_]) noexcept: Vector<3, T>{data} {}
+        #else
+        /* GCC 4.8 workaround, see the Vector base for details */
+        constexpr explicit Vector3(const T(&data)[3]) noexcept: Vector<3, T>{data} {}
+        #endif
+
         /** @copydoc Vector::Vector(const Vector<size, U>&) */
         template<class U> constexpr explicit Vector3(const Vector<3, U>& other) noexcept: Vector<3, T>(other) {}
 
+        /** @copydoc Vector::Vector(const BitVector<size>&) */
+        constexpr explicit Vector3(const BitVector3& other) noexcept: Vector<3, T>{other} {}
+
         /** @brief Construct a vector from external representation */
-        template<class U, class V =
+        template<class U, class =
             #ifndef CORRADE_MSVC2015_COMPATIBILITY /* Causes ICE */
             decltype(Implementation::VectorConverter<3, T, U>::from(std::declval<U>()))
             #else
@@ -187,7 +201,8 @@ template<class T> class Vector3: public Vector<3, T> {
          * @see @ref r()
          */
         T& x() { return Vector<3, T>::_data[0]; }
-        constexpr T x() const { return Vector<3, T>::_data[0]; } /**< @overload */
+        /** @overload */
+        constexpr const T& x() const { return Vector<3, T>::_data[0]; }
 
         /**
          * @brief Y component
@@ -195,7 +210,8 @@ template<class T> class Vector3: public Vector<3, T> {
          * @see @ref g()
          */
         T& y() { return Vector<3, T>::_data[1]; }
-        constexpr T y() const { return Vector<3, T>::_data[1]; } /**< @overload */
+        /** @overload */
+        constexpr const T& y() const { return Vector<3, T>::_data[1]; }
 
         /**
          * @brief Z component
@@ -203,7 +219,8 @@ template<class T> class Vector3: public Vector<3, T> {
          * @see @ref b()
          */
         T& z() { return Vector<3, T>::_data[2]; }
-        constexpr T z() const { return Vector<3, T>::_data[2]; } /**< @overload */
+        /** @overload */
+        constexpr const T& z() const { return Vector<3, T>::_data[2]; }
 
         /**
          * @brief R component
@@ -211,7 +228,8 @@ template<class T> class Vector3: public Vector<3, T> {
          * Equivalent to @ref x().
          */
         T& r() { return Vector<3, T>::_data[0]; }
-        constexpr T r() const { return Vector<3, T>::_data[0]; } /**< @overload */
+        /** @overload */
+        constexpr const T& r() const { return Vector<3, T>::_data[0]; }
 
         /**
          * @brief G component
@@ -219,7 +237,8 @@ template<class T> class Vector3: public Vector<3, T> {
          * Equivalent to @ref y().
          */
         T& g() { return Vector<3, T>::_data[1]; }
-        constexpr T g() const { return Vector<3, T>::_data[1]; } /**< @overload */
+        /** @overload */
+        constexpr const T& g() const { return Vector<3, T>::_data[1]; }
 
         /**
          * @brief B component
@@ -227,7 +246,8 @@ template<class T> class Vector3: public Vector<3, T> {
          * Equivalent to @ref z().
          */
         T& b() { return Vector<3, T>::_data[2]; }
-        constexpr T b() const { return Vector<3, T>::_data[2]; } /**< @overload */
+        /** @overload */
+        constexpr const T& b() const { return Vector<3, T>::_data[2]; }
 
         /**
          * @brief XY part of the vector
@@ -262,7 +282,7 @@ template<class T> class Vector3: public Vector<3, T> {
         template<class U> friend Vector3<U> cross(const Vector3<U>&, const Vector3<U>&);
 };
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
+#ifdef CORRADE_MSVC2015_COMPATIBILITY
 MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION(3, Vector3)
 #endif
 

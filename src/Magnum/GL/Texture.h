@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -73,7 +74,7 @@ Common usage is to fully configure all texture parameters and then set the
 data from e.g. @ref Image. Example configuration of high quality texture with
 trilinear anisotropic filtering, i.e. the best you can ask for:
 
-@snippet MagnumGL.cpp Texture-usage
+@snippet GL.cpp Texture-usage
 
 @attention Note that default configuration is to use mipmaps. Be sure to either
     reduce mip level count using @ref setBaseLevel() and @ref setMaxLevel(),
@@ -195,7 +196,7 @@ Texture: public AbstractTexture {
          * @requires_gles Texture views are not available in WebGL.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d <= 2>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d <= 2, int>::type = 0>
         #endif
         static Texture<dimensions> view(TextureArray<dimensions>& original, TextureFormat internalFormat, Int levelOffset, Int levelCount, Int layer);
 
@@ -216,7 +217,7 @@ Texture: public AbstractTexture {
          * @requires_gles Texture views are not available in WebGL.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 2>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 2, int>::type = 0>
         #endif
         static Texture<dimensions> view(CubeMapTexture& original, TextureFormat internalFormat, Int levelOffset, Int levelCount, Int layer);
 
@@ -237,7 +238,7 @@ Texture: public AbstractTexture {
          * @requires_gles Texture views are not available in WebGL.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 2>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 2, int>::type = 0>
         #endif
         static Texture<dimensions> view(CubeMapTextureArray& original, TextureFormat internalFormat, Int levelOffset, Int levelCount, Int layer);
         #endif
@@ -319,7 +320,7 @@ Texture: public AbstractTexture {
          * @requires_gles Shader image load/store is not available in WebGL.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 1 || d == 2>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 1 || d == 2, int>::type = 0>
         #endif
         void bindImage(Int imageUnit, Int level, ImageAccess access, ImageFormat format) {
             bindImageInternal(imageUnit, level, false, 0, access, format);
@@ -347,7 +348,7 @@ Texture: public AbstractTexture {
          * @requires_gles Shader image load/store is not available in WebGL.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 3>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 3, int>::type = 0>
         #endif
         void bindImage(Int imageUnit, Int level, Int layer, ImageAccess access, ImageFormat format) {
             bindImageInternal(imageUnit, level, false, layer, access, format);
@@ -374,7 +375,7 @@ Texture: public AbstractTexture {
          * @requires_gles Shader image load/store is not available in WebGL.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 3>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 3, int>::type = 0>
         #endif
         void bindImageLayered(Int imageUnit, Int level, ImageAccess access, ImageFormat format) {
             bindImageInternal(imageUnit, level, true, 0, access, format);
@@ -704,7 +705,7 @@ Texture: public AbstractTexture {
          * @cpp '1' @ce for zero and one, similarly as in the
          * @ref Math::gather() function. Example usage:
          *
-         * @snippet MagnumGL.cpp Texture-setSwizzle
+         * @snippet GL.cpp Texture-setSwizzle
          *
          * If @gl_extension{ARB,direct_state_access} (part of OpenGL 4.5) is
          * not available, the texture is bound before the operation (if not
@@ -771,7 +772,7 @@ Texture: public AbstractTexture {
         }
         #endif
 
-        #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
+        #ifndef MAGNUM_TARGET_GLES2
         /**
          * @brief Set depth/stencil texture mode
          * @return Reference to self (for method chaining)
@@ -786,9 +787,10 @@ Texture: public AbstractTexture {
          *      eventually @fn_gl{ActiveTexture}, @fn_gl{BindTexture} and
          *      @fn_gl_keyword{TexParameter} with @def_gl_keyword{DEPTH_STENCIL_TEXTURE_MODE}
          * @requires_gl43 Extension @gl_extension{ARB,stencil_texturing}
-         * @requires_gles31 Stencil texturing is not available in OpenGL ES 3.0
-         *      and older.
-         * @requires_gles Stencil texturing is not available in WebGL.
+         * @requires_gles31 Extension @m_class{m-doc-external} [ANGLE_stencil_texturing](https://chromium.googlesource.com/angle/angle/+/HEAD/extensions/ANGLE_stencil_texturing.txt)
+         *      in OpenGL ES 3.0.
+         * @requires_webgl_extension WebGL 2.0 and extension
+         *      @webgl_extension{WEBGL,stencil_texturing}
          */
         Texture<dimensions>& setDepthStencilMode(SamplerDepthStencilMode mode) {
             AbstractTexture::setDepthStencilMode(mode);
@@ -887,7 +889,7 @@ Texture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp Texture-image1
+         * @snippet GL.cpp Texture-image1
          */
         Image<dimensions> image(Int level, Image<dimensions>&& image);
 
@@ -928,7 +930,7 @@ Texture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp Texture-image2
+         * @snippet GL.cpp Texture-image2
          */
         BufferImage<dimensions> image(Int level, BufferImage<dimensions>&& image, BufferUsage usage);
 
@@ -973,7 +975,7 @@ Texture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp Texture-compressedImage1
+         * @snippet GL.cpp Texture-compressedImage1
          */
         CompressedImage<dimensions> compressedImage(Int level, CompressedImage<dimensions>&& image);
 
@@ -1017,7 +1019,7 @@ Texture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp Texture-compressedImage2
+         * @snippet GL.cpp Texture-compressedImage2
          */
         CompressedBufferImage<dimensions> compressedImage(Int level, CompressedBufferImage<dimensions>&& image, BufferUsage usage);
 
@@ -1049,7 +1051,7 @@ Texture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp Texture-subImage1
+         * @snippet GL.cpp Texture-subImage1
          */
         Image<dimensions> subImage(Int level, const RangeTypeFor<dimensions, Int>& range, Image<dimensions>&& image);
 
@@ -1091,7 +1093,7 @@ Texture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp Texture-subImage2
+         * @snippet GL.cpp Texture-subImage2
          */
         BufferImage<dimensions> subImage(Int level, const RangeTypeFor<dimensions, Int>& range, BufferImage<dimensions>&& image, BufferUsage usage);
 
@@ -1134,7 +1136,7 @@ Texture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp Texture-compressedSubImage1
+         * @snippet GL.cpp Texture-compressedSubImage1
          */
         CompressedImage<dimensions> compressedSubImage(Int level, const RangeTypeFor<dimensions, Int>& range, CompressedImage<dimensions>&& image);
 
@@ -1181,7 +1183,7 @@ Texture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp Texture-compressedSubImage2
+         * @snippet GL.cpp Texture-compressedSubImage2
          */
         CompressedBufferImage<dimensions> compressedSubImage(Int level, const RangeTypeFor<dimensions, Int>& range, CompressedBufferImage<dimensions>&& image, BufferUsage usage);
         #endif

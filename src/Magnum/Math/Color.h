@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -26,7 +27,7 @@
 */
 
 /** @file
- * @brief Class @ref Magnum::Math::Color3, @ref Magnum::Math::Color4, literal @link Magnum::Math::Literals::operator""_rgb() @endlink, @link Magnum::Math::Literals::operator""_rgba() @endlink, @link Magnum::Math::Literals::operator""_rgbf() @endlink, @link Magnum::Math::Literals::operator""_rgbaf() @endlink, @link Magnum::Math::Literals::operator""_srgb() @endlink, @link Magnum::Math::Literals::operator""_srgba() @endlink, @link Magnum::Math::Literals::operator""_srgbf() @endlink, @link Magnum::Math::Literals::operator""_srgbaf() @endlink
+ * @brief Class @ref Magnum::Math::Color3, @ref Magnum::Math::Color4, literal @link Magnum::Math::Literals::ColorLiterals::operator""_rgb() @endlink, @link Magnum::Math::Literals::ColorLiterals::operator""_rgba() @endlink, @link Magnum::Math::Literals::ColorLiterals::operator""_rgbf() @endlink, @link Magnum::Math::Literals::ColorLiterals::operator""_rgbaf() @endlink, @link Magnum::Math::Literals::ColorLiterals::operator""_srgb() @endlink, @link Magnum::Math::Literals::ColorLiterals::operator""_srgba() @endlink, @link Magnum::Math::Literals::ColorLiterals::operator""_srgbf() @endlink, @link Magnum::Math::Literals::ColorLiterals::operator""_srgbaf() @endlink
  */
 
 /* std::declval() is said to be in <utility> but libstdc++, libc++ and MSVC STL
@@ -47,7 +48,7 @@ namespace Magnum { namespace Math {
 namespace Implementation {
 
 /* Convert color from HSV */
-template<class T> typename std::enable_if<IsFloatingPoint<T>::value, Color3<T>>::type fromHsv(ColorHsv<T> hsv) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> Color3<T> fromHsv(ColorHsv<T> hsv) {
     /* Remove repeats */
     hsv.hue -= floor(T(hsv.hue)/T(360))*Deg<T>(360);
     if(hsv.hue < Deg<T>(0)) hsv.hue += Deg<T>(360);
@@ -69,7 +70,7 @@ template<class T> typename std::enable_if<IsFloatingPoint<T>::value, Color3<T>>:
         default: CORRADE_INTERNAL_DEBUG_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
     }
 }
-template<class T> inline typename std::enable_if<IsIntegral<T>::value, Color3<T>>::type fromHsv(const ColorHsv<typename TypeTraits<T>::FloatingPointType>& hsv) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline Color3<T> fromHsv(const ColorHsv<typename TypeTraits<T>::FloatingPointType>& hsv) {
     return pack<Color3<T>>(fromHsv<typename TypeTraits<T>::FloatingPointType>(hsv));
 }
 
@@ -91,54 +92,54 @@ template<class T> Deg<T> hue(const Color3<T>& color, T max, T delta) {
 }
 
 /* Hue, saturation, value for floating-point types */
-template<class T> inline Deg<T> hue(typename std::enable_if<IsFloatingPoint<T>::value, const Color3<T>&>::type color) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> inline Deg<T> hue(const Color3<T>& color) {
     T max = color.max();
     T delta = max - color.min();
     return hue(color, max, delta);
 }
-template<class T> inline T saturation(typename std::enable_if<IsFloatingPoint<T>::value, const Color3<T>&>::type color) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> inline T saturation(const Color3<T>& color) {
     T max = color.max();
     T delta = max - color.min();
     return max != T(0) ? delta/max : T(0);
 }
-template<class T> inline T value(typename std::enable_if<IsFloatingPoint<T>::value, const Color3<T>&>::type color) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> inline T value(const Color3<T>& color) {
     return color.max();
 }
 
 /* Hue, saturation, value for integral types */
-template<class T> inline Deg<typename Color3<T>::FloatingPointType> hue(typename std::enable_if<IsIntegral<T>::value, const Color3<T>&>::type color) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline Deg<typename Color3<T>::FloatingPointType> hue(const Color3<T>& color) {
     return hue<typename Color3<T>::FloatingPointType>(unpack<Color3<typename Color3<T>::FloatingPointType>>(color));
 }
-template<class T> inline typename Color3<T>::FloatingPointType saturation(typename std::enable_if<IsIntegral<T>::value, const Color3<T>&>::type& color) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline typename Color3<T>::FloatingPointType saturation(const Color3<T>& color) {
     return saturation<typename Color3<T>::FloatingPointType>(unpack<Color3<typename Color3<T>::FloatingPointType>>(color));
 }
-template<class T> inline typename Color3<T>::FloatingPointType value(typename std::enable_if<IsIntegral<T>::value, const Color3<T>&>::type color) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline typename Color3<T>::FloatingPointType value(const Color3<T>& color) {
     return unpack<typename Color3<T>::FloatingPointType>(color.max());
 }
 
 /* Convert color to HSV */
-template<class T> inline ColorHsv<T> toHsv(typename std::enable_if<IsFloatingPoint<T>::value, const Color3<T>&>::type color) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> inline ColorHsv<T> toHsv(const Color3<T>& color) {
     T max = color.max();
     T delta = max - color.min();
 
     return ColorHsv<T>{hue<typename Color3<T>::FloatingPointType>(color, max, delta), max != T(0) ? delta/max : T(0), max};
 }
-template<class T> inline ColorHsv<typename TypeTraits<T>::FloatingPointType> toHsv(typename std::enable_if<IsIntegral<T>::value, const Color3<T>&>::type color) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline ColorHsv<typename TypeTraits<T>::FloatingPointType> toHsv(const Color3<T>& color) {
     return toHsv<typename TypeTraits<T>::FloatingPointType>(unpack<Color3<typename TypeTraits<T>::FloatingPointType>>(color));
 }
 
 /* sRGB -> RGB conversion */
-template<class T> typename std::enable_if<IsFloatingPoint<T>::value, Color3<T>>::type fromSrgb(const Vector3<T>& srgb) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> inline Color3<T> fromSrgb(const Vector3<T>& srgb) {
     constexpr const T a(T(0.055));
     return lerp(srgb/T(12.92), pow((srgb + Vector3<T>{a})/(T(1.0) + a), T(2.4)), srgb > Vector3<T>(T(0.04045)));
 }
-template<class T> typename std::enable_if<IsFloatingPoint<T>::value, Color4<T>>::type fromSrgbAlpha(const Vector4<T>& srgbAlpha) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> inline Color4<T> fromSrgbAlpha(const Vector4<T>& srgbAlpha) {
     return {fromSrgb<T>(srgbAlpha.rgb()), srgbAlpha.a()};
 }
-template<class T> inline typename std::enable_if<IsIntegral<T>::value, Color3<T>>::type fromSrgb(const Vector3<typename Color3<T>::FloatingPointType>& srgb) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline Color3<T> fromSrgb(const Vector3<typename Color3<T>::FloatingPointType>& srgb) {
     return pack<Color3<T>>(fromSrgb<typename Color3<T>::FloatingPointType>(srgb));
 }
-template<class T> inline typename std::enable_if<IsIntegral<T>::value, Color4<T>>::type fromSrgbAlpha(const Vector4<typename Color4<T>::FloatingPointType>& srgbAlpha) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline Color4<T> fromSrgbAlpha(const Vector4<typename Color4<T>::FloatingPointType>& srgbAlpha) {
     return {fromSrgb<T>(srgbAlpha.rgb()), pack<T>(srgbAlpha.a())};
 }
 template<class T, class Integral> inline Color3<T> fromSrgbIntegral(const Vector3<Integral>& srgb) {
@@ -151,23 +152,23 @@ template<class T, class Integral> inline Color4<T> fromSrgbAlphaIntegral(const V
 }
 
 /* Integer linear RGB -> linear RGB conversion */
-template<class T> inline typename std::enable_if<IsFloatingPoint<T>::value, Color3<T>>::type fromLinearRgbInt(UnsignedInt linear) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> inline Color3<T> fromLinearRgbInt(UnsignedInt linear) {
     return {unpack<T>(UnsignedByte(linear >> 16)),
             unpack<T>(UnsignedByte(linear >> 8)),
             unpack<T>(UnsignedByte(linear))};
 }
-template<class T> inline typename std::enable_if<IsFloatingPoint<T>::value, Color4<T>>::type fromLinearRgbaInt(UnsignedInt linear) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> inline Color4<T> fromLinearRgbaInt(UnsignedInt linear) {
     return {unpack<T>(UnsignedByte(linear >> 24)),
             unpack<T>(UnsignedByte(linear >> 16)),
             unpack<T>(UnsignedByte(linear >> 8)),
             unpack<T>(UnsignedByte(linear))};
 }
-template<class T> inline typename std::enable_if<IsIntegral<T>::value, Color3<T>>::type fromLinearRgbInt(UnsignedInt linear) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline Color3<T> fromLinearRgbInt(UnsignedInt linear) {
     return {pack<T>(unpack<Float>(UnsignedByte(linear >> 16))),
             pack<T>(unpack<Float>(UnsignedByte(linear >> 8))),
             pack<T>(unpack<Float>(UnsignedByte(linear)))};
 }
-template<class T> inline typename std::enable_if<IsIntegral<T>::value, Color4<T>>::type fromLinearRgbaInt(UnsignedInt linear) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline Color4<T> fromLinearRgbaInt(UnsignedInt linear) {
     return {pack<T>(unpack<Float>(UnsignedByte(linear >> 24))),
             pack<T>(unpack<Float>(UnsignedByte(linear >> 16))),
             pack<T>(unpack<Float>(UnsignedByte(linear >> 8))),
@@ -175,17 +176,17 @@ template<class T> inline typename std::enable_if<IsIntegral<T>::value, Color4<T>
 }
 
 /* RGB -> sRGB conversion */
-template<class T> Vector3<typename Color3<T>::FloatingPointType> toSrgb(typename std::enable_if<IsFloatingPoint<T>::value, const Color3<T>&>::type rgb) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> Vector3<typename Color3<T>::FloatingPointType> toSrgb(const Color3<T>& rgb) {
     constexpr const T a = T(0.055);
     return lerp(rgb*T(12.92), (T(1.0) + a)*pow(rgb, T(1.0)/T(2.4)) - Vector3<T>{a}, rgb > Vector3<T>(T(0.0031308)));
 }
-template<class T> Vector4<typename Color4<T>::FloatingPointType> toSrgbAlpha(typename std::enable_if<IsFloatingPoint<T>::value, const Color4<T>&>::type rgba) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> Vector4<typename Color4<T>::FloatingPointType> toSrgbAlpha(const Color4<T>& rgba) {
     return {toSrgb<T>(rgba.rgb()), rgba.a()};
 }
-template<class T> inline Vector3<typename Color3<T>::FloatingPointType> toSrgb(typename std::enable_if<IsIntegral<T>::value, const Color3<T>&>::type rgb) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline Vector3<typename Color3<T>::FloatingPointType> toSrgb(const Color3<T>& rgb) {
     return toSrgb<typename Color3<T>::FloatingPointType>(unpack<Color3<typename Color3<T>::FloatingPointType>>(rgb));
 }
-template<class T> inline Vector4<typename Color4<T>::FloatingPointType> toSrgbAlpha(typename std::enable_if<IsIntegral<T>::value, const Color4<T>&>::type rgba) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline Vector4<typename Color4<T>::FloatingPointType> toSrgbAlpha(const Color4<T>& rgba) {
     return {toSrgb<T>(rgba.rgb()), unpack<typename Color3<T>::FloatingPointType>(rgba.a())};
 }
 template<class T, class Integral> inline Vector3<Integral> toSrgbIntegral(const Color3<T>& rgb) {
@@ -198,23 +199,23 @@ template<class T, class Integral> inline Vector4<Integral> toSrgbAlphaIntegral(c
 }
 
 /* Linear RGB -> integer linear RGB conversion */
-template<class T> inline typename std::enable_if<IsFloatingPoint<T>::value, UnsignedInt>::type toLinearRgbInt(const Color3<T>& linear) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> inline UnsignedInt toLinearRgbInt(const Color3<T>& linear) {
     return (pack<UnsignedByte>(linear[0]) << 16) |
            (pack<UnsignedByte>(linear[1]) << 8) |
             pack<UnsignedByte>(linear[2]);
 }
-template<class T> inline typename std::enable_if<IsFloatingPoint<T>::value, UnsignedInt>::type toLinearRgbaInt(const Color4<T>& linear) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> inline UnsignedInt toLinearRgbaInt(const Color4<T>& linear) {
     return (pack<UnsignedByte>(linear[0]) << 24) |
            (pack<UnsignedByte>(linear[1]) << 16) |
            (pack<UnsignedByte>(linear[2]) << 8) |
             pack<UnsignedByte>(linear[3]);
 }
-template<class T> inline typename std::enable_if<IsIntegral<T>::value, UnsignedInt>::type toLinearRgbInt(const Color3<T>& linear) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline UnsignedInt toLinearRgbInt(const Color3<T>& linear) {
     return (pack<UnsignedByte>(unpack<Float>(linear[0])) << 16) |
            (pack<UnsignedByte>(unpack<Float>(linear[1])) << 8) |
             pack<UnsignedByte>(unpack<Float>(linear[2]));
 }
-template<class T> inline typename std::enable_if<IsIntegral<T>::value, UnsignedInt>::type toLinearRgbaInt(const Color4<T>& linear) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline UnsignedInt toLinearRgbaInt(const Color4<T>& linear) {
     return (pack<UnsignedByte>(unpack<Float>(linear[0])) << 24) |
            (pack<UnsignedByte>(unpack<Float>(linear[1])) << 16) |
            (pack<UnsignedByte>(unpack<Float>(linear[2])) << 8) |
@@ -222,7 +223,7 @@ template<class T> inline typename std::enable_if<IsIntegral<T>::value, UnsignedI
 }
 
 /* CIE XYZ -> RGB conversion */
-template<class T> typename std::enable_if<IsFloatingPoint<T>::value, Color3<T>>::type fromXyz(const Vector3<T>& xyz) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> Color3<T> fromXyz(const Vector3<T>& xyz) {
     /* Taken from https://en.wikipedia.org/wiki/Talk:SRGB#Rounded_vs._Exact,
        the rounded matrices from the main article don't round-trip perfectly */
     return Matrix3x3<T>{
@@ -230,12 +231,12 @@ template<class T> typename std::enable_if<IsFloatingPoint<T>::value, Color3<T>>:
         Vector3<T>{T(-329)/T(214), T(1648619)/T(878810), T(-2585)/T(12673)},
         Vector3<T>{T(-1974)/T(3959), T(36519)/T(878810), T(705)/T(667)}}*xyz;
 }
-template<class T> inline typename std::enable_if<IsIntegral<T>::value, Color3<T>>::type fromXyz(const Vector3<typename Color3<T>::FloatingPointType>& xyz) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline Color3<T> fromXyz(const Vector3<typename Color3<T>::FloatingPointType>& xyz) {
     return pack<Color3<T>>(fromXyz<typename Color3<T>::FloatingPointType>(xyz));
 }
 
 /* RGB -> CIE XYZ conversion */
-template<class T> Vector3<typename Color3<T>::FloatingPointType> toXyz(typename std::enable_if<IsFloatingPoint<T>::value, const Color3<T>&>::type rgb) {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> Vector3<typename Color3<T>::FloatingPointType> toXyz(const Color3<T>& rgb) {
     /* Taken from https://en.wikipedia.org/wiki/Talk:SRGB#Rounded_vs._Exact,
        the rounded matrices from the main article don't round-trip perfectly */
     return (Matrix3x3<T>{
@@ -243,8 +244,45 @@ template<class T> Vector3<typename Color3<T>::FloatingPointType> toXyz(typename 
         Vector3<T>{T(87881)/T(245763), T(175762)/T(245763), T(87881)/T(737289)},
         Vector3<T>{T(12673)/T(70218), T(12673)/T(175545), T(1001167)/T(1053270)}})*rgb;
 }
-template<class T> inline Vector3<typename Color3<T>::FloatingPointType> toXyz(typename std::enable_if<IsIntegral<T>::value, const Color3<T>&>::type rgb) {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> inline Vector3<typename Color3<T>::FloatingPointType> toXyz(const Color3<T>& rgb) {
     return toXyz<typename Color3<T>::FloatingPointType>(unpack<Color3<typename Color3<T>::FloatingPointType>>(rgb));
+}
+
+/* Alpha (un)premultiplication */
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> constexpr Color4<T> premultiplied(const Color4<T>& color) {
+    return {color.rgb()*color.a(), color.a()};
+}
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> constexpr Color4<T> premultiplied(const Color4<T>& color) {
+    /* The + 0.5 is to round the value to nearest integer instead of flooring.
+       Not using round() to have this constexpr. See premultipliedRoundtrip()
+       for a verification this exactly matches pack()/unpack() behavior. */
+    return {
+        T(typename Color4<T>::FloatingPointType(color.r())*color.a()/bitMax<T>() + typename Color4<T>::FloatingPointType(0.5)),
+        T(typename Color4<T>::FloatingPointType(color.g())*color.a()/bitMax<T>() + typename Color4<T>::FloatingPointType(0.5)),
+        T(typename Color4<T>::FloatingPointType(color.b())*color.a()/bitMax<T>() + typename Color4<T>::FloatingPointType(0.5)),
+        color.a()
+    };
+}
+
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> constexpr Color4<T> unpremultiplied(const Color4<T>& color) {
+    /* If alpha is zero, zero the RGB channels. Could keep them unchanged, but
+       that would add unnecessary variation to the output. */
+    return {color.a() == T(0) ? Color3<T>{} : color.rgb()/color.a(), color.a()};
+}
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> constexpr Color4<T> unpremultiplied(const Color4<T>& color) {
+    /* Additionally also clamp the RGB channels so the division doesn't go over
+       1, as with the packed type it would result in overflow. The + 0.5 is to
+       round the value to nearest integer instead of flooring. Not using
+       round() to have this constexpr. Unlike premultiplied(), this does *not*
+       match pack()/unpack() behavior as this leads to better precision,
+       statistically speaking. See the unpremultipliedRoundtrip() test for
+       details. */
+    return color.a() == T(0) ? Color4<T>{} : Color4<T>{
+        T(typename Color4<T>::FloatingPointType(min(color.r(), color.a()))*bitMax<T>()/color.a() + typename Color4<T>::FloatingPointType(0.5)),
+        T(typename Color4<T>::FloatingPointType(min(color.g(), color.a()))*bitMax<T>()/color.a() + typename Color4<T>::FloatingPointType(0.5)),
+        T(typename Color4<T>::FloatingPointType(min(color.b(), color.a()))*bitMax<T>()/color.a() + typename Color4<T>::FloatingPointType(0.5)),
+        color.a()
+    };
 }
 
 /* Value for full channel (1.0f for floats, 255 for unsigned byte) */
@@ -255,10 +293,10 @@ template<class T> inline Vector3<typename Color3<T>::FloatingPointType> toXyz(ty
    projects created directly using VS (enabled by default since 15.5) but not
    projects using CMake. Not using SFINAE in this case makes it work. Minimal
    repro case here: https://twitter.com/czmosra/status/1039446378248896513 */
-template<class T> constexpr typename std::enable_if<IsFloatingPoint<T>::value, T>::type fullChannel() {
+template<class T, typename std::enable_if<IsFloatingPoint<T>::value, int>::type = 0> constexpr T fullChannel() {
     return T(1.0);
 }
-template<class T> constexpr typename std::enable_if<IsIntegral<T>::value, T>::type fullChannel() {
+template<class T, typename std::enable_if<IsIntegral<T>::value, int>::type = 0> constexpr T fullChannel() {
     return Implementation::bitMax<T>();
 }
 #else
@@ -293,14 +331,16 @@ instead. For convenience, conversion from and to 8bpp representation without
 sRGB conversion is possible with @ref fromLinearRgbInt() and
 @ref toLinearRgbInt().
 
-@snippet MagnumMath.cpp Color3
+@snippet Math.cpp Color3
 
 Conversion from and to HSV is done always using floating-point types, so hue
 is always in range in range @f$ [0.0\degree, 360.0\degree] @f$, saturation and
 value in range @f$ [0.0, 1.0] @f$.
 
-@see @link operator""_rgb() @endlink, @link operator""_rgbf() @endlink,
-    @link operator""_srgb() @endlink, @link operator""_srgbf() @endlink,
+@see @link Literals::ColorLiterals::operator""_rgb() @endlink,
+    @link Literals::ColorLiterals::operator""_rgbf() @endlink,
+    @link Literals::ColorLiterals::operator""_srgb() @endlink,
+    @link Literals::ColorLiterals::operator""_srgbf() @endlink,
     @ref Color4, @ref Magnum::Color3, @ref Magnum::Color3h,
     @ref Magnum::Color3ub, @ref Magnum::Color3us
 */
@@ -401,12 +441,12 @@ template<class T> class Color3: public Vector3<T> {
          * @brief Create linear RGB color from sRGB representation
          * @param srgb  Color in sRGB color space
          *
-         * Applies inverse sRGB curve onto input, returning the input in linear
-         * RGB color space with D65 illuminant and 2° standard colorimetric
-         * observer. @f[
+         * Applies an inverse [sRGB curve](https://en.wikipedia.org/wiki/SRGB)
+         * onto input, returning the input in linear RGB color space with D65
+         * illuminant and 2° standard colorimetric observer. @f[
          *      \boldsymbol{c}_\mathrm{linear} = \begin{cases}
          *          \dfrac{\boldsymbol{c}_\mathrm{sRGB}}{12.92}, & \boldsymbol{c}_\mathrm{sRGB} \le 0.04045 \\
-         *          \left( \dfrac{\boldsymbol{c}_\mathrm{sRGB} + a}{1 + a} \right)^{2.4}, & \boldsymbol{c}_\mathrm{sRGB} > 0.04045
+         *          \left( \dfrac{\boldsymbol{c}_\mathrm{sRGB} + 0.055}{1 + 0.055} \right)^{2.4}, & \boldsymbol{c}_\mathrm{sRGB} > 0.04045
          *      \end{cases}
          * @f]
          * @see @ref fromSrgb(const Vector3<Integral>&), @ref fromSrgbInt(),
@@ -427,12 +467,12 @@ template<class T> class Color3: public Vector3<T> {
          * representation and want to create a floating-point linear RGB color
          * out of it:
          *
-         * @snippet MagnumMath.cpp Color3-fromSrgb
+         * @snippet Math.cpp Color3-fromSrgb
          *
          * For conversion from a *linear* 24-bit representation (i.e, without
          * applying the sRGB curve), use @ref unpack():
          *
-         * @snippet MagnumMath.cpp Color3-unpack
+         * @snippet Math.cpp Color3-unpack
          *
          * @see @ref fromSrgbInt(), @link operator""_srgbf() @endlink,
          *      @ref Color4::fromSrgbAlpha(const Vector4<Integral>&)
@@ -453,7 +493,7 @@ template<class T> class Color3: public Vector3<T> {
          * that does this conversion directly from hexadecimal literals. The
          * following two statements are equivalent:
          *
-         * @snippet MagnumMath.cpp Color3-fromSrgbInt
+         * @snippet Math.cpp Color3-fromSrgbInt
          *
          * Note that the integral value is endian-dependent (the red channel
          * being in the *last* byte on little-endian platforms), for conversion
@@ -488,7 +528,7 @@ template<class T> class Color3: public Vector3<T> {
          * conversion directly from hexadecimal literals. The following two
          * statements are equivalent:
          *
-         * @snippet MagnumMath.cpp Color3-fromLinearRgbInt
+         * @snippet Math.cpp Color3-fromLinearRgbInt
          *
          * Note that the integral value is endian-dependent (the red channel
          * being in the *last* byte on little-endian platforms), for conversion
@@ -559,6 +599,14 @@ template<class T> class Color3: public Vector3<T> {
          */
         constexpr /*implicit*/ Color3(const Vector<2, T>& rg, T b) noexcept: Vector3<T>{rg, b} {}
 
+        /** @copydoc Vector::Vector(const T(&)[size_]) */
+        #if !defined(CORRADE_TARGET_GCC) || defined(CORRADE_TARGET_CLANG) || __GNUC__ >= 5
+        template<std::size_t size_> constexpr explicit Color3(const T(&data)[size_]) noexcept: Vector3<T>{data} {}
+        #else
+        /* GCC 4.8 workaround, see the Vector base for details */
+        constexpr explicit Color3(const T(&data)[3]) noexcept: Vector3<T>{data} {}
+        #endif
+
         /**
          * @copydoc Vector::Vector(const Vector<size, U>&)
          *
@@ -569,8 +617,11 @@ template<class T> class Color3: public Vector3<T> {
          */
         template<class U> constexpr explicit Color3(const Vector<3, U>& other) noexcept: Vector3<T>(other) {}
 
-        /** @brief Construct color from external representation */
-        template<class U, class V =
+        /** @copydoc Vector::Vector(const BitVector<size>&) */
+        constexpr explicit Color3(const BitVector3& other) noexcept: Vector3<T>{other} {}
+
+        /** @brief Construct a color from external representation */
+        template<class U, class =
             #ifndef CORRADE_MSVC2015_COMPATIBILITY /* Causes ICE */
             decltype(Implementation::VectorConverter<3, T, U>::from(std::declval<U>()))
             #else
@@ -625,11 +676,12 @@ template<class T> class Color3: public Vector3<T> {
          * @brief Convert to sRGB representation
          *
          * Assuming the color is in linear RGB with D65 illuminant and 2°
-         * standard colorimetric observer, applies sRGB curve onto it,
-         * returning the color represented in sRGB color space: @f[
+         * standard colorimetric observer, applies a
+         * [sRGB curve](https://en.wikipedia.org/wiki/SRGB) onto it, returning
+         * the color represented in sRGB color space: @f[
          *      \boldsymbol{c}_\mathrm{sRGB} = \begin{cases}
-         *          12.92C_\mathrm{linear}, & \boldsymbol{c}_\mathrm{linear} \le 0.0031308 \\
-         *          (1 + a) \boldsymbol{c}_\mathrm{linear}^{1/2.4}-a, & \boldsymbol{c}_\mathrm{linear} > 0.0031308
+         *          12.92 \boldsymbol{c}_\mathrm{linear}, & \boldsymbol{c}_\mathrm{linear} \le 0.0031308 \\
+         *          (1 + 0.055) \boldsymbol{c}_\mathrm{linear}^{1/2.4} - 0.055, & \boldsymbol{c}_\mathrm{linear} > 0.0031308
          *      \end{cases}
          * @f]
          * @see @ref fromSrgb(), @ref toSrgbInt(), @ref Color4::toSrgbAlpha()
@@ -644,12 +696,12 @@ template<class T> class Color3: public Vector3<T> {
          * Useful in cases where you have a floating-point linear RGB color and
          * want to create for example an 8-bit sRGB representation out of it:
          *
-         * @snippet MagnumMath.cpp Color3-toSrgb
+         * @snippet Math.cpp Color3-toSrgb
          *
          * For conversion to a *linear* 24-bit representation (i.e, without
          * applying the sRGB curve), use @ref pack():
          *
-         * @snippet MagnumMath.cpp Color3-pack
+         * @snippet Math.cpp Color3-pack
          *
          * @see @ref toSrgbInt(), @ref Color4::toSrgbAlpha(),
          *      @ref toLinearRgbInt()
@@ -715,7 +767,7 @@ template<class T> class Color3: public Vector3<T> {
         MAGNUM_VECTOR_SUBCLASS_IMPLEMENTATION(3, Color3)
 };
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
+#ifdef CORRADE_MSVC2015_COMPATIBILITY
 MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION(3, Color3)
 #endif
 
@@ -723,8 +775,10 @@ MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION(3, Color3)
 @brief Color in linear RGBA color space
 
 See @ref Color3 for more information.
-@see @link operator""_rgba() @endlink, @link operator""_rgbaf() @endlink,
-    @link operator""_srgba() @endlink, @link operator""_srgbaf() @endlink,
+@see @link Literals::ColorLiterals::operator""_rgba() @endlink,
+    @link Literals::ColorLiterals::operator""_rgbaf() @endlink,
+    @link Literals::ColorLiterals::operator""_srgba() @endlink,
+    @link Literals::ColorLiterals::operator""_srgbaf() @endlink,
     @ref Magnum::Color4, @ref Magnum::Color4h, @ref Magnum::Color4ub,
     @ref Magnum::Color4us
 */
@@ -837,12 +891,12 @@ class Color4: public Vector4<T> {
          * representation and want to create a floating-point linear RGBA color
          * out of it:
          *
-         * @snippet MagnumMath.cpp Color4-fromSrgbAlpha
+         * @snippet Math.cpp Color4-fromSrgbAlpha
          *
          * For conversion from a *linear* 32-bit representation (i.e, without
          * applying the sRGB curve), use @ref unpack():
          *
-         * @snippet MagnumMath.cpp Color4-unpack
+         * @snippet Math.cpp Color4-unpack
          *
          * @see @ref fromSrgbAlphaInt(UnsignedInt)
          */
@@ -897,7 +951,7 @@ class Color4: public Vector4<T> {
          * directly from hexadecimal literals. The following two statements are
          * equivalent:
          *
-         * @snippet MagnumMath.cpp Color4-fromSrgbAlphaInt
+         * @snippet Math.cpp Color4-fromSrgbAlphaInt
          *
          * Note that the integral value is endian-dependent (the red channel
          * being in the *last* byte on little-endian platforms), for conversion
@@ -957,7 +1011,7 @@ class Color4: public Vector4<T> {
          * does this conversion directly from hexadecimal literals. The
          * following two statements are equivalent:
          *
-         * @snippet MagnumMath.cpp Color4-fromLinearRgbaInt
+         * @snippet Math.cpp Color4-fromLinearRgbaInt
          *
          * Note that the integral value is endian-dependent (the red channel
          * being in the *last* byte on little-endian platforms), for conversion
@@ -1042,6 +1096,14 @@ class Color4: public Vector4<T> {
            is fairly common, nearly always with A set to 1 */
         constexpr /*implicit*/ Color4(const Vector3<T>& rgb, T a = Implementation::fullChannel<T>()) noexcept: Vector4<T>(rgb[0], rgb[1], rgb[2], a) {}
 
+        /** @copydoc Vector::Vector(const T(&)[size_]) */
+        #if !defined(CORRADE_TARGET_GCC) || defined(CORRADE_TARGET_CLANG) || __GNUC__ >= 5
+        template<std::size_t size_> constexpr explicit Color4(const T(&data)[size_]) noexcept: Vector4<T>{data} {}
+        #else
+        /* GCC 4.8 workaround, see the Vector base for details */
+        constexpr explicit Color4(const T(&data)[4]) noexcept: Vector4<T>{data} {}
+        #endif
+
         /**
          * @copydoc Vector::Vector(const Vector<size, U>&)
          *
@@ -1052,8 +1114,11 @@ class Color4: public Vector4<T> {
          */
         template<class U> constexpr explicit Color4(const Vector<4, U>& other) noexcept: Vector4<T>(other) {}
 
-        /** @brief Construct color from external representation */
-        template<class U, class V =
+        /** @copydoc Vector::Vector(const BitVector<size>&) */
+        constexpr explicit Color4(const BitVector4& other) noexcept: Vector4<T>{other} {}
+
+        /** @brief Construct a color from external representation */
+        template<class U, class =
             #ifndef CORRADE_MSVC2015_COMPATIBILITY /* Causes ICE */
             decltype(Implementation::VectorConverter<4, T, U>::from(std::declval<U>()))
             #else
@@ -1113,12 +1178,12 @@ class Color4: public Vector4<T> {
          * and want to create for example an 8-bit sRGB + alpha representation
          * out of it:
          *
-         * @snippet MagnumMath.cpp Color4-toSrgbAlpha
+         * @snippet Math.cpp Color4-toSrgbAlpha
          *
          * For conversion to a *linear* 32-bit representation (i.e, without
          * applying the sRGB curve), use @ref pack():
          *
-         * @snippet MagnumMath.cpp Color4-pack
+         * @snippet Math.cpp Color4-pack
          *
          * @see @ref toSrgbAlphaInt(), @ref toLinearRgbaInt()
          */
@@ -1176,6 +1241,48 @@ class Color4: public Vector4<T> {
             return Implementation::toXyz<T>(rgb());
         }
 
+        /**
+         * @brief Color with premultiplied alpha
+         * @m_since_latest
+         *
+         * The resulting color has RGB channels always less than or equal to
+         * alpha. Note that premultiplication isn't a reversible operation ---
+         * if alpha is zero, RGB channels become zero as well and
+         * @ref unpremultiplied() won't be able to recover the original values
+         * back. @f[
+         *  \boldsymbol{c_\mathrm{premult}} = (\boldsymbol{c_{rgb}} c_a, c_a)
+         * @f]
+         */
+        constexpr Color4<T> premultiplied() const {
+            return Implementation::premultiplied(*this);
+        }
+
+        /**
+         * @brief Color with unpremultiplied alpha
+         * @m_since_latest
+         *
+         * Assuming the input has premultiplied alpha, such as coming from
+         * @ref premultiplied(), returns an unpremultiplied color. Note that
+         * premultiplication isn't a reversible operation --- if alpha is zero,
+         * the RGB channels will be set to zero as well. @f[
+         *      \boldsymbol{c} = \begin{cases}
+         *          \boldsymbol{0}, & {c_\mathrm{premult}}_a = 0 \\
+         *          (\cfrac{\boldsymbol{{c_\mathrm{premult}}_{rgb}}}{c_a}, {c_\mathrm{premult}}_a) & {c_\mathrm{premult}}_a > 0
+         *      \end{cases}
+         * @f]
+         *
+         * Additionally, with packed types such as @ref Color4ub, RGB channels
+         * are clamped to avoid overflow: @f[
+         *      \boldsymbol{c} = \begin{cases}
+         *          \boldsymbol{0}, & {c_\mathrm{premult}}_a = 0 \\
+         *          (\cfrac{\min(\boldsymbol{{c_\mathrm{premult}}_{rgb}}, {c_\mathrm{premult}}_a)}{c_a}, {c_\mathrm{premult}}_a) & {c_\mathrm{premult}}_a > 0
+         *      \end{cases}
+         * @f]
+         */
+        constexpr Color4<T> unpremultiplied() const {
+            return Implementation::unpremultiplied(*this);
+        }
+
         /* Overloads to remove WTF-factor from return types */
         #ifndef DOXYGEN_GENERATING_OUTPUT
         Color3<T>& xyz() { return Color3<T>::from(Vector4<T>::data()); }
@@ -1187,6 +1294,10 @@ class Color4: public Vector4<T> {
 
         MAGNUM_VECTOR_SUBCLASS_IMPLEMENTATION(4, Color4)
 };
+
+#ifdef CORRADE_MSVC2015_COMPATIBILITY
+MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION(4, Color4)
+#endif
 
 /** @relatesalso Color3
 @brief Convert color from [CIE xyY representation](https://en.wikipedia.org/wiki/CIE_1931_color_space#CIE_xy_chromaticity_diagram_and_the_CIE_xyY_color_space) to CIE XYZ
@@ -1293,18 +1404,41 @@ extern template MAGNUM_EXPORT Debug& operator<<(Debug&, const ColorHsv<Float>&);
 #endif
 #endif
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
-MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION(4, Color4)
-#endif
-
+/* Unlike STL, where there's e.g. std::literals::string_literals with both
+   being inline, here's just the second inline because making both would cause
+   the literals to be implicitly available to all code in Math. Which isn't
+   great if there are eventually going to be conflicts. In case of STL the
+   expected use case was that literals are available to anybody who does
+   `using namespace std;`, that doesn't apply here as most APIs are in
+   subnamespaces that *should not* be pulled in via `using` as a whole. */
 namespace Literals {
+    /** @todoc The inline causes "error: non-const getClassDef() called on
+        aliased member. Please report as a bug." on Doxygen 1.8.18, plus the
+        fork I have doesn't even mark them as inline in the XML output yet. And
+        it also duplicates the literal reference to parent namespace, adding
+        extra noise. Revisit once upgrading to a newer version. */
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    inline
+    #endif
+    namespace ColorLiterals {
 
+/* According to https://wg21.link/CWG2521, space between "" and literal name is
+   deprecated because _Uppercase or __double names could be treated as reserved
+   depending on whether the space was present or not, and whitespace is not
+   load-bearing in any other contexts. Clang 17+ adds an off-by-default warning
+   for this; GCC 4.8 however *requires* the space there, so until GCC 4.8
+   support is dropped, we suppress this warning instead of removing the
+   space. */
+#if defined(CORRADE_TARGET_CLANG) && __clang_major__ >= 17
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-literal-operator"
+#endif
 /** @relatesalso Magnum::Math::Color3
 @brief 8bit-per-channel linear RGB literal
 
 Unpacks the literal into three 8-bit values. Example usage:
 
-@snippet MagnumMath.cpp _rgb
+@snippet Math.cpp _rgb
 
 @attention 8bit-per-channel colors are commonly treated as being in sRGB color
     space, which is not directly usable in calculations and has to be converted
@@ -1314,7 +1448,7 @@ Unpacks the literal into three 8-bit values. Example usage:
 @see @link operator""_rgba() @endlink, @link operator""_rgbf() @endlink
 @m_keywords{_rgb rgb}
 */
-constexpr Color3<UnsignedByte> operator "" _rgb(unsigned long long value) {
+constexpr Color3<UnsignedByte> operator"" _rgb(unsigned long long value) {
     return {UnsignedByte(value >> 16), UnsignedByte(value >> 8), UnsignedByte(value)};
 }
 
@@ -1326,7 +1460,7 @@ Behaves identically to @link operator""_rgb() @endlink though it doesn't
 return a @ref Color3 type to indicate that the resulting value is not linear
 RGB. Use this literal to document that given value is in sRGB. Example usage:
 
-@snippet MagnumMath.cpp _srgb
+@snippet Math.cpp _srgb
 
 @attention Note that colors in sRGB representation should not be used directly
     in calculations --- they should be converted to linear RGB, calculation
@@ -1340,7 +1474,7 @@ RGB. Use this literal to document that given value is in sRGB. Example usage:
 */
 /* Output is a Vector3 to hint that it doesn't have any (additive,
    multiplicative) semantics of a linear RGB color */
-constexpr Vector3<UnsignedByte> operator "" _srgb(unsigned long long value) {
+constexpr Vector3<UnsignedByte> operator"" _srgb(unsigned long long value) {
     return {UnsignedByte(value >> 16), UnsignedByte(value >> 8), UnsignedByte(value)};
 }
 
@@ -1349,7 +1483,7 @@ constexpr Vector3<UnsignedByte> operator "" _srgb(unsigned long long value) {
 
 Unpacks the literal into four 8-bit values. Example usage:
 
-@snippet MagnumMath.cpp _rgba
+@snippet Math.cpp _rgba
 
 @attention 8bit-per-channel colors are commonly treated as being in sRGB color
     space, which is not directly usable in calculations and has to be converted
@@ -1359,7 +1493,7 @@ Unpacks the literal into four 8-bit values. Example usage:
 @see @link operator""_rgb() @endlink, @link operator""_rgbaf() @endlink
 @m_keywords{_rgba rgba}
 */
-constexpr Color4<UnsignedByte> operator "" _rgba(unsigned long long value) {
+constexpr Color4<UnsignedByte> operator"" _rgba(unsigned long long value) {
     return {UnsignedByte(value >> 24), UnsignedByte(value >> 16), UnsignedByte(value >> 8), UnsignedByte(value)};
 }
 
@@ -1372,7 +1506,7 @@ return a @ref Color4 type to indicate that the resulting value is not linear
 RGBA. Use this literal to document that given value is in sRGB + alpha. Example
 usage:
 
-@snippet MagnumMath.cpp _srgba
+@snippet Math.cpp _srgba
 
 @attention Note that colors in sRGB representation should not be used directly
     in calculations --- they should be converted to linear RGB, calculation
@@ -1386,16 +1520,17 @@ usage:
 */
 /* Output is a Vector3 to hint that it doesn't have any (additive,
    multiplicative) semantics of a linear RGB color */
-constexpr Vector4<UnsignedByte> operator "" _srgba(unsigned long long value) {
+constexpr Vector4<UnsignedByte> operator"" _srgba(unsigned long long value) {
     return {UnsignedByte(value >> 24), UnsignedByte(value >> 16), UnsignedByte(value >> 8), UnsignedByte(value)};
 }
 
 /** @relatesalso Magnum::Math::Color3
 @brief Float linear RGB literal
 
-Calls @ref Color3::fromLinearRgbInt() on the literal value. Example usage:
+Equivalent to calling @ref Color3::fromLinearRgbInt() on the literal value.
+Example usage:
 
-@snippet MagnumMath.cpp _rgbf
+@snippet Math.cpp _rgbf
 
 @attention 8bit-per-channel colors are commonly treated as being in sRGB color
     space, which is not directly usable in calculations and has to be converted
@@ -1405,8 +1540,10 @@ Calls @ref Color3::fromLinearRgbInt() on the literal value. Example usage:
 @see @link operator""_rgbaf() @endlink, @link operator""_rgb() @endlink
 @m_keywords{_rgbf rgbf}
 */
-inline Color3<Float> operator "" _rgbf(unsigned long long value) {
-    return Math::unpack<Color3<Float>>(Color3<UnsignedByte>{UnsignedByte(value >> 16), UnsignedByte(value >> 8), UnsignedByte(value)});
+constexpr Color3<Float> operator"" _rgbf(unsigned long long value) {
+    return {((value >> 16) & 0xff)/255.0f,
+            ((value >>  8) & 0xff)/255.0f,
+            ((value >>  0) & 0xff)/255.0f};
 }
 
 /** @relatesalso Magnum::Math::Color3
@@ -1414,22 +1551,23 @@ inline Color3<Float> operator "" _rgbf(unsigned long long value) {
 
 Calls @ref Color3::fromSrgbInt() on the literal value. Example usage:
 
-@snippet MagnumMath.cpp _srgbf
+@snippet Math.cpp _srgbf
 
 @see @link operator""_srgbaf() @endlink, @link operator""_srgb() @endlink,
     @link operator""_rgbf() @endlink
 @m_keywords{_srgbf srgbf}
 */
-inline Color3<Float> operator "" _srgbf(unsigned long long value) {
+inline Color3<Float> operator"" _srgbf(unsigned long long value) {
     return Color3<Float>::fromSrgbInt(UnsignedInt(value));
 }
 
 /** @relatesalso Magnum::Math::Color4
 @brief Float linear RGBA literal
 
-Calls @ref Color4::fromLinearRgbaInt() on the literal value. Example usage:
+Equivalent to calling @ref Color4::fromLinearRgbaInt() on the literal value.
+Example usage:
 
-@snippet MagnumMath.cpp _rgbaf
+@snippet Math.cpp _rgbaf
 
 @attention 8bit-per-channel colors are commonly treated as being in sRGB color
     space, which is not directly usable in calculations and has to be converted
@@ -1439,8 +1577,11 @@ Calls @ref Color4::fromLinearRgbaInt() on the literal value. Example usage:
 @see @link operator""_rgbf() @endlink, @link operator""_rgba() @endlink
 @m_keywords{_rgbaf rgbaf}
 */
-inline Color4<Float> operator "" _rgbaf(unsigned long long value) {
-    return Math::unpack<Color4<Float>>(Color4<UnsignedByte>{UnsignedByte(value >> 24), UnsignedByte(value >> 16), UnsignedByte(value >> 8), UnsignedByte(value)});
+constexpr Color4<Float> operator"" _rgbaf(unsigned long long value) {
+    return {((value >> 24) & 0xff)/255.0f,
+            ((value >> 16) & 0xff)/255.0f,
+            ((value >>  8) & 0xff)/255.0f,
+            ((value >>  0) & 0xff)/255.0f};
 }
 
 /** @relatesalso Magnum::Math::Color4
@@ -1448,17 +1589,20 @@ inline Color4<Float> operator "" _rgbaf(unsigned long long value) {
 
 Calls @ref Color4::fromSrgbAlphaInt() on the literal value. Example usage:
 
-@snippet MagnumMath.cpp _srgbaf
+@snippet Math.cpp _srgbaf
 
 @see @link operator""_srgbf() @endlink, @link operator""_srgba() @endlink,
     @link operator""_rgbaf() @endlink
 @m_keywords{_srgbaf srgbaf}
 */
-inline Color4<Float> operator "" _srgbaf(unsigned long long value) {
+inline Color4<Float> operator"" _srgbaf(unsigned long long value) {
     return Color4<Float>::fromSrgbAlphaInt(UnsignedInt(value));
 }
+#if defined(CORRADE_TARGET_CLANG) && __clang_major__ >= 17
+#pragma clang diagnostic pop
+#endif
 
-}
+}}
 
 #ifndef CORRADE_SINGLES_NO_DEBUG
 /**
@@ -1481,7 +1625,7 @@ If @ref Debug::Flag::Color is not enabled, the value is printed as a hex color
 
 For example, the following snippet:
 
-@snippet MagnumMath.cpp Color3-debug
+@snippet Math.cpp Color3-debug
 
 <b></b>
 
@@ -1514,7 +1658,7 @@ If @ref Debug::Flag::Color is not enabled, the value is printed as a hex color
 
 For example, the following snippet:
 
-@snippet MagnumMath.cpp Color4-debug
+@snippet Math.cpp Color4-debug
 
 <b></b>
 
@@ -1546,8 +1690,9 @@ namespace Corrade { namespace Utility {
 /**
 @tweakableliteral{Magnum::Math::Color3}
 
-Parses the @link Magnum::Math::Literals::operator""_rgb @endlink and
-@link Magnum::Math::Literals::operator""_srgb @endlink literals.
+Parses the @link Magnum::Math::Literals::ColorLiterals::operator""_rgb @endlink
+and @link Magnum::Math::Literals::ColorLiterals::operator""_srgb @endlink
+literals.
 @experimental
 */
 template<> struct MAGNUM_EXPORT TweakableParser<Magnum::Math::Color3<Magnum::UnsignedByte>> {
@@ -1564,8 +1709,8 @@ template<> struct MAGNUM_EXPORT TweakableParser<Magnum::Math::Vector3<Magnum::Un
 /**
 @tweakableliteral{Magnum::Math::Color4}
 
-Parses the @link Magnum::Math::Literals::operator""_rgba @endlink and
-@link Magnum::Math::Literals::operator""_srgba @endlink literals.
+Parses the @link Magnum::Math::Literals::ColorLiterals::operator""_rgba @endlink
+and @link Magnum::Math::Literals::ColorLiterals::operator""_srgba @endlink literals.
 @experimental
 */
 template<> struct MAGNUM_EXPORT TweakableParser<Magnum::Math::Color4<Magnum::UnsignedByte>> {
@@ -1582,8 +1727,9 @@ template<> struct MAGNUM_EXPORT TweakableParser<Magnum::Math::Vector4<Magnum::Un
 /**
 @tweakableliteral{Magnum::Math::Color3}
 
-Parses the @link Magnum::Math::Literals::operator""_rgbf @endlink and
-@link Magnum::Math::Literals::operator""_srgbf @endlink literals.
+Parses the @link Magnum::Math::Literals::ColorLiterals::operator""_rgbf @endlink
+and @link Magnum::Math::Literals::ColorLiterals::operator""_srgbf @endlink
+literals.
 @experimental
 */
 template<> struct MAGNUM_EXPORT TweakableParser<Magnum::Math::Color3<Magnum::Float>> {
@@ -1596,8 +1742,9 @@ template<> struct MAGNUM_EXPORT TweakableParser<Magnum::Math::Color3<Magnum::Flo
 /**
 @tweakableliteral{Magnum::Math::Color4}
 
-Parses the @link Magnum::Math::Literals::operator""_rgbaf @endlink and
-@link Magnum::Math::Literals::operator""_srgbaf @endlink literals.
+Parses the @link Magnum::Math::Literals::ColorLiterals::operator""_rgbaf @endlink
+and @link Magnum::Math::Literals::ColorLiterals::operator""_srgbaf @endlink
+literals.
 @experimental
 */
 template<> struct MAGNUM_EXPORT TweakableParser<Magnum::Math::Color4<Magnum::Float>> {

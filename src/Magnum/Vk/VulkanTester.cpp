@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -25,6 +26,7 @@
 
 #include "VulkanTester.h"
 
+#include <Corrade/Containers/Pair.h>
 #include <Corrade/Containers/StringView.h>
 
 #include "Magnum/Vk/DeviceCreateInfo.h"
@@ -42,7 +44,7 @@ VulkanTester::VulkanTester(): VulkanTester{NoCreate} {
 }
 
 VulkanTester::VulkanTester(NoCreateT): VulkanTester{NoCreate, NoCreate} {
-    _instance.create(Vk::InstanceCreateInfo{arguments().first, arguments().second}
+    _instance.create(Vk::InstanceCreateInfo{arguments().first(), arguments().second()}
         .setApplicationInfo(testName(), {})
     );
 }

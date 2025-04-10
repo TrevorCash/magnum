@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -34,6 +35,7 @@
 #undef glMultiDrawArraysInstancedANGLE
 #undef glMultiDrawElementsANGLE
 #undef glMultiDrawElementsInstancedANGLE
+#undef glPolygonModeANGLE
 #undef glRenderbufferStorageMultisampleAPPLE
 #undef glResolveMultisampleFramebufferAPPLE
 #undef glClipControlEXT
@@ -193,8 +195,13 @@ void flextGLInit(Magnum::GL::Context&) {
     #if GL_ANGLE_multi_draw
     flextGL.MultiDrawArraysANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLint *, const GLsizei *, GLsizei)>(glMultiDrawArraysANGLE);
     flextGL.MultiDrawArraysInstancedANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLint *, const GLsizei *, const GLsizei *, GLsizei)>(glMultiDrawArraysInstancedANGLE);
-    flextGL.MultiDrawElementsANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLsizei *, GLenum, const GLvoid *const*, GLsizei)>(glMultiDrawElementsANGLE);
-    flextGL.MultiDrawElementsInstancedANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLsizei *, GLenum, const GLvoid *const*, const GLsizei*, GLsizei)>(glMultiDrawElementsInstancedANGLE);
+    flextGL.MultiDrawElementsANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLsizei *, GLenum, const void *const*, GLsizei)>(glMultiDrawElementsANGLE);
+    flextGL.MultiDrawElementsInstancedANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLsizei *, GLenum, const void *const*, const GLsizei*, GLsizei)>(glMultiDrawElementsInstancedANGLE);
+    #endif
+
+    /* GL_ANGLE_polygon_mode */
+    #if GL_ANGLE_polygon_mode
+    flextGL.PolygonModeANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, GLenum)>(glPolygonModeANGLE);
     #endif
 
     /* GL_APPLE_framebuffer_multisample */

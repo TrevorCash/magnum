@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -964,7 +965,6 @@ void Shader::completionStatusImplementationFallback(GLuint, GLenum, GLint* value
     *value = GL_TRUE;
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 Debug& operator<<(Debug& debug, const Shader::Type value) {
     debug << "GL::Shader::Type" << Debug::nospace;
 
@@ -983,8 +983,7 @@ Debug& operator<<(Debug& debug, const Shader::Type value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
-#endif
 
 }}

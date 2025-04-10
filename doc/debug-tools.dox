@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -59,7 +60,7 @@ given key doesn't exist, default fallback is used.
 Example usage: visualizing object position, rotation and scaling using
 @ref DebugTools::ObjectRenderer :
 
-@snippet MagnumDebugTools-gl.cpp debug-tools-renderers
+@snippet DebugTools-gl.cpp debug-tools-renderers
 
 See @ref DebugTools::ObjectRenderer and @ref DebugTools::ForceRenderer for more
 information.

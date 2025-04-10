@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -31,7 +32,6 @@
 
 #include "Magnum/GL/Version.h"
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 /* Define stuff that we need because I can't be bothered with creating a new
    header just for a few defines */
 #define WGL_CONTEXT_MAJOR_VERSION_ARB 0x2091
@@ -43,7 +43,6 @@
 
 #ifndef WGL_ARB_create_context_no_error
 #define WGL_CONTEXT_OPENGL_NO_ERROR_ARB 0x31B3
-#endif
 #endif
 
 namespace Magnum { namespace Platform {
@@ -75,7 +74,7 @@ WindowlessWglContext::WindowlessWglContext(const Configuration& configuration, G
 
     /* Create the window */
     _window = CreateWindowW(wc.lpszClassName, L"Magnum Windowless Application",
-        WS_OVERLAPPEDWINDOW, 0, 0, 32, 32, 0, 0, wc.hInstance, 0);
+        WS_OVERLAPPEDWINDOW, 0, 0, 32, 32, nullptr, nullptr, wc.hInstance, nullptr);
 
     /* Get device context from the newly created window and save the previous
        one. In case the previous one is null, wglMakeCurrent(null, ...) would
@@ -122,6 +121,9 @@ WindowlessWglContext::WindowlessWglContext(const Configuration& configuration, G
 
     /* Get pointer to proper context creation function */
     typedef HGLRC(WINAPI*PFNWGLCREATECONTEXTATTRIBSARBPROC)(HDC, HGLRC, const int*);
+    #ifdef CORRADE_TARGET_GCC
+    __extension__ /* http://web.archive.org/web/20160826013457/http://www.mr-edd.co.uk/blog/supressing_gcc_warnings */
+    #endif
     const PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = reinterpret_cast<PFNWGLCREATECONTEXTATTRIBSARBPROC>( wglGetProcAddress(reinterpret_cast<LPCSTR>("wglCreateContextAttribsARB")));
 
     /* Request debug context if GpuValidation is enabled either via the
@@ -136,12 +138,10 @@ WindowlessWglContext::WindowlessWglContext(const Configuration& configuration, G
     /* Optimistically choose core context first */
     GLint contextAttributes[11] = {
         #ifdef MAGNUM_TARGET_GLES
-        #ifdef MAGNUM_TARGET_GLES3
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
-        #elif defined(MAGNUM_TARGET_GLES2)
+        #ifdef MAGNUM_TARGET_GLES2
         WGL_CONTEXT_MAJOR_VERSION_ARB, 2,
         #else
-        #error unsupported OpenGL ES version
+        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
         #endif
         WGL_CONTEXT_MINOR_VERSION_ARB, 0,
         WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_ES2_PROFILE_BIT_EXT,
@@ -307,10 +307,6 @@ WindowlessWglContext::Configuration::Configuration() {
     addFlags(Flag::ForwardCompatible);
     #endif
 }
-
-#ifndef DOXYGEN_GENERATING_OUTPUT
-WindowlessWglApplication::WindowlessWglApplication(const Arguments& arguments): WindowlessWglApplication{arguments, Configuration{}} {}
-#endif
 
 WindowlessWglApplication::WindowlessWglApplication(const Arguments& arguments, const Configuration& configuration): WindowlessWglApplication{arguments, NoCreate} {
     createContext(configuration);

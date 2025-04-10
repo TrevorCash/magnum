@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -27,6 +28,8 @@
 #undef NDEBUG /* So we can test them */
 #endif
 
+#include <Corrade/Containers/Pair.h>
+#include <Corrade/Containers/Reference.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/Utility/Arguments.h>
 
@@ -58,7 +61,7 @@ AssertTest::AssertTest(): TestSuite::Tester{TesterConfiguration{}.setSkippedArgu
         .addOption("assert-success-or", "false").setHelp("assert-success-or", "fail on MAGNUM_VK_INTERNAL_ASSERT_SUCCESS_OR() with Vk::Result", "BOOL")
         .addOption("assert-vk-success", "false").setHelp("assert-vk-success", "fail on MAGNUM_VK_INTERNAL_ASSERT_SUCCESS() with VkResult", "BOOL")
         .addOption("assert-vk-success-or", "false").setHelp("assert-vk-success-or", "fail on MAGNUM_VK_INTERNAL_ASSERT_SUCCESS_OR() with VkResult", "BOOL")
-        .parse(arguments().first, arguments().second);
+        .parse(arguments().first(), arguments().second());
 
     _failAssertSuccess = args.value<bool>("assert-success");
     _failAssertSuccessOr = args.value<bool>("assert-success-or");

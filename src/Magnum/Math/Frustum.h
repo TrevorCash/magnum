@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2016, 2020 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -41,10 +42,6 @@
 #include "Magnum/Math/Matrix4.h"
 #include "Magnum/Math/Vector4.h"
 
-#ifdef MAGNUM_BUILD_DEPRECATED
-#include <Corrade/Containers/ArrayView.h> /** @todo remove when planes() is gone */
-#endif
-
 #ifdef CORRADE_TARGET_WINDOWS /* I so HATE windef.h */
 #undef near
 #undef far
@@ -67,7 +64,7 @@ bottom (index `2`), top (index `3`), near (index `4`) and far (index `5`).
 */
 template<class T> class Frustum {
     public:
-        /** @brief Create a frustum from projection matrix */
+        /** @brief Create a frustum from a projection matrix */
         static Frustum<T> fromMatrix(const Matrix4<T>& m) {
             return {m.row(3) + m.row(0),
                     m.row(3) - m.row(0),
@@ -105,22 +102,27 @@ template<class T> class Frustum {
         constexpr /*implicit*/ Frustum(const Vector4<T>& left, const Vector4<T>& right, const Vector4<T>& bottom, const Vector4<T>& top, const Vector4<T>& near, const Vector4<T>& far) noexcept: _data{left, right, bottom, top, near, far} {}
 
         /**
-         * @brief Construct frustum from another of different type
+         * @brief Construct a frustum from another of different type
          *
          * Performs only default casting on the values, no rounding or
          * anything else.
          */
         template<class U> constexpr explicit Frustum(const Frustum<U>& other) noexcept;
 
-        /** @brief Construct frustum from external representation */
-        template<class U, class V = decltype(Implementation::FrustumConverter<T, U>::from(std::declval<U>()))> constexpr explicit Frustum(const U& other) noexcept: Frustum<T>{Implementation::FrustumConverter<T, U>::from(other)} {}
+        /** @brief Construct a frustum from external representation */
+        template<class U, class = decltype(Implementation::FrustumConverter<T, U>::from(std::declval<U>()))> constexpr explicit Frustum(const U& other) noexcept: Frustum<T>{Implementation::FrustumConverter<T, U>::from(other)} {}
 
-        /** @brief Convert frustum to external representation */
-        template<class U, class V = decltype(Implementation::FrustumConverter<T, U>::to(std::declval<Frustum<T>>()))> constexpr explicit operator U() const {
+        /** @brief Convert the frustum to external representation */
+        template<class U, class = decltype(Implementation::FrustumConverter<T, U>::to(std::declval<Frustum<T>>()))> constexpr explicit operator U() const {
             return Implementation::FrustumConverter<T, U>::to(*this);
         }
 
-        /** @brief Equality comparison */
+        /**
+         * @brief Equality comparison
+         *
+         * Done by comparing the underlying vectors, which internally uses
+         * @ref TypeTraits::equals(), i.e. a fuzzy compare.
+         */
         bool operator==(const Frustum<T>& other) const {
             for(std::size_t i = 0; i != 6; ++i)
                 if(_data[i] != other._data[i]) return false;
@@ -128,7 +130,12 @@ template<class T> class Frustum {
             return true;
         }
 
-        /** @brief Non-equality comparison */
+        /**
+         * @brief Non-equality comparison
+         *
+         * Done by comparing the underlying vectors, which internally uses
+         * @ref TypeTraits::equals(), i.e. a fuzzy compare.
+         */
         bool operator!=(const Frustum<T>& other) const {
             return !operator==(other);
         }
@@ -164,18 +171,6 @@ template<class T> class Frustum {
         }
         #endif
 
-        #ifdef MAGNUM_BUILD_DEPRECATED
-        /**
-         * @brief Frustum planes
-         * @m_deprecated_since{2019,10} Use @ref operator[](std::size_t) const,
-         *      @ref data() or @ref begin() / @ref end() instead.
-         */
-        constexpr CORRADE_DEPRECATED("use operator[](), data() or begin() / end() instead") Containers::StaticArrayView<6, const Vector4<T>> planes() const {
-            /* GCC 4.8 needs explicit construction */
-            return Containers::StaticArrayView<6, const Vector4<T>>{_data};
-        }
-        #endif
-
         /**
          * @brief Plane at given index
          * @m_since{2020,06}
@@ -202,7 +197,7 @@ template<class T> class Frustum {
          * to check for a point/frustum intersection, similarly to
          * @ref Intersection::pointFrustum():
          *
-         * @snippet MagnumMath.cpp Frustum-range
+         * @snippet Math.cpp Frustum-range
          */
         Vector4<T>* begin() { return _data; }
 

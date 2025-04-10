@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -49,7 +50,7 @@ Extracts the @ref Trade::SceneField::Parent field mapping and data from
 This form is useful primarily for calculating absolute object transformations,
 for example:
 
-@snippet MagnumSceneTools.cpp parentsBreadthFirst-transformations
+@snippet SceneTools.cpp parentsBreadthFirst-transformations
 
 The operation is done in an @f$ \mathcal{O}(n) @f$ execution time and memory
 complexity, with @f$ n @f$ being @ref Trade::SceneData::mappingBound(). The
@@ -100,7 +101,7 @@ object is the first top-level object (i.e., with a parent equal to
 
 This form is useful primarily for marking and extracting subtrees, for example:
 
-@snippet MagnumSceneTools.cpp childrenDepthFirst-extract-tree
+@snippet SceneTools.cpp childrenDepthFirst-extract-tree
 
 The operation is done in an @f$ \mathcal{O}(n) @f$ execution time and memory
 complexity, with @f$ n @f$ being @ref Trade::SceneData::mappingBound(). The
@@ -115,7 +116,7 @@ having no cycles (i.e., every node listed just once) and not being sparse
 MAGNUM_SCENETOOLS_EXPORT Containers::Array<Containers::Pair<UnsignedInt, UnsignedInt>> childrenDepthFirst(const Trade::SceneData& scene);
 
 /**
-@brief Retrieve childrem in a depth-first order into a pre-allocated view
+@brief Retrieve children in a depth-first order into a pre-allocated view
 @m_since_latest
 
 Like @ref childrenDepthFirst(), but puts the result into @p mappingDestination
@@ -155,7 +156,7 @@ This function can be used for example to flatten a mesh hierarchy, bake
 the transformations to actual meshes and then concatenate them together into a
 single mesh:
 
-@snippet MagnumSceneTools.cpp absoluteFieldTransformations2D-mesh-concatenate
+@snippet SceneTools.cpp absoluteFieldTransformations2D-mesh-concatenate
 
 @experimental
 
@@ -229,7 +230,7 @@ MAGNUM_SCENETOOLS_EXPORT void absoluteFieldTransformations2DInto(const Trade::Sc
 #endif
 
 /**
-@brief Calculate absolute 2D transformations for given field
+@brief Calculate absolute 3D transformations for given field
 @m_since_latest
 
 For all entries of given field in @p scene returns an absolute transformation
@@ -253,7 +254,7 @@ This function can be used for example to flatten a mesh hierarchy, bake
 the transformations to actual meshes and then concatenate them together into a
 single mesh:
 
-@snippet MagnumSceneTools.cpp absoluteFieldTransformations3D-mesh-concatenate
+@snippet SceneTools.cpp absoluteFieldTransformations3D-mesh-concatenate
 
 @experimental
 

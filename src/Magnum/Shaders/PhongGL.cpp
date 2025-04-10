@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020 Jonathan Hale <squareys@googlemail.com>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
@@ -223,7 +224,12 @@ PhongGL::CompileState PhongGL::compile(const Configuration& configuration) {
             "#define LIGHT_RANGE_INITIALIZER {}\n",
             ("vec4(0.0, 0.0, 1.0, 0.0), "_s*configuration.lightCount()).exceptSuffix(2),
             ("vec3(1.0), "_s*configuration.lightCount()).exceptSuffix(2),
-            ("1.0/0.0, "_s*configuration.lightCount()).exceptSuffix(2));
+            /* While 1.0/0.0 works on certain drivers such as Mesa and produces
+               +inf, on NVidia it produces a NaN. Working around it by making
+               the divisor non-zero. The PhongGLTest::renderLights() then
+               verifies that both the default and explicitly passed
+               Constants::pi() give the same result. */
+            ("1.0/0.000000000000000000000001, "_s*configuration.lightCount()).exceptSuffix(2));
     #endif
 
     GL::Shader vert{version, GL::Shader::Type::Vertex};
@@ -1370,7 +1376,7 @@ Debug& operator<<(Debug& debug, const PhongGL::Flag value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(UnsignedInt(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << UnsignedInt(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const PhongGL::Flags value) {

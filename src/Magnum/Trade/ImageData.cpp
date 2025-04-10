@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -33,7 +34,15 @@
 
 namespace Magnum { namespace Trade {
 
-template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const PixelStorage storage, const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{storage, format, {}, pixelFormatSize(format), size, Utility::move(data), flags, importerState} {}
+template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const PixelStorage storage, const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{storage, format, {}, (
+    /* Unlike with Image and ImageView have to do it like this to avoid an
+       ungraceful assertion from pixelFormatSize() afterwards */
+    #ifndef CORRADE_NO_ASSERT
+    isPixelFormatImplementationSpecific(format) ?
+        (CORRADE_CONSTEXPR_ASSERT(false, "Trade::ImageData: can't determine size of an implementation-specific pixel format" << Debug::hex << pixelFormatUnwrap(format) << Debug::nospace << ", pass it explicitly"), 0) :
+    #endif
+        pixelFormatSize(format)
+    ), size, Utility::move(data), flags, importerState} {}
 
 template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const PixelStorage storage, const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, const DataFlags dataFlags, const Containers::ArrayView<const void> data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{storage, format, size, Containers::Array<char>{const_cast<char*>(static_cast<const char*>(data.data())), data.size(), Implementation::nonOwnedArrayDeleter}, flags, importerState} {
     CORRADE_ASSERT(!(dataFlags & DataFlag::Owned),
@@ -43,17 +52,14 @@ template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const PixelSto
 
 template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{{}, format, size, Utility::move(data), flags, importerState} {}
 
-template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, const DataFlags dataFlags, const Containers::ArrayView<const void> data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{format, size, Containers::Array<char>{const_cast<char*>(static_cast<const char*>(data.data())), data.size(), Implementation::nonOwnedArrayDeleter}, flags, importerState} {
-    CORRADE_ASSERT(!(dataFlags & DataFlag::Owned),
-        "Trade::ImageData: can't construct a non-owned instance with" << dataFlags, );
-    _dataFlags = dataFlags;
-}
+template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, const DataFlags dataFlags, const Containers::ArrayView<const void> data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{{}, format, size, dataFlags, data, flags, importerState} {}
 
 template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const PixelStorage storage, const UnsignedInt format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{storage, pixelFormatWrap(format), formatExtra, pixelSize, size, Utility::move(data), flags, importerState} {}
 
-template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const PixelStorage storage, const PixelFormat format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: _dataFlags{DataFlag::Owned|DataFlag::Mutable}, _compressed{false}, _flags{flags}, _storage{storage}, _format{format}, _formatExtra{formatExtra}, _pixelSize{pixelSize}, _size{size}, _data{Utility::move(data)}, _importerState{importerState} {
-    CORRADE_ASSERT(Magnum::Implementation::imageDataSize(*this) <= _data.size(), "Trade::ImageData: data too small, got" << _data.size() << "but expected at least" << Magnum::Implementation::imageDataSize(*this) << "bytes", );
+template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const PixelStorage storage, const PixelFormat format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: _dataFlags{DataFlag::Owned|DataFlag::Mutable}, _compressed{false}, _flags{flags}, _storage{storage}, _format{format}, _formatExtra{formatExtra}, _pixelSize{UnsignedByte(pixelSize)}, _size{size}, _data{Utility::move(data)}, _importerState{importerState} {
     #ifndef CORRADE_NO_ASSERT
+    Magnum::Implementation::checkPixelSize("Trade::ImageData:", pixelSize);
+    CORRADE_ASSERT(Magnum::Implementation::imageDataSize(*this) <= _data.size(), "Trade::ImageData: data too small, got" << _data.size() << "but expected at least" << Magnum::Implementation::imageDataSize(*this) << "bytes", );
     Magnum::Implementation::checkImageFlagsForSize("Trade::ImageData:", flags, size);
     #endif
 }
@@ -80,19 +86,11 @@ template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const Compress
 
 template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const CompressedPixelFormat format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{{}, format, size, Utility::move(data), flags, importerState} {}
 
-template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const CompressedPixelFormat format, const VectorTypeFor<dimensions, Int>& size, const DataFlags dataFlags, const Containers::ArrayView<const void> data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{format, size, Containers::Array<char>{const_cast<char*>(static_cast<const char*>(data.data())), data.size(), Implementation::nonOwnedArrayDeleter}, flags, importerState} {
-    CORRADE_ASSERT(!(dataFlags & DataFlag::Owned),
-        "Trade::ImageData: can't construct a non-owned instance with" << dataFlags, );
-    _dataFlags = dataFlags;
-}
+template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const CompressedPixelFormat format, const VectorTypeFor<dimensions, Int>& size, const DataFlags dataFlags, const Containers::ArrayView<const void> data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{{}, format, size, dataFlags, data, flags, importerState} {}
 
 template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const CompressedPixelStorage storage, const UnsignedInt format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{storage, compressedPixelFormatWrap(format), size, Utility::move(data), flags, importerState} {}
 
-template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const CompressedPixelStorage storage, const UnsignedInt format, const VectorTypeFor<dimensions, Int>& size, const DataFlags dataFlags, const Containers::ArrayView<const void> data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{storage, format, size, Containers::Array<char>{const_cast<char*>(static_cast<const char*>(data.data())), data.size(), Implementation::nonOwnedArrayDeleter}, flags, importerState} {
-    CORRADE_ASSERT(!(dataFlags & DataFlag::Owned),
-        "Trade::ImageData: can't construct a non-owned instance with" << dataFlags, );
-    _dataFlags = dataFlags;
-}
+template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(const CompressedPixelStorage storage, const UnsignedInt format, const VectorTypeFor<dimensions, Int>& size, const DataFlags dataFlags, const Containers::ArrayView<const void> data, const ImageFlags<dimensions> flags, const void* const importerState) noexcept: ImageData{storage, compressedPixelFormatWrap(format), size, dataFlags, data, flags, importerState} {}
 
 template<UnsignedInt dimensions> ImageData<dimensions>::ImageData(ImageData<dimensions>&& other) noexcept: _dataFlags{other._dataFlags}, _compressed{Utility::move(other._compressed)}, _flags{Utility::move(other._flags)}, _size{Utility::move(other._size)}, _data{Utility::move(other._data)}, _importerState{Utility::move(other._importerState)} {
     if(_compressed) {
@@ -118,11 +116,15 @@ template<UnsignedInt dimensions> ImageData<dimensions>& ImageData<dimensions>::o
     swap(_dataFlags, other._dataFlags);
     swap(_compressed, other._compressed);
     swap(_flags, other._flags);
-    if(_compressed) {
+    /* Because the CompressedPixelStorage is larger than the
+       uncompressed, copy it if either of the sides is compressed to ensure no
+       compressed properties are lost. The _storage / _compressedStorage and
+       _format / _compressedFormat are unions of trivially copyable contents so
+       copying a type that's not there should be fine. */
+    if(_compressed || other._compressed) {
         swap(_compressedStorage, other._compressedStorage);
         swap(_compressedFormat, other._compressedFormat);
-    }
-    else {
+    } else {
         swap(_storage, other._storage);
         swap(_format, other._format);
     }
@@ -222,10 +224,8 @@ template<UnsignedInt dimensions> Containers::Array<char> ImageData<dimensions>::
     return data;
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 template class MAGNUM_TRADE_EXPORT ImageData<1>;
 template class MAGNUM_TRADE_EXPORT ImageData<2>;
 template class MAGNUM_TRADE_EXPORT ImageData<3>;
-#endif
 
 }}

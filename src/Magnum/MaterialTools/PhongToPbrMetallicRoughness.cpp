@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -63,13 +64,13 @@ Containers::Optional<Trade::MaterialData> phongToPbrMetallicRoughness(const Trad
         const Containers::Optional<UnsignedInt> id = material.findAttributeId(attribute);
         if(!id) continue;
 
-        if(flags >= PhongToPbrMetallicRoughnessFlag::FailOnUnconvertableAttributes) {
-            Error{} << "MaterialTools::phongToPbrMetallicRoughness(): unconvertable" << attribute << "attribute";
+        if(flags >= PhongToPbrMetallicRoughnessFlag::FailOnUnconvertibleAttributes) {
+            Error{} << "MaterialTools::phongToPbrMetallicRoughness(): unconvertible" << attribute << "attribute";
             return {};
         }
 
-        Warning{} << "MaterialTools::phongToPbrMetallicRoughness(): unconvertable" << attribute << "attribute, skipping";
-        if(flags >= PhongToPbrMetallicRoughnessFlag::DropUnconvertableAttributes)
+        Warning{} << "MaterialTools::phongToPbrMetallicRoughness(): unconvertible" << attribute << "attribute, skipping";
+        if(flags >= PhongToPbrMetallicRoughnessFlag::DropUnconvertibleAttributes)
             attributesToKeep.reset(*id);
     }
     for(const Trade::MaterialAttribute attribute: {
@@ -79,8 +80,8 @@ Containers::Optional<Trade::MaterialData> phongToPbrMetallicRoughness(const Trad
         const Containers::Optional<UnsignedInt> id = material.findAttributeId(attribute);
         if(!id) continue;
 
-        if(flags >= PhongToPbrMetallicRoughnessFlag::FailOnUnconvertableAttributes) {
-            Error{} << "MaterialTools::phongToPbrMetallicRoughness(): unconvertable" << attribute << "attribute";
+        if(flags >= PhongToPbrMetallicRoughnessFlag::FailOnUnconvertibleAttributes) {
+            Error{} << "MaterialTools::phongToPbrMetallicRoughness(): unconvertible" << attribute << "attribute";
             return {};
         }
 
@@ -88,8 +89,8 @@ Containers::Optional<Trade::MaterialData> phongToPbrMetallicRoughness(const Trad
         const Containers::Optional<UnsignedInt> coordinatesId = material.findAttributeId(Trade::materialAttributeName(attribute) + "Coordinates"_s);
         const Containers::Optional<UnsignedInt> layerId = material.findAttributeId(Trade::materialAttributeName(attribute) + "Layer"_s);
 
-        Warning{} << "MaterialTools::phongToPbrMetallicRoughness(): unconvertable" << attribute << "attribute, skipping";
-        if(flags >= PhongToPbrMetallicRoughnessFlag::DropUnconvertableAttributes) {
+        Warning{} << "MaterialTools::phongToPbrMetallicRoughness(): unconvertible" << attribute << "attribute, skipping";
+        if(flags >= PhongToPbrMetallicRoughnessFlag::DropUnconvertibleAttributes) {
             attributesToKeep.reset(*id);
             if(matrixId)
                 attributesToKeep.reset(*matrixId);

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Array.h"
 
@@ -117,10 +117,10 @@ void ArrayTest::access() {
 }
 
 void ArrayTest::debug() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << Array<4, Int>{5, 6, 7, 8} << Array1D{13} << Array2D{71, 2} << Array3D{1, 2, 3};
-    CORRADE_COMPARE(out.str(), "Array(5, 6, 7, 8) Array(13) Array(71, 2) Array(1, 2, 3)\n");
+    CORRADE_COMPARE(out, "Array(5, 6, 7, 8) Array(13) Array(71, 2) Array(1, 2, 3)\n");
 }
 CORRADE_IGNORE_DEPRECATED_POP
 

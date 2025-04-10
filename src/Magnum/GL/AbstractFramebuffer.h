@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -45,9 +46,12 @@ namespace Magnum { namespace GL {
 @m_enum_values_as_keywords
 */
 enum class FramebufferClear: GLbitfield {
-    Color = GL_COLOR_BUFFER_BIT,    /**< Color buffer */
-    Depth = GL_DEPTH_BUFFER_BIT,    /**< Depth buffer */
-    Stencil = GL_STENCIL_BUFFER_BIT /**< Stencil buffer */
+    Color = GL_COLOR_BUFFER_BIT,        /**< Color buffer */
+    Depth = GL_DEPTH_BUFFER_BIT,        /**< Depth buffer */
+    Stencil = GL_STENCIL_BUFFER_BIT,    /**< Stencil buffer */
+    #ifdef Magnum_British_h
+    Colour = Color
+    #endif
 };
 
 /**
@@ -74,9 +78,12 @@ typedef Containers::EnumSet<FramebufferClear> FramebufferClearMask;
 @requires_webgl20 Framebuffer blit is not available in WebGL 1.0.
 */
 enum class FramebufferBlit: GLbitfield {
-    Color = GL_COLOR_BUFFER_BIT,    /**< Color buffer */
-    Depth = GL_DEPTH_BUFFER_BIT,    /**< Depth buffer */
-    Stencil = GL_STENCIL_BUFFER_BIT /**< Stencil buffer */
+    Color = GL_COLOR_BUFFER_BIT,        /**< Color buffer */
+    Depth = GL_DEPTH_BUFFER_BIT,        /**< Depth buffer */
+    Stencil = GL_STENCIL_BUFFER_BIT,    /**< Stencil buffer */
+    #ifdef Magnum_British_h
+    Colour = Color
+    #endif
 };
 
 /**
@@ -413,7 +420,7 @@ class MAGNUM_GL_EXPORT AbstractFramebuffer {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp AbstractFramebuffer-read1
+         * @snippet GL.cpp AbstractFramebuffer-read1
          */
         Image2D read(const Range2Di& rectangle, Image2D&& image);
 
@@ -453,7 +460,7 @@ class MAGNUM_GL_EXPORT AbstractFramebuffer {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp AbstractFramebuffer-read2
+         * @snippet GL.cpp AbstractFramebuffer-read2
          */
         BufferImage2D read(const Range2Di& rectangle, BufferImage2D&& image, BufferUsage usage);
         #endif

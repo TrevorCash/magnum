@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -28,6 +29,8 @@
 /** @file
  * @brief Class @ref Magnum::GL::DefaultFramebuffer
  */
+
+#include <initializer_list>
 
 #include "Magnum/GL/AbstractFramebuffer.h"
 
@@ -54,7 +57,7 @@ classes, pass the new size in your
 @ref Platform::Sdl2Application::viewportEvent() "viewportEvent()"
 implementation, for example:
 
-@snippet MagnumGL-application.cpp DefaultFramebuffer-usage-viewport
+@snippet GL-application.cpp DefaultFramebuffer-usage-viewport
 
 Next thing you probably want is to clear all used buffers before performing
 any drawing. Again, in case you're using one of the
@@ -62,7 +65,7 @@ any drawing. Again, in case you're using one of the
 @ref Platform::Sdl2Application::drawEvent() "drawEvent()" implementation, for
 example:
 
-@snippet MagnumGL-application.cpp DefaultFramebuffer-usage-clear
+@snippet GL-application.cpp DefaultFramebuffer-usage-clear
 
 See documentation of particular functions and @ref Framebuffer documentation
 for more involved usage, usage of non-default or multiple framebuffers.
@@ -301,9 +304,13 @@ class MAGNUM_GL_EXPORT DefaultFramebuffer: public AbstractFramebuffer {
 
             /** Invalidate stencil buffer. */
             #ifndef MAGNUM_TARGET_GLES2
-            Stencil = GL_STENCIL
+            Stencil = GL_STENCIL,
             #else
-            Stencil = GL_STENCIL_EXT
+            Stencil = GL_STENCIL_EXT,
+            #endif
+
+            #ifdef Magnum_British_h
+            Colour = Color
             #endif
         };
         #endif
@@ -378,7 +385,7 @@ class MAGNUM_GL_EXPORT DefaultFramebuffer: public AbstractFramebuffer {
          * can achieve the same by passing @ref DrawAttachment::None as
          * attachment. Example usage:
          *
-         * @snippet MagnumGL.cpp DefaultFramebuffer-usage-map
+         * @snippet GL.cpp DefaultFramebuffer-usage-map
          *
          * If @gl_extension{ARB,direct_state_access} (part of OpenGL 4.5) is
          * not available, the framebuffer is bound before the operation (if not

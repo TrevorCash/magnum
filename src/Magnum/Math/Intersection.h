@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2016, 2018 Jonathan Hale <squareys@googlemail.com>
     Copyright © 2020 janos <janos.meny@googlemail.com>
 
@@ -63,7 +64,7 @@ point @f$ \boldsymbol{p} @f$ intersects with a circle of a center
     \end{array}
 @f]
 
-@see @ref Distance::pointPointSquared(), @ref Vector::dot(), @ref pow(T)
+@see @ref Distance::pointPointSquared(), @ref Vector::dot() const, @ref pow(T)
 */
 template<class T> inline bool pointCircle(const Vector2<T>& point, const Vector2<T>& circleCenter, T circleRadius) {
     return (circleCenter - point).dot() <= circleRadius*circleRadius;
@@ -87,7 +88,7 @@ point @f$ \boldsymbol{p} @f$ intersects with a sphere of a center
     \end{array}
 @f]
 
-@see @ref Distance::pointPointSquared(), @ref Vector::dot(), @ref pow(T),
+@see @ref Distance::pointPointSquared(), @ref Vector::dot() const, @ref pow(T),
     @see @ref MeshTools::boundingSphereBouncingBubble()
 */
 template<class T> inline bool pointSphere(const Vector3<T>& point, const Vector3<T>& sphereCenter, T sphereRadius) {
@@ -298,7 +299,7 @@ template<class T> bool pointCone(const Vector3<T>& point, const Vector3<T>& cone
 
 The @p tanAngleSqPlusOne parameter can be precomputed like this:
 
-@snippet MagnumMath.cpp Intersection-tanAngleSqPlusOne
+@snippet Math.cpp Intersection-tanAngleSqPlusOne
 */
 template<class T> bool pointCone(const Vector3<T>& point, const Vector3<T>& coneOrigin, const Vector3<T>& coneNormal, T tanAngleSqPlusOne);
 
@@ -327,7 +328,7 @@ template<class T> bool pointDoubleCone(const Vector3<T>& point, const Vector3<T>
 
 The @p tanAngleSqPlusOne parameter can be precomputed like this:
 
-@snippet MagnumMath.cpp Intersection-tanAngleSqPlusOne
+@snippet Math.cpp Intersection-tanAngleSqPlusOne
 */
 template<class T> bool pointDoubleCone(const Vector3<T>& point, const Vector3<T>& coneOrigin, const Vector3<T>& coneNormal, T tanAngleSqPlusOne);
 
@@ -359,7 +360,7 @@ Transforms the sphere center into cone space (using the cone view matrix) and
 performs sphere-cone intersection with the zero-origin -Z axis-aligned cone.
 The @p sinAngle and @p tanAngle can be precomputed like this:
 
-@snippet MagnumMath.cpp Intersection-sinAngle-tanAngle
+@snippet Math.cpp Intersection-sinAngle-tanAngle
 
 @see @ref MeshTools::boundingSphereBouncingBubble()
 */
@@ -400,7 +401,7 @@ normal direction), and behind the plane, where the test is equivalent to
 testing whether the origin of the original cone intersects the sphere. The
 @p sinAngle and @p tanAngleSqPlusOne parameters can be precomputed like this:
 
-@snippet MagnumMath.cpp Intersection-sinAngle-tanAngleSqPlusOne
+@snippet Math.cpp Intersection-sinAngle-tanAngleSqPlusOne
 
 @see @ref MeshTools::boundingSphereBouncingBubble()
 */
@@ -446,7 +447,7 @@ cone's axis and are tested for intersection with the cone using
 
 The @p tanAngleSqPlusOne parameter can be precomputed like this:
 
-@snippet MagnumMath.cpp Intersection-tanAngleSqPlusOne
+@snippet Math.cpp Intersection-tanAngleSqPlusOne
 */
 template<class T> bool aabbCone(const Vector3<T>& aabbCenter, const Vector3<T>& aabbExtents, const Vector3<T>& coneOrigin, const Vector3<T>& coneNormal, T tanAngleSqPlusOne);
 
@@ -478,7 +479,7 @@ Converts the range into center/extents representation and passes it on to
 @ref aabbCone(const Vector3<T>&, const Vector3<T>&, const Vector3<T>&, const Vector3<T>&, T) "aabbCone()".
 The @p tanAngleSqPlusOne parameter can be precomputed like this:
 
-@snippet MagnumMath.cpp Intersection-tanAngleSqPlusOne
+@snippet Math.cpp Intersection-tanAngleSqPlusOne
 */
 template<class T> bool rangeCone(const Range3D<T>& range, const Vector3<T>& coneOrigin, const Vector3<T>& coneNormal, const T tanAngleSqPlusOne);
 
@@ -642,18 +643,19 @@ template<class T> bool aabbCone(
 {
     const Vector3<T> c = aabbCenter - coneOrigin;
 
-    for(const Int axis: {0, 1, 2}) {
+    /* Not doing for(Int axis: {0, 1, 2}) because that'd need an
+       <initializer_list> include. FFS, C++. */
+    for(Int axis = 0; axis != 3; ++axis) {
         const Int z = axis;
         const Int x = (axis + 1) % 3;
         const Int y = (axis + 2) % 3;
         if(coneNormal[z] != T(0)) {
-            const Float t0 = ((c[z] - aabbExtents[z])/coneNormal[z]);
-            const Float t1 = ((c[z] + aabbExtents[z])/coneNormal[z]);
-
-            const Vector3<T> i0 = coneNormal*t0;
-            const Vector3<T> i1 = coneNormal*t1;
-
-            for(const auto& i : {i0, i1}) {
+            /* Dtto here, making an array to not need an initializer_list */
+            const Vector3<T> i01[]{
+                coneNormal*((c[z] - aabbExtents[z])/coneNormal[z]),
+                coneNormal*((c[z] + aabbExtents[z])/coneNormal[z])
+            };
+            for(const Vector3<T>& i: i01) {
                 Vector3<T> closestPoint = i;
 
                 if(i[x] - c[x] > aabbExtents[x]) {

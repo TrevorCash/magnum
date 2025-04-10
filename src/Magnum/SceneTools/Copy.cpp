@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -31,6 +32,20 @@
 #include "Magnum/Trade/SceneData.h"
 
 namespace Magnum { namespace SceneTools {
+
+Trade::SceneData reference(const Trade::SceneData& scene) {
+    return Trade::SceneData{scene.mappingType(), scene.mappingBound(),
+        {}, scene.data(), Trade::sceneFieldDataNonOwningArray(scene.fieldData())};
+}
+
+Trade::SceneData mutableReference(Trade::SceneData& scene) {
+    CORRADE_ASSERT(scene.dataFlags() & Trade::DataFlag::Mutable,
+        "SceneTools::mutableReference(): data not mutable",
+        (Trade::SceneData{Trade::SceneMappingType::UnsignedInt, 0, {}, {}}));
+
+    return Trade::SceneData{scene.mappingType(), scene.mappingBound(),
+        Trade::DataFlag::Mutable, scene.mutableData(), Trade::sceneFieldDataNonOwningArray(scene.fieldData())};
+}
 
 Trade::SceneData copy(const Trade::SceneData& scene) {
     return copy(Trade::SceneData{scene.mappingType(), scene.mappingBound(),

@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -174,6 +175,7 @@ class MAGNUM_GL_EXPORT AbstractTexture: public AbstractObject {
          * @see @fn_gl{Get} with @def_gl_keyword{MAX_COLOR_TEXTURE_SAMPLES}
          * @requires_gles30 Not defined in OpenGL ES 2.0.
          * @requires_gles Multisample textures are not available in WebGL.
+         * @see @ref MultisampleTexture, @ref Renderbuffer::maxSamples()
          */
         static Int maxColorSamples();
 
@@ -187,6 +189,7 @@ class MAGNUM_GL_EXPORT AbstractTexture: public AbstractObject {
          * @see @fn_gl{Get} with @def_gl_keyword{MAX_DEPTH_TEXTURE_SAMPLES}
          * @requires_gles30 Not defined in OpenGL ES 2.0.
          * @requires_gles Multisample textures are not available in WebGL.
+         * @see @ref MultisampleTexture, @ref Renderbuffer::maxSamples()
          */
         static Int maxDepthSamples();
 
@@ -200,6 +203,7 @@ class MAGNUM_GL_EXPORT AbstractTexture: public AbstractObject {
          * @see @fn_gl{Get} with @def_gl_keyword{MAX_INTEGER_SAMPLES}
          * @requires_gles30 Not defined in OpenGL ES 2.0.
          * @requires_gles Multisample textures are not available in WebGL.
+         * @see @ref MultisampleTexture, @ref Renderbuffer::maxSamples()
          */
         static Int maxIntegerSamples();
         #endif
@@ -488,7 +492,7 @@ class MAGNUM_GL_EXPORT AbstractTexture: public AbstractObject {
         void setCompareMode(SamplerCompareMode mode);
         void setCompareFunction(SamplerCompareFunction function);
         #endif
-        #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
+        #ifndef MAGNUM_TARGET_GLES2
         void setDepthStencilMode(SamplerDepthStencilMode mode);
         #endif
         #if !(defined(MAGNUM_TARGET_GLES2) && defined(MAGNUM_TARGET_WEBGL))

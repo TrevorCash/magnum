@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -65,11 +66,11 @@ ratio correction.
 
 Common setup example for 2D scenes:
 
-@snippet MagnumSceneGraph.cpp Camera-2D
+@snippet SceneGraph.cpp Camera-2D
 
 Common setup example for 3D scenes:
 
-@snippet MagnumSceneGraph.cpp Camera-3D
+@snippet SceneGraph.cpp Camera-3D
 
 @section SceneGraph-Camera-explicit-specializations Explicit template specializations
 
@@ -99,7 +100,7 @@ template<UnsignedInt dimensions, class T> class Camera: public AbstractFeature<d
         #ifndef DOXYGEN_GENERATING_OUTPUT
         /* This is here to avoid ambiguity with deleted copy constructor when
            passing `*this` from class subclassing both Camera and AbstractObject */
-        template<class U, class = typename std::enable_if<std::is_base_of<AbstractObject<dimensions, T>, U>::value>::type> explicit Camera(U& object): Camera<dimensions, T>{static_cast<AbstractObject<dimensions, T>&>(object)} {}
+        template<class U, typename std::enable_if<std::is_base_of<AbstractObject<dimensions, T>, U>::value, int>::type = 0> explicit Camera(U& object): Camera<dimensions, T>{static_cast<AbstractObject<dimensions, T>&>(object)} {}
         #endif
 
         ~Camera();
@@ -160,13 +161,13 @@ template<UnsignedInt dimensions, class T> class Camera: public AbstractFeature<d
          * to floating-point coordinates on near XY plane with origin at camera
          * position and Y up can be done using the following snippet:
          *
-         * @snippet MagnumSceneGraph-gl.cpp Camera-projectionSize
+         * @snippet SceneGraph-gl.cpp Camera-projectionSize
          *
          * This is position relative to camera transformation, getting absolute
          * transformation in 2D scene can be done for example using
          * @ref SceneGraph::Object::absoluteTransformation():
          *
-         * @snippet MagnumSceneGraph-gl.cpp Camera-projectionSize-absolute
+         * @snippet SceneGraph-gl.cpp Camera-projectionSize-absolute
          *
          * @see @ref projectionMatrix()
          */

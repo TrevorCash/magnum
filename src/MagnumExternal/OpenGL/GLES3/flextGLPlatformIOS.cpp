@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -33,6 +34,13 @@
 #undef glMultiDrawArraysInstancedANGLE
 #undef glMultiDrawElementsANGLE
 #undef glMultiDrawElementsInstancedANGLE
+#undef glPolygonModeANGLE
+#undef glProvokingVertexANGLE
+#undef glBindFragDataLocationEXT
+#undef glBindFragDataLocationIndexedEXT
+#undef glGetFragDataIndexEXT
+#undef glGetProgramResourceLocationIndexEXT
+#undef glBufferStorageEXT
 #undef glClipControlEXT
 #undef glCopyImageSubDataEXT
 #undef glGetObjectLabelEXT
@@ -163,6 +171,7 @@
 #undef glTexStorage3DMultisampleOES
 #undef glTextureViewOES
 #undef glFramebufferTextureMultiviewOVR
+#undef glNamedFramebufferTextureMultiviewOVR
 
 #define GLES_SILENCE_DEPRECATION /* YES I KNOW, APPLE! FFS */
 #include <OpenGLES/ES3/glext.h>
@@ -172,17 +181,40 @@ void flextGLInit(Magnum::GL::Context&) {
     /* GL_ANGLE_base_vertex_base_instance */
     #if GL_ANGLE_base_vertex_base_instance
     flextGL.DrawArraysInstancedBaseInstanceANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, GLint, GLsizei, GLsizei, GLuint)>(glDrawArraysInstancedBaseInstanceANGLE);
-    flextGL.DrawElementsInstancedBaseVertexBaseInstanceANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, GLsizei, GLenum, const GLvoid *, GLsizei, GLint, GLuint)>(glDrawElementsInstancedBaseVertexBaseInstanceANGLE);
+    flextGL.DrawElementsInstancedBaseVertexBaseInstanceANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, GLsizei, GLenum, const void *, GLsizei, GLint, GLuint)>(glDrawElementsInstancedBaseVertexBaseInstanceANGLE);
     flextGL.MultiDrawArraysInstancedBaseInstanceANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLint *, const GLsizei *, const GLsizei *, const GLuint *, GLsizei)>(glMultiDrawArraysInstancedBaseInstanceANGLE);
-    flextGL.MultiDrawElementsInstancedBaseVertexBaseInstanceANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLsizei *, GLenum, const GLvoid *const*, const GLsizei *, const GLint *, const GLuint *, GLsizei)>(glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE);
+    flextGL.MultiDrawElementsInstancedBaseVertexBaseInstanceANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLsizei *, GLenum, const void *const*, const GLsizei *, const GLint *, const GLuint *, GLsizei)>(glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE);
     #endif
 
     /* GL_ANGLE_multi_draw */
     #if GL_ANGLE_multi_draw
     flextGL.MultiDrawArraysANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLint *, const GLsizei *, GLsizei)>(glMultiDrawArraysANGLE);
     flextGL.MultiDrawArraysInstancedANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLint *, const GLsizei *, const GLsizei *, GLsizei)>(glMultiDrawArraysInstancedANGLE);
-    flextGL.MultiDrawElementsANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLsizei *, GLenum, const GLvoid *const*, GLsizei)>(glMultiDrawElementsANGLE);
-    flextGL.MultiDrawElementsInstancedANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLsizei *, GLenum, const GLvoid *const*, const GLsizei*, GLsizei)>(glMultiDrawElementsInstancedANGLE);
+    flextGL.MultiDrawElementsANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLsizei *, GLenum, const void *const*, GLsizei)>(glMultiDrawElementsANGLE);
+    flextGL.MultiDrawElementsInstancedANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, const GLsizei *, GLenum, const void *const*, const GLsizei*, GLsizei)>(glMultiDrawElementsInstancedANGLE);
+    #endif
+
+    /* GL_ANGLE_polygon_mode */
+    #if GL_ANGLE_polygon_mode
+    flextGL.PolygonModeANGLE = reinterpret_cast<void(APIENTRY*)(GLenum, GLenum)>(glPolygonModeANGLE);
+    #endif
+
+    /* GL_ANGLE_provoking_vertex */
+    #if GL_ANGLE_provoking_vertex
+    flextGL.ProvokingVertexANGLE = reinterpret_cast<void(APIENTRY*)(GLenum)>(glProvokingVertexANGLE);
+    #endif
+
+    /* GL_EXT_blend_func_extended */
+    #if GL_EXT_blend_func_extended
+    flextGL.BindFragDataLocationEXT = reinterpret_cast<void(APIENTRY*)(GLuint, GLuint, const GLchar *)>(glBindFragDataLocationEXT);
+    flextGL.BindFragDataLocationIndexedEXT = reinterpret_cast<void(APIENTRY*)(GLuint, GLuint, GLuint, const GLchar *)>(glBindFragDataLocationIndexedEXT);
+    flextGL.GetFragDataIndexEXT = reinterpret_cast<GLint(APIENTRY*)(GLuint, const GLchar *)>(glGetFragDataIndexEXT);
+    flextGL.GetProgramResourceLocationIndexEXT = reinterpret_cast<GLint(APIENTRY*)(GLuint, GLenum, const GLchar *)>(glGetProgramResourceLocationIndexEXT);
+    #endif
+
+    /* GL_EXT_buffer_storage */
+    #if GL_EXT_buffer_storage
+    flextGL.BufferStorageEXT = reinterpret_cast<void(APIENTRY*)(GLenum, GLsizeiptr, const void *, GLbitfield)>(glBufferStorageEXT);
     #endif
 
     /* GL_EXT_clip_control */
@@ -433,5 +465,6 @@ void flextGLInit(Magnum::GL::Context&) {
     /* GL_OVR_multiview */
     #if GL_OVR_multiview
     flextGL.FramebufferTextureMultiviewOVR = reinterpret_cast<void(APIENTRY*)(GLenum, GLenum, GLuint, GLint, GLint, GLsizei)>(glFramebufferTextureMultiviewOVR);
+    flextGL.NamedFramebufferTextureMultiviewOVR = reinterpret_cast<void(APIENTRY*)(GLuint, GLenum, GLuint, GLint, GLint, GLsizei)>(glNamedFramebufferTextureMultiviewOVR);
     #endif
 }

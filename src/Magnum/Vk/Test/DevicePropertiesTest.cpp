@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Vk/DeviceProperties.h"
 
@@ -73,39 +73,39 @@ void DevicePropertiesTest::constructCopy() {
 }
 
 void DevicePropertiesTest::debugDeviceType() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << DeviceType::DiscreteGpu << DeviceType(-10007655);
-    CORRADE_COMPARE(out.str(), "Vk::DeviceType::DiscreteGpu Vk::DeviceType(-10007655)\n");
+    CORRADE_COMPARE(out, "Vk::DeviceType::DiscreteGpu Vk::DeviceType(-10007655)\n");
 }
 
 void DevicePropertiesTest::debugDeviceDriver() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << DeviceDriver::MesaLlvmpipe << DeviceDriver(-10007655);
-    CORRADE_COMPARE(out.str(), "Vk::DeviceDriver::MesaLlvmpipe Vk::DeviceDriver(-10007655)\n");
+    CORRADE_COMPARE(out, "Vk::DeviceDriver::MesaLlvmpipe Vk::DeviceDriver(-10007655)\n");
 }
 
 void DevicePropertiesTest::debugQueueFamilyPropertiesFlag() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << QueueFlag::SparseBinding << QueueFlag(0xdeadcafe);
-    CORRADE_COMPARE(out.str(), "Vk::QueueFlag::SparseBinding Vk::QueueFlag(0xdeadcafe)\n");
+    CORRADE_COMPARE(out, "Vk::QueueFlag::SparseBinding Vk::QueueFlag(0xdeadcafe)\n");
 }
 
 void DevicePropertiesTest::debugQueueFamilyPropertiesFlags() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << (QueueFlag::Compute|QueueFlag::Graphics) << QueueFlags{};
-    CORRADE_COMPARE(out.str(), "Vk::QueueFlag::Graphics|Vk::QueueFlag::Compute Vk::QueueFlags{}\n");
+    CORRADE_COMPARE(out, "Vk::QueueFlag::Graphics|Vk::QueueFlag::Compute Vk::QueueFlags{}\n");
 }
 
 void DevicePropertiesTest::debugMemoryHeapFlag() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << MemoryHeapFlag::DeviceLocal << MemoryHeapFlag(0xdeadcafe);
-    CORRADE_COMPARE(out.str(), "Vk::MemoryHeapFlag::DeviceLocal Vk::MemoryHeapFlag(0xdeadcafe)\n");
+    CORRADE_COMPARE(out, "Vk::MemoryHeapFlag::DeviceLocal Vk::MemoryHeapFlag(0xdeadcafe)\n");
 }
 
 void DevicePropertiesTest::debugMemoryHeapFlags() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << (MemoryHeapFlag::DeviceLocal|MemoryHeapFlag(0xf0)) << MemoryHeapFlags{};
-    CORRADE_COMPARE(out.str(), "Vk::MemoryHeapFlag::DeviceLocal|Vk::MemoryHeapFlag(0xf0) Vk::MemoryHeapFlags{}\n");
+    CORRADE_COMPARE(out, "Vk::MemoryHeapFlag::DeviceLocal|Vk::MemoryHeapFlag(0xf0) Vk::MemoryHeapFlags{}\n");
 }
 
 }}}}

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,9 +25,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
+#include <Corrade/Containers/ArrayView.h> /* arraySize() */
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/DualComplex.h"
 #include "Magnum/Math/DualQuaternion.h"
@@ -103,6 +105,8 @@ struct DualComplexTest: TestSuite::Tester {
 
 using namespace Math::Literals;
 
+/* What's a typedef and not a using differs from the typedefs in root Magnum
+   namespace, or is not present there at all */
 using Magnum::Deg;
 using Magnum::Rad;
 using Magnum::Complex;
@@ -403,11 +407,11 @@ void DualComplexTest::invertedNormalized() {
 void DualComplexTest::invertedNormalizedNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     DualComplex({-1.0f, -2.5f}, {}).invertedNormalized();
-    CORRADE_COMPARE(out.str(), "Math::Complex::invertedNormalized(): Complex(-1, -2.5) is not normalized\n");
+    CORRADE_COMPARE(out, "Math::Complex::invertedNormalized(): Complex(-1, -2.5) is not normalized\n");
 }
 
 void DualComplexTest::rotation() {
@@ -465,11 +469,11 @@ void DualComplexTest::matrix() {
 void DualComplexTest::matrixNotOrthogonal() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream o;
-    Error redirectError{&o};
+    Containers::String out;
+    Error redirectError{&out};
 
     DualComplex::fromMatrix(Matrix3::rotation(23.0_degf)*Matrix3::translation({2.0f, 3.0f})*2);
-    CORRADE_COMPARE(o.str(),
+    CORRADE_COMPARE(out,
         "Math::DualComplex::fromMatrix(): the matrix doesn't represent rigid transformation:\n"
         "Matrix(1.84101, -0.781462, 1.33763,\n"
         "       0.781462, 1.84101, 7.08595,\n"
@@ -519,10 +523,10 @@ void DualComplexTest::strictWeakOrdering() {
 }
 
 void DualComplexTest::debug() {
-    std::ostringstream o;
+    Containers::String out;
 
-    Debug(&o) << DualComplex({-1.0f, -2.5f}, {-3.0f, -7.5f});
-    CORRADE_COMPARE(o.str(), "DualComplex({-1, -2.5}, {-3, -7.5})\n");
+    Debug{&out} << DualComplex({-1.0f, -2.5f}, {-3.0f, -7.5f});
+    CORRADE_COMPARE(out, "DualComplex({-1, -2.5}, {-3, -7.5})\n");
 }
 
 }}}}

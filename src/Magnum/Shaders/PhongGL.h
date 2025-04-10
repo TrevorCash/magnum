@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020 Jonathan Hale <squareys@googlemail.com>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
@@ -27,11 +28,16 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#ifdef MAGNUM_TARGET_GL
 /** @file
  * @brief Class @ref Magnum::Shaders::PhongGL
  * @m_since_latest
  */
+#endif
 
+#include "Magnum/configure.h"
+
+#ifdef MAGNUM_TARGET_GL
 #include <initializer_list>
 #include <Corrade/Utility/Move.h>
 
@@ -55,15 +61,19 @@ shader.
 
 @image html shaders-phong.png width=256px
 
+@note This class is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+
 @section Shaders-PhongGL-colored Colored rendering
 
 Common mesh setup:
 
-@snippet MagnumShaders-gl.cpp PhongGL-usage-colored1
+@snippet Shaders-gl.cpp PhongGL-usage-colored1
 
 Common rendering setup:
 
-@snippet MagnumShaders-gl.cpp PhongGL-usage-colored2
+@snippet Shaders-gl.cpp PhongGL-usage-colored2
 
 @section Shaders-PhongGL-texture Textured rendering
 
@@ -75,11 +85,15 @@ and @ref bindSpecularTexture() (or the combined @ref bindTextures()). The
 texture is multiplied by the color, which is by default set to fully opaque
 white for enabled textures. Mesh setup with a diffuse and a specular texture:
 
-@snippet MagnumShaders-gl.cpp PhongGL-usage-texture1
+@snippet Shaders-gl.cpp PhongGL-usage-texture1
 
 Common rendering setup:
 
-@snippet MagnumShaders-gl.cpp PhongGL-usage-texture2
+@snippet Shaders-gl.cpp PhongGL-usage-texture2
+
+If @ref Flag::TextureArrays is enabled, pass @ref GL::Texture2DArray instances
+instead of @ref GL::Texture2D. By default layer @cpp 0 @ce is used, call
+@ref setTextureLayer() to pick a different texture array layer.
 
 @section Shaders-PhongGL-lights Light specification
 
@@ -120,7 +134,7 @@ passed to @ref setLightColors() and @ref setLightSpecularColors().
 The following example shows a three-light setup with one dim directional light
 shining from the top and two stronger but range-limited point lights:
 
-@snippet MagnumShaders-gl.cpp PhongGL-usage-lights
+@snippet Shaders-gl.cpp PhongGL-usage-lights
 
 @subsection Shaders-PhongGL-lights-ambient Ambient lights
 
@@ -130,7 +144,7 @@ math for ambient color and lights is equivalent. Add the ambient colors
 together and reuse the diffuse texture in the @ref bindAmbientTexture() slot to
 have it affected by the ambient as well:
 
-@snippet MagnumShaders-gl.cpp PhongGL-usage-lights-ambient
+@snippet Shaders-gl.cpp PhongGL-usage-lights-ambient
 
 @subsection Shaders-PhongGL-lights-zero Zero lights
 
@@ -183,7 +197,7 @@ so only ambient alpha will be taken into account. If you have a diffuse texture
 combined with the alpha mask, you can use that texture for both ambient and
 diffuse part and then separate the alpha like this:
 
-@snippet MagnumShaders-gl.cpp PhongGL-usage-alpha
+@snippet Shaders-gl.cpp PhongGL-usage-alpha
 
 @section Shaders-PhongGL-normal-mapping Normal mapping
 
@@ -274,7 +288,7 @@ The snippet below shows adding a buffer with per-instance transformation to a
 mesh --- note how a normal matrix attribute has to be populated and supplied as
 well to ensure lighting works:
 
-@snippet MagnumShaders-gl.cpp PhongGL-usage-instancing
+@snippet Shaders-gl.cpp PhongGL-usage-instancing
 
 For instanced skinning the joint buffer is assumed to contain joint
 transformations for all instances. By default all instances use the same joint
@@ -307,7 +321,11 @@ buffer setup equivalent to the
 @ref Shaders-PhongGL-colored "colored case at the top", with one default light,
 would look like this:
 
-@snippet MagnumShaders-gl.cpp PhongGL-ubo
+@snippet Shaders-gl.cpp PhongGL-ubo
+
+When uniform buffers with @ref Flag::TextureArrays are used,
+@ref Flag::TextureTransformation has to be enabled as well in order to supply
+the texture layer using @ref TextureTransformationUniform::layer.
 
 For a multidraw workflow enable @ref Flag::MultiDraw (and possibly
 @ref Flag::TextureArrays) and supply desired light, material and draw count via
@@ -2425,5 +2443,8 @@ MAGNUM_SHADERS_EXPORT Debug& operator<<(Debug& debug, PhongGL::Flags value);
 CORRADE_ENUMSET_OPERATORS(PhongGL::Flags)
 
 }}
+#else
+#error this header is available only in the OpenGL build
+#endif
 
 #endif

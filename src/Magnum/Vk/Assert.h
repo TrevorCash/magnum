@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -30,6 +31,7 @@
  * @m_since_latest
  */
 
+#include <initializer_list> /* {} in for() loops, SIGH */
 #include <Corrade/Containers/EnumSet.h>
 #include <Corrade/Utility/Assert.h>
 
@@ -91,7 +93,7 @@ return any of the specified results in addition to
 accepts any number of @ref Magnum::Vk::Result "Result" values, the macro then
 returns the actual result value. Example usage:
 
-@snippet MagnumVk.cpp MAGNUM_VK_INTERNAL_ASSERT_SUCCESS_OR
+@snippet Vk.cpp MAGNUM_VK_INTERNAL_ASSERT_SUCCESS_OR
 
 Similarly to @ref CORRADE_INTERNAL_ASSERT_EXPRESSION() this macro is usable in
 any expression such as @cpp if @ce and @cpp return @ce statements. You can

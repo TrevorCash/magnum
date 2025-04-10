@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -142,7 +143,7 @@ tag to constructors of these objects), it consists of these steps:
 The following example allocates a single block memory for two buffers, one
 containing vertex and the other index data:
 
-@snippet MagnumVk.cpp Memory-allocation
+@snippet Vk.cpp Memory-allocation
 
 @section Vk-Memory-mapping Memory mapping
 
@@ -165,7 +166,7 @@ means that in order to upload vertex and index data, there are two options:
 The following example maps the memory allocated above and copies index and
 vertex data to it:
 
-@snippet MagnumVk.cpp Memory-mapping
+@snippet Vk.cpp Memory-mapping
 
 <b></b>
 

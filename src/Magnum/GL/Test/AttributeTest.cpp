@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/VertexFormat.h"
 #include "Magnum/GL/Attribute.h"
@@ -54,6 +54,9 @@ struct AttributeTest: TestSuite::Tester {
     void attributeMatrixNxNCustomStride();
     void attributeMatrixNxNd();
     void attributeMatrixMxNd();
+
+    void dynamicAttribute();
+    void dynamicAttributeMatrix();
 
     void attributeFromGenericFormat();
     #ifndef MAGNUM_TARGET_GLES2
@@ -93,6 +96,7 @@ struct AttributeTest: TestSuite::Tester {
     void debugDataTypeFloat();
     #ifndef MAGNUM_TARGET_GLES2
     void debugDataTypeInt();
+    void debugDataTypeUnsignedInt();
     #endif
     #ifndef MAGNUM_TARGET_GLES
     void debugDataTypeDouble();
@@ -125,6 +129,9 @@ AttributeTest::AttributeTest() {
               &AttributeTest::attributeMatrixNxNCustomStride,
               &AttributeTest::attributeMatrixNxNd,
               &AttributeTest::attributeMatrixMxNd,
+
+              &AttributeTest::dynamicAttribute,
+              &AttributeTest::dynamicAttributeMatrix,
 
               &AttributeTest::attributeFromGenericFormat,
               #ifndef MAGNUM_TARGET_GLES2
@@ -164,6 +171,7 @@ AttributeTest::AttributeTest() {
               &AttributeTest::debugDataTypeFloat,
               #ifndef MAGNUM_TARGET_GLES2
               &AttributeTest::debugDataTypeInt,
+              &AttributeTest::debugDataTypeUnsignedInt,
               #endif
               #ifndef MAGNUM_TARGET_GLES
               &AttributeTest::debugDataTypeDouble,
@@ -184,31 +192,63 @@ void AttributeTest::attributeScalar() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.components(), Attribute::Components::One);
+    CORRADE_COMPARE(ca.components(), Attribute::Components::One);
     CORRADE_VERIFY(!a.dataOptions());
+    CORRADE_VERIFY(!ca.dataOptions());
     CORRADE_COMPARE(a.vectorStride(), 4);
+    CORRADE_COMPARE(ca.vectorStride(), 4);
     CORRADE_COMPARE(a.dataType(), Attribute::DataType::Float);
+    CORRADE_COMPARE(ca.dataType(), Attribute::DataType::Float);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Generic);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::One);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::One);
     CORRADE_COMPARE(da.vectorStride(), 4);
+    CORRADE_COMPARE(cda.vectorStride(), 4);
     CORRADE_COMPARE(da.vectors(), 1);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Float);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Float);
 
     /* Options */
-    Attribute b(Attribute::DataType::UnsignedShort, Attribute::DataOption::Normalized);
+    Attribute b{Attribute::DataType::UnsignedShort, Attribute::DataOption::Normalized};
     CORRADE_COMPARE(b.vectorStride(), 2);
     CORRADE_VERIFY(b.dataOptions() <= Attribute::DataOption::Normalized);
 
+    /* The constexpr variant needs to specify vector stride explicitly.
+       Constexpr accessors tested just here, other variants don't have any
+       difference. */
+    constexpr Attribute cb{3, Attribute::DataType::UnsignedShort, Attribute::DataOption::Normalized};
+    constexpr Attribute::Components components = cb.components();
+    constexpr Attribute::DataType dataType = cb.dataType();
+    constexpr UnsignedInt vectorStride = cb.vectorStride();
+    constexpr Attribute::DataOptions dataOptions = cb.dataOptions();
+    CORRADE_COMPARE(components, Attribute::Components::One);
+    CORRADE_COMPARE(dataType, Attribute::DataType::UnsignedShort);
+    CORRADE_COMPARE(vectorStride, 3);
+    CORRADE_VERIFY(dataOptions <= Attribute::DataOption::Normalized);
+
+    /* Constexpr dynamic attribute accessors tested in dynamicAttributeMatrix() */
     DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
     CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::GenericNormalized);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::GenericNormalized);
     CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
     CORRADE_COMPARE(db.components(), DynamicAttribute::Components::One);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::One);
     CORRADE_COMPARE(db.vectorStride(), 2);
+    CORRADE_COMPARE(cdb.vectorStride(), 3);
     CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
     CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::UnsignedShort);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::UnsignedShort);
 }
 
 void AttributeTest::attributeScalarInt() {
@@ -219,27 +259,46 @@ void AttributeTest::attributeScalarInt() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.vectorStride(), 4);
+    CORRADE_COMPARE(ca.vectorStride(), 4);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Integral);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Integral);
     CORRADE_COMPARE(da.location(), 2);
+    CORRADE_COMPARE(cda.location(), 2);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::One);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::One);
     CORRADE_COMPARE(da.vectorStride(), 4);
+    CORRADE_COMPARE(cda.vectorStride(), 4);
     CORRADE_COMPARE(da.vectors(), 1);
+    CORRADE_COMPARE(cda.vectors(), 1);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Int);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Int);
 
-    /* Options */
-    Attribute b(Attribute::DataType::Short);
+    /* Options. The constexpr variant needs to specify vector stride
+       explicitly. */
+    Attribute b{Attribute::DataType::Short};
+    constexpr Attribute cb{3, Attribute::DataType::Short};
     CORRADE_COMPARE(b.vectorStride(), 2);
+    CORRADE_COMPARE(cb.vectorStride(), 3);
 
     DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
     CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Integral);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Integral);
     CORRADE_COMPARE(db.location(), 2);
+    CORRADE_COMPARE(cdb.location(), 2);
     CORRADE_COMPARE(db.components(), DynamicAttribute::Components::One);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::One);
     CORRADE_COMPARE(db.vectorStride(), 2);
+    CORRADE_COMPARE(cdb.vectorStride(), 3);
     CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
     CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::Short);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::Short);
     #else
     CORRADE_SKIP("Integer attributes are not available in OpenGL ES 2.");
     #endif
@@ -253,27 +312,46 @@ void AttributeTest::attributeScalarUnsignedInt() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.vectorStride(), 4);
+    CORRADE_COMPARE(ca.vectorStride(), 4);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Integral);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Integral);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::One);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::One);
     CORRADE_COMPARE(da.vectorStride(), 4);
+    CORRADE_COMPARE(cda.vectorStride(), 4);
     CORRADE_COMPARE(da.vectors(), 1);
+    CORRADE_COMPARE(cda.vectors(), 1);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::UnsignedInt);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::UnsignedInt);
 
-    /* Options */
-    Attribute b(Attribute::DataType::UnsignedByte);
+    /* Options. The constexpr variant needs to specify vector stride
+       explicitly. */
+    Attribute b{Attribute::DataType::UnsignedByte};
+    constexpr Attribute cb{2, Attribute::DataType::UnsignedByte};
     CORRADE_COMPARE(b.vectorStride(), 1);
+    CORRADE_COMPARE(cb.vectorStride(), 2);
 
     DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
     CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Integral);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Integral);
     CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
     CORRADE_COMPARE(db.components(), DynamicAttribute::Components::One);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::One);
     CORRADE_COMPARE(db.vectorStride(), 1);
+    CORRADE_COMPARE(cdb.vectorStride(), 2);
     CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
     CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::UnsignedByte);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::UnsignedByte);
     #else
     CORRADE_SKIP("Integer attributes are not available in OpenGL ES 2.");
     #endif
@@ -287,15 +365,24 @@ void AttributeTest::attributeScalarDouble() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.vectorStride(), 8);
+    CORRADE_COMPARE(ca.vectorStride(), 8);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Long);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Long);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::One);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::One);
     CORRADE_COMPARE(da.vectorStride(), 8);
+    CORRADE_COMPARE(cda.vectorStride(), 8);
     CORRADE_COMPARE(da.vectors(), 1);
+    CORRADE_COMPARE(cda.vectors(), 1);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Double);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Double);
     #else
     CORRADE_SKIP("Double attributes are not available in OpenGL ES.");
     #endif
@@ -308,43 +395,75 @@ void AttributeTest::attributeVector() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.components(), Attribute::Components::Three);
+    CORRADE_COMPARE(ca.components(), Attribute::Components::Three);
     CORRADE_COMPARE(a.vectorStride(), 3*4);
+    CORRADE_COMPARE(ca.vectorStride(), 3*4);
     CORRADE_COMPARE(a.dataType(), Attribute::DataType::Float);
+    CORRADE_COMPARE(ca.dataType(), Attribute::DataType::Float);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Generic);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Three);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::Three);
     CORRADE_COMPARE(da.vectorStride(), 3*4);
+    CORRADE_COMPARE(cda.vectorStride(), 3*4);
     CORRADE_COMPARE(da.vectors(), 1);
+    CORRADE_COMPARE(cda.vectors(), 1);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Float);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Float);
 
-    /* Options */
+    /* Options. The constexpr variant needs to specify vector stride
+       explicitly. */
     #ifndef MAGNUM_TARGET_GLES
-    Attribute b(Attribute::Components::Two, Attribute::DataType::Double);
+    Attribute b{Attribute::Components::Two, Attribute::DataType::Double};
+    constexpr Attribute cb{Attribute::Components::Two, 18, Attribute::DataType::Double};
     CORRADE_COMPARE(b.components(), Attribute::Components::Two);
+    CORRADE_COMPARE(cb.components(), Attribute::Components::Two);
     CORRADE_COMPARE(b.vectorStride(), 2*8);
+    CORRADE_COMPARE(cb.vectorStride(), 18);
 
     DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
     CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Generic);
     CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
     CORRADE_COMPARE(db.components(), DynamicAttribute::Components::Two);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::Two);
     CORRADE_COMPARE(db.vectorStride(), 2*8);
+    CORRADE_COMPARE(cdb.vectorStride(), 18);
     CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
     CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::Double);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::Double);
     #else
-    Attribute b(Attribute::Components::Two, Attribute::DataType::Float);
+    Attribute b{Attribute::Components::Two, Attribute::DataType::Float};
+    constexpr Attribute cb{Attribute::Components::Two, 14, Attribute::DataType::Float};
     CORRADE_COMPARE(b.components(), Attribute::Components::Two);
+    CORRADE_COMPARE(cb.components(), Attribute::Components::Two);
     CORRADE_COMPARE(b.vectorStride(), 2*4);
+    CORRADE_COMPARE(cb.vectorStride(), 14);
 
     DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
     CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Generic);
     CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
     CORRADE_COMPARE(db.components(), DynamicAttribute::Components::Two);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::Two);
     CORRADE_COMPARE(db.vectorStride(), 2*4);
+    CORRADE_COMPARE(cdb.vectorStride(), 14);
     CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
     CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::Float);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::Float);
     #endif
 }
 
@@ -356,29 +475,63 @@ void AttributeTest::attributeVectorInt() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.components(), Attribute::Components::Two);
+    CORRADE_COMPARE(ca.components(), Attribute::Components::Two);
     CORRADE_COMPARE(a.vectorStride(), 2*4);
+    CORRADE_COMPARE(ca.vectorStride(), 2*4);
     CORRADE_COMPARE(a.dataType(), Attribute::DataType::Int);
+    CORRADE_COMPARE(ca.dataType(), Attribute::DataType::Int);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Integral);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Integral);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Two);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::Two);
     CORRADE_COMPARE(da.vectorStride(), 2*4);
+    CORRADE_COMPARE(cda.vectorStride(), 2*4);
     CORRADE_COMPARE(da.vectors(), 1);
+    CORRADE_COMPARE(cda.vectors(), 1);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Int);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Int);
 
-    /* Options */
-    Attribute b(Attribute::Components::One, Attribute::DataType::Int);
+    /* Options. The constexpr variant needs to specify vector stride
+       explicitly. */
+    Attribute b{Attribute::Components::One, Attribute::DataType::Int};
+    constexpr Attribute cb{Attribute::Components::One, 6, Attribute::DataType::Int};
     CORRADE_COMPARE(b.vectorStride(), 4);
+    CORRADE_COMPARE(cb.vectorStride(), 6);
 
     DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
     CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Integral);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Integral);
     CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
     CORRADE_COMPARE(db.components(), DynamicAttribute::Components::One);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::One);
     CORRADE_COMPARE(db.vectorStride(), 4);
+    CORRADE_COMPARE(cdb.vectorStride(), 6);
     CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
     CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::Int);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::Int);
+
+    /* Unsigned types for signed attributes are not supported on WebGL, exposed
+       just as deprecated for backwards compatibility */
+    #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
+    #ifdef MAGNUM_TARGET_WEBGL
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    #endif
+    Attribute c{Attribute::Components::One, Attribute::DataType::UnsignedShort};
+    #ifdef MAGNUM_TARGET_WEBGL
+    CORRADE_IGNORE_DEPRECATED_POP
+    #endif
+    CORRADE_COMPARE(c.vectorStride(), 2);
+    #endif
     #else
     CORRADE_SKIP("Integer attributes are not available in OpenGL ES 2.");
     #endif
@@ -392,29 +545,63 @@ void AttributeTest::attributeVectorUnsignedInt() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.components(), Attribute::Components::Four);
+    CORRADE_COMPARE(ca.components(), Attribute::Components::Four);
     CORRADE_COMPARE(a.vectorStride(), 4*4);
+    CORRADE_COMPARE(ca.vectorStride(), 4*4);
     CORRADE_COMPARE(a.dataType(), Attribute::DataType::UnsignedInt);
+    CORRADE_COMPARE(ca.dataType(), Attribute::DataType::UnsignedInt);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Integral);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Integral);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Four);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::Four);
     CORRADE_COMPARE(da.vectorStride(), 4*4);
+    CORRADE_COMPARE(cda.vectorStride(), 4*4);
     CORRADE_COMPARE(da.vectors(), 1);
+    CORRADE_COMPARE(cda.vectors(), 1);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::UnsignedInt);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::UnsignedInt);
 
-    /* Options */
-    Attribute b(Attribute::Components::Three, Attribute::DataType::UnsignedShort);
+    /* Options. The constexpr variant needs to specify vector stride
+       explicitly. */
+    Attribute b{Attribute::Components::Three, Attribute::DataType::UnsignedShort};
+    constexpr Attribute cb{Attribute::Components::Three, 7, Attribute::DataType::UnsignedShort};
     CORRADE_COMPARE(b.vectorStride(), 3*2);
+    CORRADE_COMPARE(cb.vectorStride(), 7);
 
     DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
     CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Integral);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Integral);
     CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
     CORRADE_COMPARE(db.components(), DynamicAttribute::Components::Three);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::Three);
     CORRADE_COMPARE(db.vectorStride(), 3*2);
+    CORRADE_COMPARE(cdb.vectorStride(), 7);
     CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
     CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::UnsignedShort);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::UnsignedShort);
+
+    /* Signed types for unsigned attributes are not supported on WebGL, exposed
+       just as deprecated for backwards compatibility */
+    #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
+    #ifdef MAGNUM_TARGET_WEBGL
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    #endif
+    Attribute c{Attribute::Components::One, Attribute::DataType::Short};
+    #ifdef MAGNUM_TARGET_WEBGL
+    CORRADE_IGNORE_DEPRECATED_POP
+    #endif
+    CORRADE_COMPARE(c.vectorStride(), 2);
+    #endif
     #else
     CORRADE_SKIP("Integer attributes are not available in OpenGL ES 2.");
     #endif
@@ -428,29 +615,50 @@ void AttributeTest::attributeVectorDouble() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.components(), Attribute::Components::Two);
+    CORRADE_COMPARE(ca.components(), Attribute::Components::Two);
     CORRADE_COMPARE(a.vectorStride(), 2*8);
+    CORRADE_COMPARE(ca.vectorStride(), 2*8);
     CORRADE_COMPARE(a.dataType(), Attribute::DataType::Double);
+    CORRADE_COMPARE(ca.dataType(), Attribute::DataType::Double);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Long);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Long);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Two);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::Two);
     CORRADE_COMPARE(da.vectorStride(), 2*8);
+    CORRADE_COMPARE(cda.vectorStride(), 2*8);
     CORRADE_COMPARE(da.vectors(), 1);
+    CORRADE_COMPARE(cda.vectors(), 1);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Double);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Double);
 
-    /* Options */
-    Attribute b(Attribute::Components::One);
+    /* Options. The constexpr variant needs to specify vector stride
+       explicitly. */
+    Attribute b{Attribute::Components::One};
+    constexpr Attribute cb{Attribute::Components::One, 10};
     CORRADE_COMPARE(b.vectorStride(), 8);
+    CORRADE_COMPARE(cb.vectorStride(), 10);
 
     DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
     CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Long);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Long);
     CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
     CORRADE_COMPARE(db.components(), DynamicAttribute::Components::One);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::One);
     CORRADE_COMPARE(db.vectorStride(), 8);
+    CORRADE_COMPARE(cdb.vectorStride(), 10);
     CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
     CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::Double);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::Double);
     #else
     CORRADE_SKIP("Double attributes are not available in OpenGL ES.");
     #endif
@@ -461,40 +669,78 @@ void AttributeTest::attributeVector4() {
     CORRADE_VERIFY(std::is_same<Attribute::ScalarType, Float>{});
     CORRADE_COMPARE(Attribute::Vectors, 1);
 
-    /* Custom type */
+    /* Default constructor */
+    Attribute a;
+    constexpr Attribute ca;
+    CORRADE_COMPARE(a.components(), Attribute::Components::Four);
+    CORRADE_COMPARE(ca.components(), Attribute::Components::Four);
+    CORRADE_COMPARE(a.vectorStride(), 4*4);
+    CORRADE_COMPARE(ca.vectorStride(), 4*4);
+    CORRADE_COMPARE(a.dataType(), Attribute::DataType::Float);
+    CORRADE_COMPARE(ca.dataType(), Attribute::DataType::Float);
+
+    /* Custom type. The constexpr variant needs to specify vector stride
+       explicitly. */
     #ifndef MAGNUM_TARGET_GLES
-    Attribute a(Attribute::DataType::UnsignedInt2101010Rev);
-    CORRADE_COMPARE(a.vectorStride(), 4);
+    Attribute b{Attribute::DataType::UnsignedInt2101010Rev};
+    constexpr Attribute cb{6, Attribute::DataType::UnsignedInt2101010Rev};
+    CORRADE_COMPARE(b.vectorStride(), 4);
+    CORRADE_COMPARE(cb.vectorStride(), 6);
 
-    DynamicAttribute da{a};
-    CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Generic);
-    CORRADE_COMPARE(da.location(), 3);
-    CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Four);
-    CORRADE_COMPARE(da.vectorStride(), 4);
-    CORRADE_COMPARE(da.vectors(), 1);
-    CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::UnsignedInt2101010Rev);
+    DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
+    CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
+    CORRADE_COMPARE(db.components(), DynamicAttribute::Components::Four);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::Four);
+    CORRADE_COMPARE(db.vectorStride(), 4);
+    CORRADE_COMPARE(cdb.vectorStride(), 6);
+    CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
+    CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::UnsignedInt2101010Rev);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::UnsignedInt2101010Rev);
     #elif !(defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2))
-    Attribute a(Attribute::DataType::Half);
-    CORRADE_COMPARE(a.vectorStride(), 8);
+    Attribute b(Attribute::DataType::Half);
+    constexpr Attribute cb(10, Attribute::DataType::Half);
+    CORRADE_COMPARE(b.vectorStride(), 8);
+    CORRADE_COMPARE(cb.vectorStride(), 10);
 
-    DynamicAttribute da{a};
-    CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Generic);
-    CORRADE_COMPARE(da.location(), 3);
-    CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Four);
-    CORRADE_COMPARE(da.vectorStride(), 8);
-    CORRADE_COMPARE(da.vectors(), 1);
-    CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Half);
+    DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
+    CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
+    CORRADE_COMPARE(db.components(), DynamicAttribute::Components::Four);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::Four);
+    CORRADE_COMPARE(db.vectorStride(), 8);
+    CORRADE_COMPARE(cdb.vectorStride(), 10);
+    CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
+    CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::Half);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::Half);
     #else
-    Attribute a(Attribute::DataType::Float);
-    CORRADE_COMPARE(a.vectorStride(), 16);
+    Attribute b{Attribute::DataType::Float};
+    constexpr Attribute cb{18, Attribute::DataType::Float};
+    CORRADE_COMPARE(b.vectorStride(), 16);
+    CORRADE_COMPARE(cb.vectorStride(), 18);
 
-    DynamicAttribute da{a};
-    CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Generic);
-    CORRADE_COMPARE(da.location(), 3);
-    CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Four);
-    CORRADE_COMPARE(da.vectorStride(), 16);
-    CORRADE_COMPARE(da.vectors(), 1);
-    CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Float);
+    DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
+    CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
+    CORRADE_COMPARE(db.components(), DynamicAttribute::Components::Four);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::Four);
+    CORRADE_COMPARE(db.vectorStride(), 16);
+    CORRADE_COMPARE(cdb.vectorStride(), 18);
+    CORRADE_COMPARE(db.vectors(), 1);
+    CORRADE_COMPARE(cdb.vectors(), 1);
+    CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::Float);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::Float);
     #endif
 }
 
@@ -504,17 +750,27 @@ void AttributeTest::attributeVectorBGRA() {
     CORRADE_VERIFY(std::is_same<Attribute::ScalarType, Float>{});
     CORRADE_COMPARE(Attribute::Vectors, 1);
 
-    /* BGRA */
-    Attribute a(Attribute::Components::BGRA);
+    /* BGRA. The constexpr variant needs to specify vector stride
+       explicitly. */
+    Attribute a{Attribute::Components::BGRA};
+    constexpr Attribute ca{Attribute::Components::BGRA, 18};
     CORRADE_COMPARE(a.vectorStride(), 4*4);
+    CORRADE_COMPARE(ca.vectorStride(), 18);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Generic);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::BGRA);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::BGRA);
     CORRADE_COMPARE(da.vectorStride(), 4*4);
+    CORRADE_COMPARE(cda.vectorStride(), 18);
     CORRADE_COMPARE(da.vectors(), 1);
+    CORRADE_COMPARE(cda.vectors(), 1);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Float);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Float);
     #else
     CORRADE_SKIP("BGRA attribute component ordering is not available in OpenGL ES.");
     #endif
@@ -527,17 +783,28 @@ void AttributeTest::attributeMatrixNxN() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.components(), Attribute::Components::Three);
+    CORRADE_COMPARE(ca.components(), Attribute::Components::Three);
     CORRADE_COMPARE(a.vectorStride(), 3*4);
+    CORRADE_COMPARE(ca.vectorStride(), 3*4);
     CORRADE_COMPARE(a.dataType(), Attribute::DataType::Float);
+    CORRADE_COMPARE(ca.dataType(), Attribute::DataType::Float);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Generic);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Three);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::Three);
     CORRADE_COMPARE(da.vectorStride(), 3*4);
+    CORRADE_COMPARE(cda.vectorStride(), 3*4);
     CORRADE_COMPARE(da.vectors(), 3);
+    CORRADE_COMPARE(cda.vectors(), 3);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Float);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Float);
 }
 
 void AttributeTest::attributeMatrixNxNCustomStride() {
@@ -545,7 +812,7 @@ void AttributeTest::attributeMatrixNxNCustomStride() {
     CORRADE_VERIFY(std::is_same<Attribute::ScalarType, Float>{});
     CORRADE_COMPARE(Attribute::Vectors, 3);
 
-    /* Default stride */
+    /* Default stride, not possible to do in a constexpr way */
     Attribute a{Attribute::DataType::Short};
     CORRADE_COMPARE(a.components(), Attribute::Components::Three);
     CORRADE_COMPARE(a.vectorStride(), 6);
@@ -561,17 +828,28 @@ void AttributeTest::attributeMatrixNxNCustomStride() {
 
     /* Custom stride */
     Attribute b{8, Attribute::DataType::Short};
+    constexpr Attribute cb{8, Attribute::DataType::Short};
     CORRADE_COMPARE(b.components(), Attribute::Components::Three);
+    CORRADE_COMPARE(cb.components(), Attribute::Components::Three);
     CORRADE_COMPARE(b.vectorStride(), 8);
+    CORRADE_COMPARE(cb.vectorStride(), 8);
     CORRADE_COMPARE(b.dataType(), Attribute::DataType::Short);
+    CORRADE_COMPARE(cb.dataType(), Attribute::DataType::Short);
 
     DynamicAttribute db{b};
+    constexpr DynamicAttribute cdb{cb};
     CORRADE_COMPARE(db.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cdb.kind(), DynamicAttribute::Kind::Generic);
     CORRADE_COMPARE(db.location(), 3);
+    CORRADE_COMPARE(cdb.location(), 3);
     CORRADE_COMPARE(db.components(), DynamicAttribute::Components::Three);
+    CORRADE_COMPARE(cdb.components(), DynamicAttribute::Components::Three);
     CORRADE_COMPARE(db.vectorStride(), 8);
+    CORRADE_COMPARE(cdb.vectorStride(), 8);
     CORRADE_COMPARE(db.vectors(), 3);
+    CORRADE_COMPARE(cdb.vectors(), 3);
     CORRADE_COMPARE(db.dataType(), DynamicAttribute::DataType::Short);
+    CORRADE_COMPARE(cdb.dataType(), DynamicAttribute::DataType::Short);
 }
 
 #ifndef MAGNUM_TARGET_GLES2
@@ -582,17 +860,28 @@ void AttributeTest::attributeMatrixMxN() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.components(), Attribute::Components::Four);
+    CORRADE_COMPARE(ca.components(), Attribute::Components::Four);
     CORRADE_COMPARE(a.vectorStride(), 4*4);
+    CORRADE_COMPARE(ca.vectorStride(), 4*4);
     CORRADE_COMPARE(a.dataType(), Attribute::DataType::Float);
+    CORRADE_COMPARE(ca.dataType(), Attribute::DataType::Float);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Generic);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Generic);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Four);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::Four);
     CORRADE_COMPARE(da.vectorStride(), 4*4);
+    CORRADE_COMPARE(cda.vectorStride(), 4*4);
     CORRADE_COMPARE(da.vectors(), 3);
+    CORRADE_COMPARE(cda.vectors(), 3);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Float);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Float);
 }
 #endif
 
@@ -604,17 +893,28 @@ void AttributeTest::attributeMatrixNxNd() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.components(), Attribute::Components::Four);
+    CORRADE_COMPARE(ca.components(), Attribute::Components::Four);
     CORRADE_COMPARE(a.vectorStride(), 4*8);
+    CORRADE_COMPARE(ca.vectorStride(), 4*8);
     CORRADE_COMPARE(a.dataType(), Attribute::DataType::Double);
+    CORRADE_COMPARE(ca.dataType(), Attribute::DataType::Double);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Long);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Long);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Four);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::Four);
     CORRADE_COMPARE(da.vectorStride(), 4*8);
+    CORRADE_COMPARE(cda.vectorStride(), 4*8);
     CORRADE_COMPARE(da.vectors(), 4);
+    CORRADE_COMPARE(cda.vectors(), 4);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Double);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Double);
     #else
     CORRADE_SKIP("Double attributes are not available in OpenGL ES.");
     #endif
@@ -628,20 +928,78 @@ void AttributeTest::attributeMatrixMxNd() {
 
     /* Default constructor */
     Attribute a;
+    constexpr Attribute ca;
     CORRADE_COMPARE(a.components(), Attribute::Components::Two);
+    CORRADE_COMPARE(ca.components(), Attribute::Components::Two);
     CORRADE_COMPARE(a.vectorStride(), 2*8);
+    CORRADE_COMPARE(ca.vectorStride(), 2*8);
     CORRADE_COMPARE(a.dataType(), Attribute::DataType::Double);
+    CORRADE_COMPARE(ca.dataType(), Attribute::DataType::Double);
 
     DynamicAttribute da{a};
+    constexpr DynamicAttribute cda{ca};
     CORRADE_COMPARE(da.kind(), DynamicAttribute::Kind::Long);
+    CORRADE_COMPARE(cda.kind(), DynamicAttribute::Kind::Long);
     CORRADE_COMPARE(da.location(), 3);
+    CORRADE_COMPARE(cda.location(), 3);
     CORRADE_COMPARE(da.components(), DynamicAttribute::Components::Two);
+    CORRADE_COMPARE(cda.components(), DynamicAttribute::Components::Two);
     CORRADE_COMPARE(da.vectorStride(), 2*8);
+    CORRADE_COMPARE(cda.vectorStride(), 2*8);
     CORRADE_COMPARE(da.vectors(), 4);
+    CORRADE_COMPARE(cda.vectors(), 4);
     CORRADE_COMPARE(da.dataType(), DynamicAttribute::DataType::Double);
+    CORRADE_COMPARE(cda.dataType(), DynamicAttribute::DataType::Double);
     #else
     CORRADE_SKIP("Double attributes are not available in OpenGL ES.");
     #endif
+}
+
+void AttributeTest::dynamicAttribute() {
+    /* This one isn't constexpr as the vector stride has to be calculated */
+    DynamicAttribute a{DynamicAttribute::Kind::GenericNormalized, 3,
+        DynamicAttribute::Components::Two, DynamicAttribute::DataType::Byte};
+    CORRADE_COMPARE(a.kind(), DynamicAttribute::Kind::GenericNormalized);
+    CORRADE_COMPARE(a.location(), 3);
+    CORRADE_COMPARE(a.components(), DynamicAttribute::Components::Two);
+    CORRADE_COMPARE(a.vectors(), 1);
+    CORRADE_COMPARE(a.vectorStride(), 2);
+    CORRADE_COMPARE(a.dataType(), DynamicAttribute::DataType::Byte);
+}
+
+void AttributeTest::dynamicAttributeMatrix() {
+    DynamicAttribute a{DynamicAttribute::Kind::GenericNormalized, 3,
+        DynamicAttribute::Components::Two, 3, DynamicAttribute::DataType::Byte};
+    CORRADE_COMPARE(a.kind(), DynamicAttribute::Kind::GenericNormalized);
+    CORRADE_COMPARE(a.location(), 3);
+    CORRADE_COMPARE(a.components(), DynamicAttribute::Components::Two);
+    CORRADE_COMPARE(a.vectors(), 3);
+    CORRADE_COMPARE(a.vectorStride(), 2);
+    CORRADE_COMPARE(a.dataType(), DynamicAttribute::DataType::Byte);
+
+    DynamicAttribute b{DynamicAttribute::Kind::GenericNormalized, 3,
+        DynamicAttribute::Components::Two, 3, 4, DynamicAttribute::DataType::Byte};
+    CORRADE_COMPARE(b.kind(), DynamicAttribute::Kind::GenericNormalized);
+    CORRADE_COMPARE(b.location(), 3);
+    CORRADE_COMPARE(b.components(), DynamicAttribute::Components::Two);
+    CORRADE_COMPARE(b.vectors(), 3);
+    CORRADE_COMPARE(b.vectorStride(), 4);
+    CORRADE_COMPARE(b.dataType(), DynamicAttribute::DataType::Byte);
+
+    constexpr DynamicAttribute cb{DynamicAttribute::Kind::GenericNormalized, 3,
+        DynamicAttribute::Components::Two, 3, 4, DynamicAttribute::DataType::Byte};
+    constexpr DynamicAttribute::Kind kind = cb.kind();
+    constexpr UnsignedInt location = cb.location();
+    constexpr DynamicAttribute::Components components = cb.components();
+    constexpr UnsignedInt vectors = cb.vectors();
+    constexpr UnsignedInt vectorStride = cb.vectorStride();
+    constexpr DynamicAttribute::DataType dataType = cb.dataType();
+    CORRADE_COMPARE(kind, DynamicAttribute::Kind::GenericNormalized);
+    CORRADE_COMPARE(location, 3);
+    CORRADE_COMPARE(components, DynamicAttribute::Components::Two);
+    CORRADE_COMPARE(vectors, 3);
+    CORRADE_COMPARE(vectorStride, 4);
+    CORRADE_COMPARE(dataType, DynamicAttribute::DataType::Byte);
 }
 
 void AttributeTest::attributeFromGenericFormat() {
@@ -778,11 +1136,11 @@ void AttributeTest::attributeFromGenericFormatEnableNormalized() {
 void AttributeTest::attributeFromGenericFormatUnexpectedForNormalizedKind() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DynamicAttribute{DynamicAttribute::Kind::GenericNormalized, 3,
         VertexFormat::Int};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::DynamicAttribute: can't use VertexFormat::Int for a normalized attribute\n");
 }
 
@@ -790,13 +1148,13 @@ void AttributeTest::attributeFromGenericFormatUnexpectedForNormalizedKind() {
 void AttributeTest::attributeFromGenericFormatUnexpectedForIntegralKind() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DynamicAttribute{DynamicAttribute::Kind::Integral, 3,
         VertexFormat::Vector2bNormalized};
     DynamicAttribute{DynamicAttribute::Kind::Integral, 3,
         VertexFormat::Vector3};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::DynamicAttribute: can't use VertexFormat::Vector2bNormalized for a GL::DynamicAttribute::Kind::Integral attribute\n"
         "GL::DynamicAttribute: can't use VertexFormat::Vector3 for an integral attribute\n");
 }
@@ -806,11 +1164,11 @@ void AttributeTest::attributeFromGenericFormatUnexpectedForIntegralKind() {
 void AttributeTest::attributeFromGenericFormatUnexpectedForLongKind() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DynamicAttribute{DynamicAttribute::Kind::Long, 3,
         VertexFormat::UnsignedShortNormalized};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::DynamicAttribute: can't use VertexFormat::UnsignedShortNormalized for a GL::DynamicAttribute::Kind::Long attribute\n");
 }
 #endif
@@ -818,20 +1176,20 @@ void AttributeTest::attributeFromGenericFormatUnexpectedForLongKind() {
 void AttributeTest::attributeFromGenericFormatTooManyVectors() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DynamicAttribute{Attribute<7, Vector2>{}, VertexFormat::Matrix2x2};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::DynamicAttribute: can't use VertexFormat::Matrix2x2 for a 1-vector attribute\n");
 }
 
 void AttributeTest::attributeFromGenericFormatTooManyComponents() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DynamicAttribute{Attribute<7, Vector2>{}, VertexFormat::Vector3};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::DynamicAttribute: can't use VertexFormat::Vector3 for a 2-component attribute\n");
 }
 
@@ -839,10 +1197,10 @@ void AttributeTest::attributeFromGenericFormatNotAvailable() {
     #ifndef MAGNUM_TARGET_GLES
     CORRADE_SKIP("All attribute formats available on desktop GL.");
     #else
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DynamicAttribute{Attribute<7, Vector2>{}, VertexFormat::Vector3d};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::DynamicAttribute: VertexFormat::Vector3d isn't available on this target\n");
     #endif
 }
@@ -888,79 +1246,79 @@ void AttributeTest::hasVertexFormat() {
 void AttributeTest::debugComponents1() {
     typedef Attribute<3, Float> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::Components::One << Attribute::Components(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::Components::One GL::Attribute::Components(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::Components::One GL::Attribute::Components(0xdead)\n");
 }
 
 void AttributeTest::debugComponents2() {
     typedef Attribute<3, Vector2> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::Components::Two << Attribute::Components(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::Components::Two GL::Attribute::Components(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::Components::Two GL::Attribute::Components(0xdead)\n");
 }
 
 void AttributeTest::debugComponents3() {
     typedef Attribute<3, Vector3> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::Components::Three << Attribute::Components(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::Components::Three GL::Attribute::Components(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::Components::Three GL::Attribute::Components(0xdead)\n");
 }
 
 #ifndef MAGNUM_TARGET_GLES2
 void AttributeTest::debugComponents4() {
     typedef Attribute<3, Vector4i> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::Components::Four << Attribute::Components(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::Components::Four GL::Attribute::Components(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::Components::Four GL::Attribute::Components(0xdead)\n");
 }
 #endif
 
 void AttributeTest::debugComponentsMatrix2() {
     typedef Attribute<3, Matrix2x2> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::Components::Two << Attribute::Components(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::Components::Two GL::Attribute::Components(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::Components::Two GL::Attribute::Components(0xdead)\n");
 }
 
 void AttributeTest::debugComponentsMatrix3() {
     typedef Attribute<3, Matrix3> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::Components::Three << Attribute::Components(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::Components::Three GL::Attribute::Components(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::Components::Three GL::Attribute::Components(0xdead)\n");
 }
 
 void AttributeTest::debugComponentsMatrix4() {
     typedef Attribute<3, Matrix4> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::Components::Four << Attribute::Components(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::Components::Four GL::Attribute::Components(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::Components::Four GL::Attribute::Components(0xdead)\n");
 }
 
 void AttributeTest::debugComponentsVector4() {
     typedef Attribute<3, Vector4> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::Components::Three << Attribute::Components(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::Components::Three GL::Attribute::Components(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::Components::Three GL::Attribute::Components(0xdead)\n");
 }
 
 void AttributeTest::debugDataTypeFloat() {
     typedef Attribute<3, Float> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     #if !(defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2))
     Debug{&out} << Attribute::DataType::Half << Attribute::DataType(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::DataType::Half GL::Attribute::DataType(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::DataType::Half GL::Attribute::DataType(0xdead)\n");
     #else
     Debug{&out} << Attribute::DataType::Float << Attribute::DataType(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::DataType::Float GL::Attribute::DataType(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::DataType::Float GL::Attribute::DataType(0xdead)\n");
     #endif
 }
 
@@ -968,9 +1326,53 @@ void AttributeTest::debugDataTypeFloat() {
 void AttributeTest::debugDataTypeInt() {
     typedef Attribute<3, Int> Attribute;
 
-    std::ostringstream out;
-    Debug{&out} << Attribute::DataType::Short << Attribute::DataType(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::DataType::Short GL::Attribute::DataType(0xdead)\n");
+    {
+        Containers::String out;
+        Debug{&out} << Attribute::DataType::Short << Attribute::DataType(0xdead);
+        CORRADE_COMPARE(out, "GL::Attribute::DataType::Short GL::Attribute::DataType(0xdead)\n");
+    }
+
+    /* Unsigned types for signed attributes are not supported on WebGL, exposed
+       just as deprecated for backwards compatibility */
+    #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
+    {
+        Containers::String out;
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_PUSH
+        #endif
+        Debug{&out} << Attribute::DataType::UnsignedInt << Attribute::DataType::UnsignedByte;
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
+        CORRADE_COMPARE(out, "GL::Attribute::DataType::UnsignedInt GL::Attribute::DataType::UnsignedByte\n");
+    }
+    #endif
+}
+
+void AttributeTest::debugDataTypeUnsignedInt() {
+    typedef Attribute<3, UnsignedInt> Attribute;
+
+    {
+        Containers::String out;
+        Debug{&out} << Attribute::DataType::UnsignedShort << Attribute::DataType(0xdead);
+        CORRADE_COMPARE(out, "GL::Attribute::DataType::UnsignedShort GL::Attribute::DataType(0xdead)\n");
+    }
+
+    /* Signed types for unsigned attributes are not supported on WebGL, exposed
+       just as deprecated for backwards compatibility */
+    #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
+    {
+        Containers::String out;
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_PUSH
+        #endif
+        Debug{&out} << Attribute::DataType::Int << Attribute::DataType::Byte;
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
+        CORRADE_COMPARE(out, "GL::Attribute::DataType::Int GL::Attribute::DataType::Byte\n");
+    }
+    #endif
 }
 #endif
 
@@ -978,44 +1380,44 @@ void AttributeTest::debugDataTypeInt() {
 void AttributeTest::debugDataTypeDouble() {
     typedef Attribute<3, Double> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::DataType::Double << Attribute::DataType(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::DataType::Double GL::Attribute::DataType(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::DataType::Double GL::Attribute::DataType(0xdead)\n");
 }
 #endif
 
 void AttributeTest::debugDataTypeVector3() {
     typedef Attribute<3, Vector3> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::DataType::Float << Attribute::DataType(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::DataType::Float GL::Attribute::DataType(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::DataType::Float GL::Attribute::DataType(0xdead)\n");
 }
 
 void AttributeTest::debugDataTypeVector4() {
     typedef Attribute<3, Vector4> Attribute;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Attribute::DataType::Float << Attribute::DataType(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Attribute::DataType::Float GL::Attribute::DataType(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Attribute::DataType::Float GL::Attribute::DataType(0xdead)\n");
 }
 
 void AttributeTest::debugDynamicKind() {
-    std::ostringstream out;
-    Debug{&out} << DynamicAttribute::Kind::GenericNormalized << DynamicAttribute::Kind(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::DynamicAttribute::Kind::GenericNormalized GL::DynamicAttribute::Kind(0xdead)\n");
+    Containers::String out;
+    Debug{&out} << DynamicAttribute::Kind::GenericNormalized << DynamicAttribute::Kind(0xfe);
+    CORRADE_COMPARE(out, "GL::DynamicAttribute::Kind::GenericNormalized GL::DynamicAttribute::Kind(0xfe)\n");
 }
 
 void AttributeTest::debugDynamicComponents() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << DynamicAttribute::Components::Three << DynamicAttribute::Components(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::DynamicAttribute::Components::Three GL::DynamicAttribute::Components(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::DynamicAttribute::Components::Three GL::DynamicAttribute::Components(0xdead)\n");
 }
 
 void AttributeTest::debugDynamicDataType() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << DynamicAttribute::DataType::Float << DynamicAttribute::DataType(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::DynamicAttribute::DataType::Float GL::DynamicAttribute::DataType(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::DynamicAttribute::DataType::Float GL::DynamicAttribute::DataType(0xdead)\n");
 }
 
 }}}}

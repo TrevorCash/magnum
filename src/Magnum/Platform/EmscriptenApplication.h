@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2018, 2019, 2020 Jonathan Hale <squareys@googlemail.com>
     Copyright © 2020 Pablo Escobar <mail@rvrs.in>
 
@@ -57,13 +58,32 @@
 #endif
 
 #if defined(CORRADE_TARGET_EMSCRIPTEN) || defined(DOXYGEN_GENERATING_OUTPUT)
+/* The __EMSCRIPTEN_major__ etc macros used to be passed implicitly, version
+   3.1.4 moved them to a version header and version 3.1.23 dropped the
+   backwards compatibility. To work consistently on all versions, including the
+   header only if the version macros aren't present.
+   https://github.com/emscripten-core/emscripten/commit/f99af02045357d3d8b12e63793cef36dfde4530a
+   https://github.com/emscripten-core/emscripten/commit/f76ddc702e4956aeedb658c49790cc352f892e4c */
+#ifndef __EMSCRIPTEN_major__
+#include <emscripten/version.h>
+#endif
 
 #ifndef DOXYGEN_GENERATING_OUTPUT
 struct EmscriptenKeyboardEvent;
 struct EmscriptenMouseEvent;
+struct EmscriptenTouchEvent;
 struct EmscriptenWheelEvent;
 struct EmscriptenUiEvent;
+
+/* The typedef changed in 3.1.49, https://github.com/emscripten-core/emscripten/commit/40cbc2164400a7c27218b9655f1830bfc882bb01,
+   and then again in 3.1.54, https://github.com/emscripten-core/emscripten/commit/38f9ad86a18ccc3aad911a13ffd5b89d3df304ae */
+#if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 30154
+typedef std::uintptr_t EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;
+#elif __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 30149
+typedef std::intptr_t EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;
+#else
 typedef int EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;
+#endif
 #endif
 
 namespace Magnum { namespace Platform {
@@ -122,11 +142,9 @@ together with a troubleshooting guide is available in @ref platforms-html5.
 @section Platform-EmscriptenApplication-usage General usage
 
 This application library is built if `MAGNUM_WITH_EMSCRIPTENAPPLICATION` is
-enabled when building Magnum. To use this library with CMake, put
-[FindOpenGLES2.cmake](https://github.com/mosra/magnum/blob/master/modules/FindOpenGLES2.cmake) (or
-[FindOpenGLES3.cmake](https://github.com/mosra/magnum/blob/master/modules/FindOpenGLES3.cmake))
-into your `modules/` directory, request the `EmscriptenApplication` component
-of the `Magnum` package and link to the `Magnum::EmscriptenApplication` target:
+enabled when building Magnum. To use this library with CMake, request the
+`EmscriptenApplication` component of the `Magnum` package and link to the
+`Magnum::EmscriptenApplication` target:
 
 @code{.cmake}
 find_package(Magnum REQUIRED)
@@ -166,6 +184,44 @@ MAGNUM_EMSCRIPTENAPPLICATION_MAIN(MyApplication)
 If no other application header is included, this class is also aliased to
 @cpp Platform::Application @ce and the macro is aliased to
 @cpp MAGNUM_APPLICATION_MAIN() @ce to simplify porting.
+
+@section Platform-EmscriptenApplication-touch Touch input in HTML5
+
+The application recognizes touch input and reports it as @ref Pointer::Finger
+and @ref PointerEventSource::Touch. Because both mouse and touch events are
+exposed through a unified @ref PointerEvent / @ref PointerMoveEvent interface,
+there's no need for compatibility mouse events synthesized from touch events,
+and thus they get ignored when fired right after the corresponding touch.
+Emscripten so far [doesn't support pointer events](https://github.com/emscripten-core/emscripten/issues/7278),
+so pen input isn't implemented yet.
+
+In case of a multi-touch scenario, @ref PointerEvent::isPrimary() /
+@ref PointerMoveEvent::isPrimary() can be used to distinguish the primary touch
+from secondary. For example, if an application doesn't need to recognize
+gestures like pinch to zoom or rotate, it can ignore all non-primary pointer
+events. @ref PointerEventSource::Mouse events are always marked as primary,
+for touch input the first pressed finger is marked as primary and all following
+pressed fingers are non-primary. Note that there can be up to one primary
+pointer for each pointer event source. For example, a finger and a mouse press
+may both be marked as primary. On the other hand, in a multi-touch scenario, if
+the first (and thus primary) finger is lifted, no other finger becomes primary
+until all others are lifted as well. This is consistent with the logic in
+@ref Sdl2Application and @ref AndroidApplication.
+
+If gesture recognition is desirable, @ref PointerEvent::id() /
+@ref PointerMoveEvent::id() contains a pointer ID that's unique among all
+pointer event sources, which can be used to track movements of secondary,
+tertiary and further touch points. The ID allocation is platform-specific and
+you can't rely on it to be contiguous or in any bounded range --- for example,
+each new touch may generate a new ID that's only used until given finger is
+lifted, and then never again, or the IDs may get heavily reused, being unique
+only for the period given finger is pressed. For @ref PointerEventSource::Mouse
+the ID is a constant, as there's always just a single mouse cursor.
+
+See also @ref platform-windowed-pointer-events for general information about
+handling pointer input in a portable way. There's also a
+@ref Platform::TwoFingerGesture helper for recognition of common two-finger
+gestures for zoom, rotation and pan.
 
 @section Platform-EmscriptenApplication-browser Browser-specific behavior
 
@@ -279,15 +335,49 @@ class EmscriptenApplication {
         class GLConfiguration;
         class ViewportEvent;
         class InputEvent;
+        class PointerEvent;
+        class PointerMoveEvent;
+        class ScrollEvent;
+        #ifdef MAGNUM_BUILD_DEPRECATED
         class MouseEvent;
         class MouseMoveEvent;
         class MouseScrollEvent;
+        #endif
         class KeyEvent;
         class TextInputEvent;
 
+        /* The damn thing cannot handle forward enum declarations */
+        #ifndef DOXYGEN_GENERATING_OUTPUT
+        enum class Modifier: Int;
+        enum class Key: Int;
+        enum class PointerEventSource: UnsignedByte;
+        enum class Pointer: UnsignedByte;
+        #endif
+
+        /**
+         * @brief Set of keyboard modifiers
+         * @m_since_latest
+         *
+         * @see @ref KeyEvent::modifiers(), @ref PointerEvent::modifiers(),
+         *      @ref PointerMoveEvent::modifiers(),
+         *      @ref ScrollEvent::modifiers(),
+         *      @ref platform-windowed-key-events
+         */
+        typedef Containers::EnumSet<Modifier> Modifiers;
+
+        /**
+         * @brief Set of pointer types
+         * @m_since_latest
+         *
+         * @see @ref PointerMoveEvent::pointers(),
+         *      @ref platform-windowed-pointer-events,
+         *      @ref Platform-EmscriptenApplication-touch
+         */
+        typedef Containers::EnumSet<Pointer> Pointers;
+
         #ifdef MAGNUM_TARGET_GL
         /**
-         * @brief Construct with given configuration for WebGL context
+         * @brief Construct with a WebGL context
          * @param arguments         Application arguments
          * @param configuration     Application configuration
          * @param glConfiguration   WebGL context configuration
@@ -305,7 +395,7 @@ class EmscriptenApplication {
         #endif
 
         /**
-         * @brief Construct with given configuration
+         * @brief Construct without explicit GPU context configuration
          *
          * If @ref Configuration::WindowFlag::Contextless is present or Magnum
          * was not built with @ref MAGNUM_TARGET_GL, this creates a window
@@ -318,15 +408,13 @@ class EmscriptenApplication {
          *
          * See also @ref building-features for more information.
          */
+        #ifdef DOXYGEN_GENERATING_OUTPUT
+        explicit EmscriptenApplication(const Arguments& arguments, const Configuration& configuration = Configuration{});
+        #else
+        /* Configuration is only forward-declared at this point */
         explicit EmscriptenApplication(const Arguments& arguments, const Configuration& configuration);
-
-        /**
-         * @brief Construct with default configuration
-         *
-         * Equivalent to calling @ref EmscriptenApplication(const Arguments&, const Configuration&)
-         * with default-constructed @ref Configuration.
-         */
         explicit EmscriptenApplication(const Arguments& arguments);
+        #endif
 
         /**
          * @brief Construct without setting up a canvas
@@ -371,7 +459,7 @@ class EmscriptenApplication {
          * that, however, you need to explicitly @cpp return @ce after calling
          * it, as it can't exit the constructor on its own:
          *
-         * @snippet MagnumPlatform.cpp exit-from-constructor
+         * @snippet Platform.cpp exit-from-constructor
          *
          * When called from the main loop, the application exits cleanly
          * before next main loop iteration is executed.
@@ -559,7 +647,25 @@ class EmscriptenApplication {
         void redraw();
 
     private:
-        /** @copydoc GlfwApplication::viewportEvent(ViewportEvent&) */
+        /**
+         * @brief Viewport event
+         *
+         * Called when window size changes. The default implementation does
+         * nothing. If you want to respond to size changes, you should pass the
+         * new size to @ref GL::DefaultFramebuffer::setViewport() (if using
+         * OpenGL) and possibly elsewhere (to
+         * @ref SceneGraph::Camera::setViewport(), other framebuffers...).
+         *
+         * Note that this function might not get called at all if the window
+         * size doesn't change. You should configure the initial state of your
+         * cameras, framebuffers etc. in application constructor rather than
+         * relying on this function to be called. Size of the window can be
+         * retrieved using @ref windowSize(), size of the backing framebuffer
+         * via @ref framebufferSize() and DPI scaling using @ref dpiScaling().
+         * See @ref Platform-EmscriptenApplication-dpi for detailed info about
+         * these values.
+         * @see @ref platform-windowed-viewport-events
+         */
         virtual void viewportEvent(ViewportEvent& event);
 
         /** @copydoc Sdl2Application::drawEvent() */
@@ -573,10 +679,20 @@ class EmscriptenApplication {
 
         /** @{ @name Keyboard handling */
 
-        /** @copydoc Sdl2Application::keyPressEvent() */
+        /**
+         * @brief Key press event
+         *
+         * Called when a key is pressed. Default implementation does nothing.
+         * @see @ref platform-windowed-key-events
+         */
         virtual void keyPressEvent(KeyEvent& event);
 
-        /** @copydoc Sdl2Application::keyReleaseEvent() */
+        /**
+         * @brief Key release event
+         *
+         * Called when a key is released. Default implementation does nothing.
+         * @see @ref platform-windowed-key-events
+         */
         virtual void keyReleaseEvent(KeyEvent& event);
 
         /* Since 1.8.17, the original short-hand group closing doesn't work
@@ -585,7 +701,7 @@ class EmscriptenApplication {
          * @}
          */
 
-        /** @{ @name Mouse handling */
+        /** @{ @name Pointer handling */
 
     public:
         /**
@@ -793,35 +909,128 @@ class EmscriptenApplication {
 
     private:
         /**
-         * @brief Mouse press event
+         * @brief Pointer press event
+         * @m_since_latest
          *
-         * Called when mouse button is pressed. Default implementation does
-         * nothing.
+         * Called when either a mouse or a finger is pressed. Note that if at
+         * least one mouse button is already pressed and another button gets
+         * pressed in addition, @ref pointerMoveEvent() with the new
+         * combination is called, not this function.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, if the pointer
+         * is a mouse, default implementation delegates to
+         * @ref mousePressEvent(). Touch events rely on browser's implicit
+         * translation to compatibility mouse events in this case, which is
+         * otherwise disabled. On builds with deprecated functionality
+         * disabled, default implementation does nothing.
+         * @see @ref platform-windowed-pointer-events,
+         *      @ref Platform-EmscriptenApplication-touch
          */
-        virtual void mousePressEvent(MouseEvent& event);
+        virtual void pointerPressEvent(PointerEvent& event);
 
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse press event
+         * @m_deprecated_since_latest Use @ref pointerPressEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use pointerPressEvent() instead") void mousePressEvent(MouseEvent& event);
+        #endif
+
+        /**
+         * @brief Pointer release event
+         * @m_since_latest
+         *
+         * Called when either a mouse or a finger is released. Note that if
+         * multiple mouse buttons are pressed and one of these is released,
+         * @ref pointerMoveEvent() with the new combination is called, not this
+         * function.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, if the pointer
+         * is a mouse, default implementation delegates to
+         * @ref mouseReleaseEvent(). Touch events rely on browser's implicit
+         * translation to compatibility mouse events in this case, which is
+         * otherwise disabled. On builds with deprecated functionality
+         * disabled, default implementation does nothing.
+         * @see @ref platform-windowed-pointer-events,
+         *      @ref Platform-EmscriptenApplication-touch
+         */
+        virtual void pointerReleaseEvent(PointerEvent& event);
+
+        #ifdef MAGNUM_BUILD_DEPRECATED
         /**
          * @brief Mouse release event
+         * @m_deprecated_since_latest Use @ref pointerReleaseEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
          *
-         * Called when mouse button is released. Default implementation does
-         * nothing.
+         * Default implementation does nothing.
          */
-        virtual void mouseReleaseEvent(MouseEvent& event);
+        virtual CORRADE_DEPRECATED("use pointerReleaseEvent() instead") void mouseReleaseEvent(MouseEvent& event);
+        #endif
 
+        /**
+         * @brief Pointer move event
+         * @m_since_latest
+         *
+         * Called when any of the currently pressed pointers is moved or
+         * changes its properties. Gets called also if the set of pressed mouse
+         * buttons changes.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, if the pointer
+         * is a mouse, default implementation delegates to
+         * @ref mouseMoveEvent(), or if @ref PointerMoveEvent::pointer() is not
+         * @relativeref{Corrade,Containers::NullOpt}, to either
+         * @ref mousePressEvent() or @ref mouseReleaseEvent(). Unlike touch
+         * press and release, touch drag events weren't translated to
+         * compatibility mouse events before, so they're not propagated now
+         * either. On builds with deprecated functionality disabled, default
+         * implementation does nothing.
+         * @see @ref platform-windowed-pointer-events,
+         *      @ref Platform-EmscriptenApplication-touch
+         */
+        virtual void pointerMoveEvent(PointerMoveEvent& event);
+
+        #ifdef MAGNUM_BUILD_DEPRECATED
         /**
          * @brief Mouse move event
+         * @m_deprecated_since_latest Use @ref pointerMoveEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
          *
-         * Called when mouse is moved. Default implementation does nothing.
+         * Default implementation does nothing.
          */
-        virtual void mouseMoveEvent(MouseMoveEvent& event);
+        virtual CORRADE_DEPRECATED("use pointerMoveEvent() instead") void mouseMoveEvent(MouseMoveEvent& event);
+        #endif
 
         /**
-         * @brief Mouse scroll event
+         * @brief Scroll event
+         * @m_since_latest
          *
          * Called when a scrolling device is used (mouse wheel or scrolling
-         * area on a touchpad). Default implementation does nothing.
+         * area on a touchpad).
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mouseScrollEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
+         * nothing.
+         * @see @ref platform-windowed-pointer-events
          */
-        virtual void mouseScrollEvent(MouseScrollEvent& event);
+        virtual void scrollEvent(ScrollEvent& event);
+
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse move event
+         * @m_deprecated_since_latest Use @ref scrollEvent() instead, which
+         *      isn't semantically tied to just a mouse.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use scrollEvent() instead") void mouseScrollEvent(MouseScrollEvent& event);
+        #endif
 
         /* Since 1.8.17, the original short-hand group closing doesn't work
            anymore. FFS. */
@@ -838,7 +1047,8 @@ class EmscriptenApplication {
          * @note Note that in @ref CORRADE_TARGET_EMSCRIPTEN "Emscripten" the
          *      value is emulated and might not reflect external events like
          *      closing on-screen keyboard.
-         * @see @ref startTextInput(), @ref stopTextInput()
+         * @see @ref startTextInput(), @ref stopTextInput(),
+         *      @ref platform-windowed-key-events
          */
         bool isTextInputActive() const;
 
@@ -847,7 +1057,7 @@ class EmscriptenApplication {
          *
          * Starts text input that will go to @ref textInputEvent().
          * @see @ref stopTextInput(), @ref isTextInputActive(),
-         *      @ref setTextInputRect()
+         *      @ref setTextInputRect(), @ref platform-windowed-key-events
          */
         void startTextInput();
 
@@ -856,7 +1066,7 @@ class EmscriptenApplication {
          *
          * Stops text input that went to @ref textInputEvent().
          * @see @ref startTextInput(), @ref isTextInputActive(),
-         *      @ref textInputEvent()
+         *      @ref textInputEvent(), @ref platform-windowed-key-events
          */
         void stopTextInput();
 
@@ -865,8 +1075,9 @@ class EmscriptenApplication {
          *
          * The @p rect defines an area where the text is being displayed, for
          * example to hint the system where to place on-screen keyboard.
-         * @note Currently not implemented, included only for compatibility with
-         * other Application implementations.
+         * @note Currently not implemented, included only for compatibility
+         *      with other Application implementations.
+         * @see @ref platform-windowed-key-events
          */
         void setTextInputRect(const Range2Di& rect);
 
@@ -875,7 +1086,7 @@ class EmscriptenApplication {
          * @brief Text input event
          *
          * Called when text input is active and the text is being input.
-         * @see @ref isTextInputActive()
+         * @see @ref isTextInputActive(), @ref platform-windowed-key-events
          */
         virtual void textInputEvent(TextInputEvent& event);
 
@@ -886,6 +1097,13 @@ class EmscriptenApplication {
          */
 
     private:
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /* Calls the base pointer*Event() in order to delegate to deprecated
+           mouse events */
+        template<class> friend class BasicScreenedApplication;
+        template<class, bool> friend struct Implementation::ApplicationScrollEventMixin;
+        #endif
+
         enum class Flag: UnsignedByte;
         typedef Containers::EnumSet<Flag> Flags;
         CORRADE_ENUMSET_FRIEND_OPERATORS(Flags)
@@ -897,8 +1115,24 @@ class EmscriptenApplication {
         void setupCallbacks(bool resizable);
         void setupAnimationFrame(bool ForceAnimationFrame);
 
-        Vector2i _lastKnownCanvasSize, _previousMouseMovePosition{-1};
+        Vector2i _lastKnownCanvasSize;
+        Vector2 _previousMouseMovePosition{Constants::nan()};
         Vector2 _lastKnownDevicePixelRatio;
+
+        #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+        /* We have no way to query previous touch positions, so we have to
+           maintain them like this. The id is ~Int{} if given slot is unused,
+           32 is what EmscriptenTouchEvent uses for the touch list. */
+        struct {
+            Int id = ~Int{};
+            Vector2 position;
+        } _previousTouches[32];
+        Int _primaryFingerId = ~Int{};
+        /* Timestamp of the last touch event, to detect and ignore
+           compatibility mouse events. There's no better way either, see the
+           source for details. */
+        Double _lastTouchEventTimestamp = Constantsd::nan();
+        #endif
 
         Flags _flags;
         Cursor _cursor = Cursor::Arrow;
@@ -921,6 +1155,324 @@ class EmscriptenApplication {
         /* Animation frame callback */
         int (*_callback)(void*);
 };
+
+/**
+@brief Keyboard modifier
+@m_since_latest
+
+@see @ref Modifiers, @ref KeyEvent::modifiers(),
+    @ref PointerEvent::modifiers(), @ref PointerMoveEvent::modifiers(),
+    @ref ScrollEvent::modifiers(), @ref platform-windowed-key-events
+*/
+enum class EmscriptenApplication::Modifier: Int {
+    /**
+     * Shift
+     *
+     * @see @ref KeyEvent::Key::LeftShift, @ref KeyEvent::Key::RightShift
+     */
+    Shift = 1 << 0,
+
+    /**
+     * Ctrl
+     *
+     * @see @ref KeyEvent::Key::LeftCtrl, @ref KeyEvent::Key::RightCtrl
+     */
+    Ctrl = 1 << 1,
+
+    /**
+     * Alt
+     *
+     * @see @ref KeyEvent::Key::LeftAlt, @ref KeyEvent::Key::RightAlt
+     */
+    Alt = 1 << 2,
+
+    /**
+     * Super key (Windows/⌘)
+     *
+     * @see @ref KeyEvent::Key::LeftSuper, @ref KeyEvent::Key::RightSuper
+     */
+    Super = 1 << 3
+};
+
+CORRADE_ENUMSET_OPERATORS(EmscriptenApplication::Modifiers)
+
+/**
+@brief Key
+@m_since_latest
+
+@see @ref KeyEvent::key(), @ref platform-windowed-key-events
+*/
+enum class EmscriptenApplication::Key: Int {
+    Unknown,         /**< Unknown key */
+
+    /**
+     * Left Shift
+     *
+     * @see @ref InputEvent::Modifier::Shift
+     */
+    LeftShift,
+
+    /**
+     * Right Shift
+     *
+     * @see @ref InputEvent::Modifier::Shift
+     */
+    RightShift,
+
+    /**
+     * Left Ctrl
+     *
+     * @see @ref InputEvent::Modifier::Ctrl
+     */
+    LeftCtrl,
+
+    /**
+     * Right Ctrl
+     *
+     * @see @ref InputEvent::Modifier::Ctrl
+     */
+    RightCtrl,
+
+    /**
+     * Left Alt
+     *
+     * @see @ref InputEvent::Modifier::Alt
+     */
+    LeftAlt,
+
+    /**
+     * Right Alt
+     *
+     * @see @ref InputEvent::Modifier::Alt
+     */
+    RightAlt,
+
+    /**
+     * Left Super key (Windows/⌘)
+     *
+     * @see @ref InputEvent::Modifier::Super
+     */
+    LeftSuper,
+
+    /**
+     * Right Super key (Windows/⌘)
+     *
+     * @see @ref InputEvent::Modifier::Super
+     */
+    RightSuper,
+
+    /* no equivalent for Sdl2Application's AltGr */
+
+    Enter,              /**< Enter */
+    Esc,                /**< Escape */
+
+    Up,                 /**< Up arrow */
+    Down,               /**< Down arrow */
+    Left,               /**< Left arrow */
+    Right,              /**< Right arrow */
+    Home,               /**< Home */
+    End,                /**< End */
+    PageUp,             /**< Page up */
+    PageDown,           /**< Page down */
+    Backspace,          /**< Backspace */
+    Insert,             /**< Insert */
+    Delete,             /**< Delete */
+
+    F1,                 /**< F1 */
+    F2,                 /**< F2 */
+    F3,                 /**< F3 */
+    F4,                 /**< F4 */
+    F5,                 /**< F5 */
+    F6,                 /**< F6 */
+    F7,                 /**< F7 */
+    F8,                 /**< F8 */
+    F9,                 /**< F9 */
+    F10,                /**< F10 */
+    F11,                /**< F11 */
+    F12,                /**< F12 */
+
+    Zero = '0',         /**< Zero */
+    One,                /**< One */
+    Two,                /**< Two */
+    Three,              /**< Three */
+    Four,               /**< Four */
+    Five,               /**< Five */
+    Six,                /**< Six */
+    Seven,              /**< Seven */
+    Eight,              /**< Eight */
+    Nine,               /**< Nine */
+
+    A = 'a',            /**< Letter A */
+    B,                  /**< Letter B */
+    C,                  /**< Letter C */
+    D,                  /**< Letter D */
+    E,                  /**< Letter E */
+    F,                  /**< Letter F */
+    G,                  /**< Letter G */
+    H,                  /**< Letter H */
+    I,                  /**< Letter I */
+    J,                  /**< Letter J */
+    K,                  /**< Letter K */
+    L,                  /**< Letter L */
+    M,                  /**< Letter M */
+    N,                  /**< Letter N */
+    O,                  /**< Letter O */
+    P,                  /**< Letter P */
+    Q,                  /**< Letter Q */
+    R,                  /**< Letter R */
+    S,                  /**< Letter S */
+    T,                  /**< Letter T */
+    U,                  /**< Letter U */
+    V,                  /**< Letter V */
+    W,                  /**< Letter W */
+    X,                  /**< Letter X */
+    Y,                  /**< Letter Y */
+    Z,                  /**< Letter Z */
+
+    Space,              /**< Space */
+    Tab,                /**< Tab */
+    Quote,              /**< Quote (<tt>'</tt>) */
+    Comma,              /**< Comma */
+    Period,             /**< Period */
+    Minus,              /**< Minus */
+
+    /**
+     * Plus. On the US keyboard layout this may only be representable as
+     * @m_class{m-label m-warning} **Shift** @m_class{m-label m-default} <b>=</b>.
+     */
+    Plus,
+
+    Slash,              /**< Slash */
+
+    /**
+     * Percent. On the US keyboard layout this may only be representable as
+     * @m_class{m-label m-warning} **Shift** @m_class{m-label m-default} **5**.
+     */
+    Percent,
+
+    /**
+     * Semicolon (`;`)
+     * @m_since{2020,06}
+     */
+    Semicolon,
+
+    Equal,              /**< Equal */
+    LeftBracket,        /**< Left bracket (`[`) */
+    RightBracket,       /**< Right bracket (`]`) */
+    Backslash,          /**< Backslash (`\`) */
+    Backquote,          /**< Backquote (<tt>`</tt>) */
+
+    /* no equivalent for GlfwApplication's World1 / World2 */
+    /** @todo there's IntlBackslash for World1, implement once there's
+        consensus about naming */
+
+    CapsLock,           /**< Caps lock */
+    ScrollLock,         /**< Scroll lock */
+    NumLock,            /**< Num lock */
+    PrintScreen,        /**< Print screen */
+    Pause,              /**< Pause */
+    Menu,               /**< Menu */
+
+    NumZero,            /**< Numpad zero */
+    NumOne,             /**< Numpad one */
+    NumTwo,             /**< Numpad two */
+    NumThree,           /**< Numpad three */
+    NumFour,            /**< Numpad four */
+    NumFive,            /**< Numpad five */
+    NumSix,             /**< Numpad six */
+    NumSeven,           /**< Numpad seven */
+    NumEight,           /**< Numpad eight */
+    NumNine,            /**< Numpad nine */
+    NumDecimal,         /**< Numpad decimal */
+    NumDivide,          /**< Numpad divide */
+    NumMultiply,        /**< Numpad multiply */
+    NumSubtract,        /**< Numpad subtract */
+    NumAdd,             /**< Numpad add */
+    NumEnter,           /**< Numpad enter */
+    NumEqual            /**< Numpad equal */
+};
+
+/**
+@brief Pointer event source
+@m_since_latest
+
+@see @ref PointerEvent::source(), @ref PointerMoveEvent::source(),
+    @ref platform-windowed-pointer-events,
+    @ref Platform-EmscriptenApplication-touch
+*/
+enum class EmscriptenApplication::PointerEventSource: UnsignedByte {
+    /**
+     * The event is coming from a mouse
+     * @see @ref Pointer::MouseLeft, @ref Pointer::MouseMiddle,
+     *      @ref Pointer::MouseRight, @ref Pointer::MouseButton4,
+     *      @ref Pointer::MouseButton5
+     */
+    Mouse,
+
+    #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027 || defined(DOXYGEN_GENERATING_OUTPUT)
+    /**
+     * The event is coming from a touch contact
+     * @note Available since Emscripten 2.0.27.
+     * @see @ref Pointer::Finger
+     */
+    Touch
+    #endif
+};
+
+/**
+@brief Pointer type
+@m_since_latest
+
+@see @ref Pointers, @ref PointerEvent::pointer(),
+    @ref PointerMoveEvent::pointer(), @ref PointerMoveEvent::pointers(),
+    @ref platform-windowed-pointer-events,
+    @ref Platform-EmscriptenApplication-touch
+*/
+enum class EmscriptenApplication::Pointer: UnsignedByte {
+    /**
+     * Left mouse button
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseLeft = 1 << 0,
+
+    /**
+     * Middle mouse button
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseMiddle = 1 << 1,
+
+    /**
+     * Right mouse button
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseRight = 1 << 2,
+
+    /**
+     * Fourth mouse button, such as wheel left
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseButton4 = 1 << 3,
+
+    /**
+     * Fourth mouse button, such as wheel right
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseButton5 = 1 << 4,
+
+    #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027 || defined(DOXYGEN_GENERATING_OUTPUT)
+    /**
+     * Finger
+     * @note Available since Emscripten 2.0.27.
+     * @see @ref PointerEventSource::Touch
+     */
+    Finger = 1 << 5,
+    #endif
+
+    /** @todo pen support, once there's any progress in
+        https://github.com/emscripten-core/emscripten/issues/7278 */
+};
+
+CORRADE_ENUMSET_OPERATORS(EmscriptenApplication::Pointers)
 
 #ifdef MAGNUM_TARGET_GL
 /**
@@ -1200,11 +1752,13 @@ class EmscriptenApplication::Configuration {
         enum class WindowFlag: UnsignedShort {
             /**
              * Do not create any GPU context. Use together with
-             * @ref EmscriptenApplication(const Arguments&),
              * @ref EmscriptenApplication(const Arguments&, const Configuration&),
              * @ref create(const Configuration&) or
              * @ref tryCreate(const Configuration&) to prevent implicit
-             * creation of an WebGL context.
+             * creation of an WebGL context. Can't be used with
+             * @ref EmscriptenApplication(const Arguments&, const Configuration&, const GLConfiguration&),
+             * @ref create(const Configuration&, const GLConfiguration&) or
+             * @ref tryCreate(const Configuration&, const GLConfiguration&).
              */
             Contextless = 1 << 0,
 
@@ -1343,7 +1897,7 @@ CORRADE_ENUMSET_OPERATORS(EmscriptenApplication::Configuration::WindowFlags)
 /**
 @brief Viewport event
 
-@see @ref viewportEvent()
+@see @ref viewportEvent(), @ref platform-windowed-viewport-events
 */
 class EmscriptenApplication::ViewportEvent {
     public:
@@ -1449,54 +2003,27 @@ class EmscriptenApplication::ViewportEvent {
 /**
 @brief Base for input events
 
-@see @ref KeyEvent, @ref MouseEvent, @ref MouseMoveEvent, @ref keyPressEvent(),
-    @ref mousePressEvent(), @ref mouseReleaseEvent(), @ref mouseMoveEvent()
+@see @ref KeyEvent, @ref PointerEvent, @ref PointerMoveEvent, @ref ScrollEvent,
+    @ref keyPressEvent(), @ref keyReleaseEvent(), @ref pointerPressEvent(),
+    @ref pointerReleaseEvent(), @ref pointerMoveEvent(), @ref scrollEvent()
 */
 class EmscriptenApplication::InputEvent {
     public:
+        #ifdef MAGNUM_BUILD_DEPRECATED
         /**
-         * @brief Modifier
-         *
-         * @see @ref Modifiers, @ref KeyEvent::modifiers(),
-         *      @ref MouseEvent::modifiers()
+         * @brief @copybrief EmscriptenApplication::Modifier
+         * @m_deprecated_since_latest Use @ref EmscriptenApplication::Modifier
+         *      instead.
          */
-        enum class Modifier: Int {
-            /**
-             * Shift
-             *
-             * @see @ref KeyEvent::Key::LeftShift, @ref KeyEvent::Key::RightShift
-             */
-            Shift = 1 << 0,
-
-            /**
-             * Ctrl
-             *
-             * @see @ref KeyEvent::Key::LeftCtrl, @ref KeyEvent::Key::RightCtrl
-             */
-            Ctrl = 1 << 1,
-
-            /**
-             * Alt
-             *
-             * @see @ref KeyEvent::Key::LeftAlt, @ref KeyEvent::Key::RightAlt
-             */
-            Alt = 1 << 2,
-
-            /**
-             * Super key (Windows/⌘)
-             *
-             * @see @ref KeyEvent::Key::LeftSuper, @ref KeyEvent::Key::RightSuper
-             */
-            Super = 1 << 3
-        };
+        typedef CORRADE_DEPRECATED("use EmscriptenApplication::Modifier instead") EmscriptenApplication::Modifier Modifier;
 
         /**
-         * @brief Set of modifiers
-         *
-         * @see @ref KeyEvent::modifiers(), @ref MouseEvent::modifiers(),
-         *      @ref MouseMoveEvent::modifiers()
+         * @brief @copybrief EmscriptenApplication::Modifiers
+         * @m_deprecated_since_latest Use @ref EmscriptenApplication::Modifiers
+         *      instead.
          */
-        typedef Containers::EnumSet<Modifier> Modifiers;
+        typedef CORRADE_DEPRECATED("use EmscriptenApplication::Modifiers instead") EmscriptenApplication::Modifiers Modifiers;
+        #endif
 
         /** @brief Copying is not allowed */
         InputEvent(const InputEvent&) = delete;
@@ -1531,14 +2058,130 @@ class EmscriptenApplication::InputEvent {
         bool _accepted;
 };
 
-CORRADE_ENUMSET_OPERATORS(EmscriptenApplication::InputEvent::Modifiers)
+/**
+@brief Pointer event
+@m_since_latest
 
+@see @ref PointerMoveEvent, @ref ScrollEvent, @ref pointerPressEvent(),
+    @ref pointerReleaseEvent(), @ref platform-windowed-pointer-events,
+    @ref Platform-EmscriptenApplication-touch
+*/
+class EmscriptenApplication::PointerEvent: public InputEvent {
+    public:
+        /** @brief Copying is not allowed */
+        PointerEvent(const PointerEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerEvent(PointerEvent&&) = delete;
+
+        /** @brief Copying is not allowed */
+        PointerEvent& operator=(const PointerEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerEvent& operator=(PointerEvent&&) = delete;
+
+        /** @brief Pointer event source */
+        PointerEventSource source() const { return _source; }
+
+        /**
+         * @brief Pointer type that was pressed or released
+         *
+         * The browser is free to report any extra mouse buttons in addition to
+         * the ones listed in @ref Pointer. In that case a zero value is
+         * returned and you can get the actual button index through
+         * @ref event().
+         */
+        Pointer pointer() const { return _pointer; }
+
+        /**
+         * @brief Whether the pointer is primary
+         *
+         * Useful to distinguish among multiple pointers in a multi-touch
+         * scenario. See @ref Platform-EmscriptenApplication-touch for more
+         * information.
+         */
+        bool isPrimary() const { return _primary; }
+
+        /**
+         * @brief Pointer ID
+         *
+         * Useful to distinguish among multiple pointers in a multi-touch
+         * scenario. See @ref Platform-EmscriptenApplication-touch for more
+         * information.
+         */
+        /* Long is for consistency with Sdl2Application, Emscripten uses just
+           an Int */
+        Long id() const { return _id; }
+
+        /**
+         * @brief Position
+         *
+         * The position is always reported in whole pixels.
+         */
+        Vector2 position() const { return _position; }
+
+        /** @brief Keyboard modifiers */
+        EmscriptenApplication::Modifiers modifiers() const { return _modifiers; }
+
+        /**
+         * @brief Underlying Emscripten event
+         *
+         * The @p T can only be `EmscriptenMouseEvent` for
+         * @ref PointerEventSource::Mouse and `EmscriptenTouchEvent` for
+         * @ref PointerEventSource::Touch. Note that in case of a multi-touch
+         * event, all emitted events point to the same `EmscriptenTouchEvent`
+         * instance. The concrete `EmscriptenTouchPoint` corresponding to given
+         * event is the one that has the @cpp touches[i].identifier @ce
+         * matching @ref id().
+         */
+        template<class T> const T& event() const;
+
+    private:
+        friend EmscriptenApplication;
+
+        explicit PointerEvent(const EmscriptenMouseEvent& event, Pointer pointer, EmscriptenApplication::Modifiers modifiers, const Vector2& position): _event{&event}, _source{PointerEventSource::Mouse}, _primary{true}, _pointer{pointer}, _modifiers{modifiers}, _id{~Int{}}, _position{position} {}
+        #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+        explicit PointerEvent(const EmscriptenTouchEvent& event, bool primary, Int id, EmscriptenApplication::Modifiers modifiers, const Vector2& position): _event{&event}, _source{PointerEventSource::Touch}, _primary{primary}, _pointer{Pointer::Finger}, _modifiers{modifiers}, _id{id}, _position{position} {}
+        #endif
+
+        const void* _event;
+        const PointerEventSource _source;
+        const bool _primary;
+        const Pointer _pointer;
+        const EmscriptenApplication::Modifiers _modifiers;
+        const Int _id;
+        const Vector2 _position;
+};
+
+#ifndef DOXYGEN_GENERATING_OUTPUT
+template<> inline const EmscriptenMouseEvent& EmscriptenApplication::PointerEvent::event<EmscriptenMouseEvent>() const {
+    CORRADE_ASSERT(_source == PointerEventSource::Mouse,
+        "Platform::EmscriptenApplication::PointerEvent::event(): not a mouse event",
+        *static_cast<const EmscriptenMouseEvent*>(_event));
+    return *static_cast<const EmscriptenMouseEvent*>(_event);
+}
+
+#if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+template<> inline const EmscriptenTouchEvent& EmscriptenApplication::PointerEvent::event<EmscriptenTouchEvent>() const {
+    CORRADE_ASSERT(_source == PointerEventSource::Touch,
+        "Platform::EmscriptenApplication::PointerEvent::event(): not a touch event",
+        *static_cast<const EmscriptenTouchEvent*>(_event));
+    return *static_cast<const EmscriptenTouchEvent*>(_event);
+}
+#endif
+#endif
+
+#ifdef MAGNUM_BUILD_DEPRECATED
 /**
 @brief Mouse event
+@m_deprecated_since_latest Use @ref PointerEvent, @ref pointerPressEvent() and
+    @ref pointerReleaseEvent() instead, which is a better abstraction for
+    covering both mouse and touch / pen input.
 
-@see @ref MouseMoveEvent, @ref mousePressEvent(), @ref mouseReleaseEvent()
+@see @ref MouseMoveEvent, @ref MouseScrollEvent, @ref mousePressEvent(),
+    @ref mouseReleaseEvent()
 */
-class EmscriptenApplication::MouseEvent: public EmscriptenApplication::InputEvent {
+class CORRADE_DEPRECATED("use PointerEvent, pointerPressEvent() and pointerReleaseEvent() instead") EmscriptenApplication::MouseEvent: public InputEvent {
     public:
         /**
          * @brief Mouse button
@@ -1546,9 +2189,10 @@ class EmscriptenApplication::MouseEvent: public EmscriptenApplication::InputEven
          * @see @ref button()
          */
         enum class Button: std::int32_t {
-            Left,       /**< Left mouse button */
-            Middle,     /**< Middle mouse button */
-            Right       /**< Right mouse button */
+            /* https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button */
+            Left = 0,       /**< Left mouse button */
+            Middle = 1,     /**< Middle mouse button */
+            Right = 2       /**< Right mouse button */
         };
 
         /** @brief Button */
@@ -1557,7 +2201,7 @@ class EmscriptenApplication::MouseEvent: public EmscriptenApplication::InputEven
         /** @brief Position */
         Vector2i position() const;
 
-        /** @brief Modifiers */
+        /** @brief Keyboard modifiers */
         Modifiers modifiers() const;
 
         /** @brief Underlying Emscripten event */
@@ -1570,13 +2214,161 @@ class EmscriptenApplication::MouseEvent: public EmscriptenApplication::InputEven
 
         const EmscriptenMouseEvent& _event;
 };
+#endif
 
 /**
-@brief Mouse move event
+@brief Pointer move event
+@m_since_latest
 
-@see @ref MouseEvent, @ref mouseMoveEvent()
+@see @ref PointerEvent, @ref ScrollEvent, @ref pointerMoveEvent(),
+    @ref platform-windowed-pointer-events,
+    @ref Platform-EmscriptenApplication-touch
 */
-class EmscriptenApplication::MouseMoveEvent: public EmscriptenApplication::InputEvent {
+class EmscriptenApplication::PointerMoveEvent: public InputEvent {
+    public:
+        /** @brief Copying is not allowed */
+        PointerMoveEvent(const PointerMoveEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerMoveEvent(PointerMoveEvent&&) = delete;
+
+        /** @brief Copying is not allowed */
+        PointerMoveEvent& operator=(const PointerMoveEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerMoveEvent& operator=(PointerMoveEvent&&) = delete;
+
+        /**
+         * @brief Pointer event source
+         *
+         * Can be used to distinguish which source the event is coming from in
+         * case it's a movement with both @ref pointer() and @ref pointers()
+         * being empty.
+         */
+        PointerEventSource source() const { return _source; }
+
+        /**
+         * @brief Pointer type that was added or removed from the set of pressed pointers
+         *
+         * Use @ref pointers() to query the set of pointers pressed in this
+         * event. This field is is non-empty only in case a mouse button was
+         * pressed in addition to an already pressed button, or if one mouse
+         * button from multiple pressed buttons was released. If non-empty and
+         * @ref pointers() don't contain given @ref Pointer value, the button
+         * was released, if they contain given value, the button was pressed.
+         * @see @ref source()
+         */
+        Containers::Optional<Pointer> pointer() const { return _pointer; }
+
+        /**
+         * @brief Pointer types pressed in this event
+         *
+         * Returns an empty set if no pointers are pressed, which happens for
+         * example when a mouse is just moved around.
+         * @see @ref pointer()
+         */
+        Pointers pointers() const { return _pointers; }
+
+        /**
+         * @brief Whether the pointer is primary
+         *
+         * Useful to distinguish among multiple pointers in a multi-touch
+         * scenario. See @ref Platform-EmscriptenApplication-touch for more
+         * information.
+         */
+        bool isPrimary() const { return _primary; }
+
+        /**
+         * @brief Pointer ID
+         *
+         * Useful to distinguish among multiple pointers in a multi-touch
+         * scenario. See @ref Platform-EmscriptenApplication-touch for more
+         * information.
+         */
+        /* Long is for consistency with Sdl2Application, Emscripten uses just
+           an Int */
+        Long id() const { return _id; }
+
+        /**
+         * @brief Position
+         *
+         * The position is always reported in whole pixels.
+         */
+        Vector2 position() const { return _position; }
+
+        /**
+         * @brief Position relative to the previous touch event
+         *
+         * The position is always reported in whole pixels. Unlike
+         * @ref Sdl2Application, HTML APIs don't provide relative position
+         * directly, so this is calculated explicitly as a delta from previous
+         * move event position.
+         */
+        Vector2 relativePosition() const { return _relativePosition; }
+
+        /** @brief Keyboard modifiers */
+        EmscriptenApplication::Modifiers modifiers() const { return _modifiers; }
+
+        /**
+         * @brief Underlying Emscripten event
+         *
+         * The @p T can only be `EmscriptenMouseEvent` for
+         * @ref PointerEventSource::Mouse and `EmscriptenTouchEvent` for
+         * @ref PointerEventSource::Touch. Note that in case of a multi-touch
+         * event, all emitted events point to the same `EmscriptenTouchEvent`
+         * instance. The concrete `EmscriptenTouchPoint` corresponding to given
+         * event is the one that has the @cpp touches[i].identifier @ce
+         * matching @ref id().
+         */
+        template<class T> const T& event() const;
+
+    private:
+        friend EmscriptenApplication;
+
+        explicit PointerMoveEvent(const EmscriptenMouseEvent& event, Containers::Optional<Pointer> pointer, Pointers pointers, EmscriptenApplication::Modifiers modifiers, const Vector2& position, const Vector2& relativePosition): _event{&event}, _source{PointerEventSource::Mouse}, _primary{true}, _pointer{pointer}, _pointers{pointers}, _modifiers{modifiers}, _id{~Int{}}, _position{position}, _relativePosition{relativePosition} {}
+        #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+        explicit PointerMoveEvent(const EmscriptenTouchEvent& event, bool primary, Int id, EmscriptenApplication::Modifiers modifiers, const Vector2& position, const Vector2& relativePosition): _event{&event}, _source{PointerEventSource::Touch}, _primary{primary}, _pointer{}, _pointers{Pointer::Finger}, _modifiers{modifiers}, _id{id}, _position{position}, _relativePosition{relativePosition} {}
+        #endif
+
+        const void* _event;
+        const PointerEventSource _source;
+        const bool _primary;
+        const Containers::Optional<Pointer> _pointer;
+        const Pointers _pointers;
+        const EmscriptenApplication::Modifiers _modifiers;
+        const Int _id;
+        const Vector2 _position;
+        const Vector2 _relativePosition;
+};
+
+#ifndef DOXYGEN_GENERATING_OUTPUT
+template<> inline const EmscriptenMouseEvent& EmscriptenApplication::PointerMoveEvent::event<EmscriptenMouseEvent>() const {
+    CORRADE_ASSERT(_source == PointerEventSource::Mouse,
+        "Platform::EmscriptenApplication::PointerEvent::event(): not a mouse event",
+        *static_cast<const EmscriptenMouseEvent*>(_event));
+    return *static_cast<const EmscriptenMouseEvent*>(_event);
+}
+
+#if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+template<> inline const EmscriptenTouchEvent& EmscriptenApplication::PointerMoveEvent::event<EmscriptenTouchEvent>() const {
+    CORRADE_ASSERT(_source == PointerEventSource::Touch,
+        "Platform::EmscriptenApplication::PointerEvent::event(): not a touch event",
+        *static_cast<const EmscriptenTouchEvent*>(_event));
+    return *static_cast<const EmscriptenTouchEvent*>(_event);
+}
+#endif
+#endif
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+/**
+@brief Mouse move event
+@m_deprecated_since_latest Use @ref PointerMoveEvent and
+    @ref pointerMoveEvent() instead, which is a better abstraction for covering
+    both mouse and touch / pen input.
+
+@see @ref MouseEvent, @ref MouseScrollEvent, @ref mouseMoveEvent()
+*/
+class CORRADE_DEPRECATED("use PointerMoveEvent and pointerMoveEvent() instead") EmscriptenApplication::MouseMoveEvent: public InputEvent {
     public:
         /**
          * @brief Mouse button
@@ -1584,14 +2376,13 @@ class EmscriptenApplication::MouseMoveEvent: public EmscriptenApplication::Input
          * @see @ref buttons()
          */
         enum class Button: Int {
-            /** Left mouse button */
-            Left = 1 << 0,
+            /* https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/buttons,
+               note that Middle and Right has order swapped compared to
+               button / MouseEvent::Button, for some unexplainable reason */
 
-            /** Middle mouse button */
-            Middle = 1 << 1,
-
-            /** Right mouse button */
-            Right = 1 << 2
+            Left = 1 << 0,      /** Left mouse button */
+            Middle = 1 << 2,    /** Middle mouse button */
+            Right = 1 << 1      /** Right mouse button */
         };
 
         /**
@@ -1617,8 +2408,8 @@ class EmscriptenApplication::MouseMoveEvent: public EmscriptenApplication::Input
         /** @brief Mouse buttons */
         Buttons buttons() const;
 
-        /** @brief Modifiers */
-        Modifiers modifiers() const;
+        /** @brief Keyboard modifiers */
+        EmscriptenApplication::Modifiers modifiers() const;
 
         /** @brief Underlying Emscripten event */
         const EmscriptenMouseEvent& event() const { return _event; }
@@ -1632,14 +2423,53 @@ class EmscriptenApplication::MouseMoveEvent: public EmscriptenApplication::Input
         const Vector2i _relativePosition;
 };
 
+CORRADE_IGNORE_DEPRECATED_PUSH
 CORRADE_ENUMSET_OPERATORS(EmscriptenApplication::MouseMoveEvent::Buttons)
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
 
 /**
+@brief Scroll event
+@m_since_latest
+
+@see @ref PointerEvent, @ref PointerMoveEvent, @ref scrollEvent(),
+    @ref platform-windowed-pointer-events
+*/
+class EmscriptenApplication::ScrollEvent: public EmscriptenApplication::InputEvent {
+    public:
+        /** @brief Scroll offset */
+        Vector2 offset() const;
+
+        /**
+         * @brief Position
+         *
+         * The position is always reported in whole pixels.
+         */
+        Vector2 position() const;
+
+        /** @brief Keyboard modifiers */
+        EmscriptenApplication::Modifiers modifiers() const;
+
+        /** @brief Underlying Emscripten event */
+        const EmscriptenWheelEvent& event() const { return _event; }
+
+    private:
+        friend EmscriptenApplication;
+
+        explicit ScrollEvent(const EmscriptenWheelEvent& event): _event(event) {}
+
+        const EmscriptenWheelEvent& _event;
+};
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+/**
 @brief Mouse scroll event
+@m_deprecated_since_latest Use @ref ScrollEvent and @ref scrollEvent() instead,
+    which isn't semantically tied to just a mouse.
 
 @see @ref MouseEvent, @ref MouseMoveEvent, @ref mouseScrollEvent()
 */
-class EmscriptenApplication::MouseScrollEvent: public EmscriptenApplication::InputEvent {
+class CORRADE_DEPRECATED("use ScrollEvent and scrollEvent() instead") EmscriptenApplication::MouseScrollEvent: public InputEvent {
     public:
         /** @brief Scroll offset */
         Vector2 offset() const;
@@ -1647,8 +2477,8 @@ class EmscriptenApplication::MouseScrollEvent: public EmscriptenApplication::Inp
         /** @brief Position */
         Vector2i position() const;
 
-        /** @brief Modifiers */
-        Modifiers modifiers() const;
+        /** @brief Keyboard modifiers */
+        EmscriptenApplication::Modifiers modifiers() const;
 
         /** @brief Underlying Emscripten event */
         const EmscriptenWheelEvent& event() const { return _event; }
@@ -1660,220 +2490,67 @@ class EmscriptenApplication::MouseScrollEvent: public EmscriptenApplication::Inp
 
         const EmscriptenWheelEvent& _event;
 };
+#endif
 
 /**
 @brief Key event
 
-@see @ref keyPressEvent(), @ref keyReleaseEvent()
+@see @ref keyPressEvent(), @ref keyReleaseEvent(),
+    @ref platform-windowed-key-events
 */
 class EmscriptenApplication::KeyEvent: public EmscriptenApplication::InputEvent {
     public:
+        #ifdef MAGNUM_BUILD_DEPRECATED
         /**
-         * @brief Key
-         *
-         * @see @ref key()
+         * @brief @copybrief EmscriptenApplication::Key
+         * @m_deprecated_since_latest Use @ref EmscriptenApplication::Key
+         *      instead.
          */
-        enum class Key: Int {
-            Unknown,         /**< Unknown key */
-
-            /**
-             * Left Shift
-             *
-             * @see @ref InputEvent::Modifier::Shift
-             */
-            LeftShift,
-
-            /**
-             * Right Shift
-             *
-             * @see @ref InputEvent::Modifier::Shift
-             */
-            RightShift,
-
-            /**
-             * Left Ctrl
-             *
-             * @see @ref InputEvent::Modifier::Ctrl
-             */
-            LeftCtrl,
-
-            /**
-             * Right Ctrl
-             *
-             * @see @ref InputEvent::Modifier::Ctrl
-             */
-            RightCtrl,
-
-            /**
-             * Left Alt
-             *
-             * @see @ref InputEvent::Modifier::Alt
-             */
-            LeftAlt,
-
-            /**
-             * Right Alt
-             *
-             * @see @ref InputEvent::Modifier::Alt
-             */
-            RightAlt,
-
-            /**
-             * Left Super key (Windows/⌘)
-             *
-             * @see @ref InputEvent::Modifier::Super
-             */
-            LeftSuper,
-
-            /**
-             * Right Super key (Windows/⌘)
-             *
-             * @see @ref InputEvent::Modifier::Super
-             */
-            RightSuper,
-
-            /* no equivalent for Sdl2Application's AltGr */
-
-            Enter,              /**< Enter */
-            Esc,                /**< Escape */
-
-            Up,                 /**< Up arrow */
-            Down,               /**< Down arrow */
-            Left,               /**< Left arrow */
-            Right,              /**< Right arrow */
-            Home,               /**< Home */
-            End,                /**< End */
-            PageUp,             /**< Page up */
-            PageDown,           /**< Page down */
-            Backspace,          /**< Backspace */
-            Insert,             /**< Insert */
-            Delete,             /**< Delete */
-
-            F1,                 /**< F1 */
-            F2,                 /**< F2 */
-            F3,                 /**< F3 */
-            F4,                 /**< F4 */
-            F5,                 /**< F5 */
-            F6,                 /**< F6 */
-            F7,                 /**< F7 */
-            F8,                 /**< F8 */
-            F9,                 /**< F9 */
-            F10,                /**< F10 */
-            F11,                /**< F11 */
-            F12,                /**< F12 */
-
-            Zero = '0',         /**< Zero */
-            One,                /**< One */
-            Two,                /**< Two */
-            Three,              /**< Three */
-            Four,               /**< Four */
-            Five,               /**< Five */
-            Six,                /**< Six */
-            Seven,              /**< Seven */
-            Eight,              /**< Eight */
-            Nine,               /**< Nine */
-
-            A = 'a',            /**< Letter A */
-            B,                  /**< Letter B */
-            C,                  /**< Letter C */
-            D,                  /**< Letter D */
-            E,                  /**< Letter E */
-            F,                  /**< Letter F */
-            G,                  /**< Letter G */
-            H,                  /**< Letter H */
-            I,                  /**< Letter I */
-            J,                  /**< Letter J */
-            K,                  /**< Letter K */
-            L,                  /**< Letter L */
-            M,                  /**< Letter M */
-            N,                  /**< Letter N */
-            O,                  /**< Letter O */
-            P,                  /**< Letter P */
-            Q,                  /**< Letter Q */
-            R,                  /**< Letter R */
-            S,                  /**< Letter S */
-            T,                  /**< Letter T */
-            U,                  /**< Letter U */
-            V,                  /**< Letter V */
-            W,                  /**< Letter W */
-            X,                  /**< Letter X */
-            Y,                  /**< Letter Y */
-            Z,                  /**< Letter Z */
-
-            Space,              /**< Space */
-            Tab,                /**< Tab */
-            Quote,              /**< Quote (<tt>'</tt>) */
-            Comma,              /**< Comma */
-            Period,             /**< Period */
-            Minus,              /**< Minus */
-            /* Note: This may only be represented as SHIFT + = */
-            Plus,               /**< Plus */
-            Slash,              /**< Slash */
-            /* Note: This may only be represented as SHIFT + 5 */
-            Percent,            /**< Percent */
-
-            /**
-             * Semicolon (`;`)
-             * @m_since{2020,06}
-             */
-            Semicolon,
-
-            Equal,              /**< Equal */
-            LeftBracket,        /**< Left bracket (`[`) */
-            RightBracket,       /**< Right bracket (`]`) */
-            Backslash,          /**< Backslash (`\`) */
-            Backquote,          /**< Backquote (<tt>`</tt>) */
-
-            /* no equivalent for GlfwApplication's World1 / World2 */
-
-            CapsLock,           /**< Caps lock */
-            ScrollLock,         /**< Scroll lock */
-            NumLock,            /**< Num lock */
-            PrintScreen,        /**< Print screen */
-            Pause,              /**< Pause */
-            Menu,               /**< Menu */
-
-            NumZero,            /**< Numpad zero */
-            NumOne,             /**< Numpad one */
-            NumTwo,             /**< Numpad two */
-            NumThree,           /**< Numpad three */
-            NumFour,            /**< Numpad four */
-            NumFive,            /**< Numpad five */
-            NumSix,             /**< Numpad six */
-            NumSeven,           /**< Numpad seven */
-            NumEight,           /**< Numpad eight */
-            NumNine,            /**< Numpad nine */
-            NumDecimal,         /**< Numpad decimal */
-            NumDivide,          /**< Numpad divide */
-            NumMultiply,        /**< Numpad multiply */
-            NumSubtract,        /**< Numpad subtract */
-            NumAdd,             /**< Numpad add */
-            NumEnter,           /**< Numpad enter */
-            NumEqual            /**< Numpad equal */
-        };
+        typedef CORRADE_DEPRECATED("use EmscriptenApplication::Key instead") EmscriptenApplication::Key Key;
+        #endif
 
         /**
          * @brief Key
          *
-         * Note that the key is mapped from @m_class{m-doc-external}
+         * Layout-dependent name of given key. Mapped from @m_class{m-doc-external}
          * [EmscriptenKeyboardEvent::code](https://emscripten.org/docs/api_reference/html5.h.html#c.EmscriptenKeyboardEvent.code)
          * in all cases except A--Z, which are mapped from
          * @m_class{m-doc-external} [EmscriptenkeyboardEvent::key](https://emscripten.org/docs/api_reference/html5.h.html#c.EmscriptenKeyboardEvent.key),
-         * which respects the keyboard layout.
+         * which respects the keyboard layout. Note that, unlike e.g.
+         * @ref Sdl2Application::KeyEvent::scanCode(), there's no numeric
+         * layout-independent identifier of given key, you have to use
+         * @ref scanCodeName() instead.
          */
-        Key key() const;
+        EmscriptenApplication::Key key() const;
 
         /**
          * @brief Key name
          *
-         * The returned view is always
+         * Layout-dependent name of given key. Returns
+         * @m_class{m-doc-external} [EmscriptenkeyboardEvent::key](https://emscripten.org/docs/api_reference/html5.h.html#c.EmscriptenKeyboardEvent.key)
+         * for keys A--Z and @m_class{m-doc-external} [EmscriptenKeyboardEvent::code](https://emscripten.org/docs/api_reference/html5.h.html#c.EmscriptenKeyboardEvent.code)
+         * for other keys, the view is always
          * @relativeref{Corrade,Containers::StringViewFlag::NullTerminated} and
-         * is valid until the event is destroyed.
+         * is valid until the event is destroyed. Use @ref scanCodeName() to
+         * get a platform-specific but layout-independent identifier of given
+         * key.
          */
         Containers::StringView keyName() const;
 
-        /** @brief Modifiers */
-        Modifiers modifiers() const;
+        /**
+         * @brief Scancode name
+         * @m_since_latest
+         *
+         * Platform-specific but layout-independent identifier of given key.
+         * Returns @m_class{m-doc-external} [EmscriptenKeyboardEvent::code](https://emscripten.org/docs/api_reference/html5.h.html#c.EmscriptenKeyboardEvent.code),
+         * the view is always @relativeref{Corrade,Containers::StringViewFlag::NullTerminated}
+         * and is valid until the event is destroyed. Use @ref keyName() to get
+         * a key name in the currently used layout.
+         */
+        Containers::StringView scanCodeName() const;
+
+        /** @brief Keyboard modifiers */
+        EmscriptenApplication::Modifiers modifiers() const;
 
         /** @brief Underlying Emscripten event */
         const EmscriptenKeyboardEvent& event() const { return _event; }
@@ -1889,7 +2566,7 @@ class EmscriptenApplication::KeyEvent: public EmscriptenApplication::InputEvent 
 /**
 @brief Text input event
 
-@see @ref textInputEvent()
+@see @ref textInputEvent(), @ref platform-windowed-key-events
 */
 class EmscriptenApplication::TextInputEvent {
     public:

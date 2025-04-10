@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,12 +24,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/ArrayTuple.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/StringToFile.h>
 #include <Corrade/Utility/Algorithms.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/Math/CubicHermite.h"
@@ -176,9 +175,17 @@ SceneConverterImplementationTest::SceneConverterImplementationTest() {
 
     /* To avoid warnings that printImageConverterInfo() / printImporterInfo()
        is unused. Again, those are tested in ImageConverterImplementationTest
-       already. */
+       already. MSVC says "warning C4551: function call missing argument list"
+       here. No shit, you stupid thing. */
+    #ifdef CORRADE_TARGET_MSVC
+    #pragma warning(push)
+    #pragma warning(disable: 4551)
+    #endif
     static_cast<void>(Trade::Implementation::printImageConverterInfo);
     static_cast<void>(Trade::Implementation::printImporterInfo);
+    #ifdef CORRADE_TARGET_MSVC
+    #pragma warning(pop)
+    #endif
 }
 
 void SceneConverterImplementationTest::converterInfo() {
@@ -198,10 +205,10 @@ void SceneConverterImplementationTest::converterInfo() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     Implementation::printSceneConverterInfo(Debug::Flag::DisableColors, *converter);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Plugin name: AnySceneConverter\n"
         "Features:\n"
         "  ConvertMeshToFile\n"
@@ -222,10 +229,10 @@ void SceneConverterImplementationTest::infoEmpty() {
 
     std::chrono::high_resolution_clock::duration time;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, {}, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE(out.str(), "");
+    CORRADE_COMPARE(out, "");
 }
 
 void SceneConverterImplementationTest::infoScenesObjects() {
@@ -323,10 +330,10 @@ void SceneConverterImplementationTest::infoScenesObjects() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, {}, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join({SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles", data.expected}),
         TestSuite::Compare::StringToFile);
 }
@@ -404,10 +411,10 @@ void SceneConverterImplementationTest::infoAnimations() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, {}, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles/info-animations.txt"),
         TestSuite::Compare::StringToFile);
 }
@@ -477,10 +484,10 @@ void SceneConverterImplementationTest::infoSkins() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, {}, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles/info-skins.txt"),
         TestSuite::Compare::StringToFile);
 }
@@ -533,10 +540,10 @@ void SceneConverterImplementationTest::infoLights() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, false, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles/info-lights.txt"),
         TestSuite::Compare::StringToFile);
 }
@@ -592,10 +599,10 @@ void SceneConverterImplementationTest::infoCameras() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, false, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles/info-cameras.txt"),
         TestSuite::Compare::StringToFile);
 }
@@ -627,8 +634,8 @@ void SceneConverterImplementationTest::infoMaterials() {
                 {"notAColour4", Vector4{0.1f, 0.2f, 0.3f, 0.4f}},
                 {"notAColour3", Vector3{0.2f, 0.3f, 0.4f}},
                 {"data", Containers::ArrayView<const void>{"0123456789abcdef", 17}},
-                {"deadBeef", reinterpret_cast<const void*>(0xdeadbeef)},
-                {"undeadBeef", reinterpret_cast<void*>(0xbeefbeef)},
+                {"deadBeef", reinterpret_cast<const void*>(std::size_t(0xdeadbeef))},
+                {"undeadBeef", reinterpret_cast<void*>(std::size_t(0xbeefbeef))},
             }};
 
             /* Second has layers, custom layers, unnamed layers and a name */
@@ -659,10 +666,10 @@ void SceneConverterImplementationTest::infoMaterials() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, false, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles/info-materials.txt"),
         TestSuite::Compare::StringToFile);
 }
@@ -759,10 +766,10 @@ void SceneConverterImplementationTest::infoMeshes() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, false, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles/info-meshes.txt"),
         TestSuite::Compare::StringToFile);
 }
@@ -841,10 +848,10 @@ void SceneConverterImplementationTest::infoMeshesBounds() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, false, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles/info-meshes-bounds.txt"),
         TestSuite::Compare::StringToFile);
 }
@@ -899,10 +906,10 @@ void SceneConverterImplementationTest::infoTextures() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, false, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles/info-textures.txt"),
         TestSuite::Compare::StringToFile);
 }
@@ -936,10 +943,10 @@ void SceneConverterImplementationTest::infoImages() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, false, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles/info-images.txt"),
         TestSuite::Compare::StringToFile);
 }
@@ -1233,10 +1240,10 @@ void SceneConverterImplementationTest::infoReferenceCount() {
         Debug{} << "======================== visual color verification end =========================";
     }
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, false, _infoArgs, importer, time) == false);
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterImplementationTestFiles/info-references.txt"),
         TestSuite::Compare::StringToFile);
 }
@@ -1321,12 +1328,12 @@ void SceneConverterImplementationTest::infoError() {
 
     std::chrono::high_resolution_clock::duration time;
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     Error redirectError{&out};
     /* It should return a failure */
     CORRADE_VERIFY(Implementation::printInfo(Debug::Flag::DisableColors, {}, _infoArgs, importer, time) == true);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         /* It should not exit after first error... */
         "Scene 0 error!\n"
         "Can't import scene 0\n"

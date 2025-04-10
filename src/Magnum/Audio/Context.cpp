@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2015 Jonathan Hale <squareys@googlemail.com>
     Copyright © 2019 Guillaume Jacquemin <williamjcm@users.noreply.github.com>
 
@@ -84,7 +85,7 @@ Debug& operator<<(Debug& debug, const Context::HrtfStatus value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(ALenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << ALenum(value) << Debug::nospace << ")";
 }
 
 namespace {

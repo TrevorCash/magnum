@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Algorithms.h>
 
 #include "Magnum/Magnum.h"
@@ -120,11 +120,11 @@ void DuplicateTest::duplicateOutOfRange() {
     constexpr UnsignedByte indices[]{1, 1, 0, 4, 2, 2};
     constexpr Int data[]{-7, 35, 12, -18};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     MeshTools::duplicate<UnsignedByte, Int>(indices, data);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "MeshTools::duplicateInto(): index 4 out of range for 4 elements\n");
 }
 
@@ -155,11 +155,11 @@ void DuplicateTest::duplicateIntoWrongSize() {
     constexpr Int data[]{-7, 35, 12, -18};
     Int output[5];
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     MeshTools::duplicateInto<UnsignedByte, Int>(indices, data, output);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "MeshTools::duplicateInto(): index array and output size don't match, expected 6 but got 5\n");
 }
 
@@ -186,14 +186,14 @@ void DuplicateTest::duplicateIntoErasedWrongTypeSize() {
     constexpr Int data[]{-7, 35, 12, -18};
     Short output[6];
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     MeshTools::duplicateInto(
         Containers::stridedArrayView(indices),
         Containers::arrayCast<2, const char>(Containers::stridedArrayView(data)),
         Containers::arrayCast<2, char>(Containers::stridedArrayView(output)));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "MeshTools::duplicateInto(): input and output type size doesn't match, expected 4 but got 2\n");
 }
 
@@ -204,7 +204,7 @@ void DuplicateTest::duplicateIntoErasedNonContiguous() {
     constexpr Int data[]{-7, 35, 12, -18};
     Short output[6];
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     MeshTools::duplicateInto(
@@ -215,7 +215,7 @@ void DuplicateTest::duplicateIntoErasedNonContiguous() {
         Containers::stridedArrayView(indices),
         Containers::arrayCast<2, const char>(Containers::stridedArrayView(data)),
         Containers::arrayCast<2, char>(Containers::stridedArrayView(output)).every({1, 2}));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "MeshTools::duplicateInto(): second data view dimension is not contiguous\n"
         "MeshTools::duplicateInto(): second output view dimension is not contiguous\n");
 }
@@ -243,14 +243,14 @@ void DuplicateTest::duplicateErasedIndicesIntoErasedWrongTypeSize() {
     constexpr Int data[]{-7, 35, 12, -18};
     Short output[6];
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     MeshTools::duplicateInto(
         Containers::StridedArrayView2D<const char>{indices, {6, 3}}.every(2),
         Containers::arrayCast<2, const char>(Containers::stridedArrayView(data)),
         Containers::arrayCast<2, char>(Containers::stridedArrayView(output)));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "MeshTools::duplicateInto(): expected index type size 1, 2 or 4 but got 3\n");
 }
 
@@ -261,14 +261,14 @@ void DuplicateTest::duplicateErasedIndicesIntoErasedNonContiguous() {
     constexpr Int data[]{-7, 35, 12, -18};
     Short output[6];
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     MeshTools::duplicateInto(
         Containers::StridedArrayView2D<const char>{indices, {3, 3}, {6, 2}},
         Containers::arrayCast<2, const char>(Containers::stridedArrayView(data)).every({1, 2}),
         Containers::arrayCast<2, char>(Containers::stridedArrayView(output)));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "MeshTools::duplicateInto(): second index view dimension is not contiguous\n");
 }
 
@@ -317,10 +317,10 @@ template<class T> void DuplicateTest::duplicateMeshData() {
 void DuplicateTest::duplicateMeshDataNotIndexed() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::duplicate(Trade::MeshData{MeshPrimitive::Points, 0});
-    CORRADE_COMPARE(out.str(), "MeshTools::duplicate(): mesh data not indexed\n");
+    CORRADE_COMPARE(out, "MeshTools::duplicate(): mesh data not indexed\n");
 }
 
 void DuplicateTest::duplicateMeshDataImplementationSpecificIndexType() {
@@ -333,10 +333,10 @@ void DuplicateTest::duplicateMeshDataImplementationSpecificIndexType() {
             VertexFormat::Vector3, nullptr},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::duplicate(a);
-    CORRADE_COMPARE(out.str(), "MeshTools::duplicate(): mesh has an implementation-specific index type 0xcaca\n");
+    CORRADE_COMPARE(out, "MeshTools::duplicate(): mesh has an implementation-specific index type 0xcaca\n");
 }
 
 void DuplicateTest::duplicateMeshDataImplementationSpecificVertexFormat() {
@@ -353,10 +353,10 @@ void DuplicateTest::duplicateMeshDataImplementationSpecificVertexFormat() {
             vertexFormatWrap(0xcaca), nullptr}
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::duplicate(a);
-    CORRADE_COMPARE(out.str(), "MeshTools::duplicate(): attribute 2 has an implementation-specific format 0xcaca\n");
+    CORRADE_COMPARE(out, "MeshTools::duplicate(): attribute 2 has an implementation-specific format 0xcaca\n");
 }
 
 void DuplicateTest::duplicateMeshDataExtra() {
@@ -435,13 +435,13 @@ void DuplicateTest::duplicateMeshDataExtraWrongCount() {
         }};
     const Vector3 normals[]{Vector3::xAxis(), Vector3::yAxis()};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::duplicate(data, {
         Trade::MeshAttributeData{10},
         Trade::MeshAttributeData{Trade::MeshAttribute::Normal, Containers::arrayView(normals)}
     });
-    CORRADE_COMPARE(out.str(), "MeshTools::duplicate(): extra attribute 1 expected to have 3 items but got 2\n");
+    CORRADE_COMPARE(out, "MeshTools::duplicate(): extra attribute 1 expected to have 3 items but got 2\n");
 }
 
 void DuplicateTest::duplicateMeshDataExtraOffsetOnly() {
@@ -451,13 +451,13 @@ void DuplicateTest::duplicateMeshDataExtraOffsetOnly() {
     Trade::MeshData data{MeshPrimitive::TriangleFan,
         {}, indices, Trade::MeshIndexData{indices}, 3};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::duplicate(data, {
         Trade::MeshAttributeData{10},
         Trade::MeshAttributeData{Trade::MeshAttribute::Normal, VertexFormat::Vector3, 3, 5, 14}
     });
-    CORRADE_COMPARE(out.str(), "MeshTools::duplicate(): extra attribute 1 is offset-only\n");
+    CORRADE_COMPARE(out, "MeshTools::duplicate(): extra attribute 1 is offset-only\n");
 }
 
 void DuplicateTest::duplicateMeshDataExtraImplementationSpecificVertexFormat() {
@@ -470,7 +470,7 @@ void DuplicateTest::duplicateMeshDataExtraImplementationSpecificVertexFormat() {
             VertexFormat::Vector3, nullptr},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::duplicate(a, {
         Trade::MeshAttributeData{Trade::MeshAttribute::Position,
@@ -478,7 +478,7 @@ void DuplicateTest::duplicateMeshDataExtraImplementationSpecificVertexFormat() {
         Trade::MeshAttributeData{Trade::MeshAttribute::Color,
             vertexFormatWrap(0xcaca), nullptr}
     });
-    CORRADE_COMPARE(out.str(), "MeshTools::duplicate(): extra attribute 1 has an implementation-specific format 0xcaca\n");
+    CORRADE_COMPARE(out, "MeshTools::duplicate(): extra attribute 1 has an implementation-specific format 0xcaca\n");
 }
 
 void DuplicateTest::duplicateMeshDataNoAttributes() {

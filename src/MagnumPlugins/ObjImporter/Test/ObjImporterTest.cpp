@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,13 +24,11 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/Mesh.h"
@@ -228,10 +227,10 @@ void ObjImporterTest::empty() {
     CORRADE_COMPARE(importer->meshName(0), "");
     CORRADE_COMPARE(importer->meshForName(""), -1);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh(0));
-    CORRADE_COMPARE(out.str(), "Trade::ObjImporter::mesh(): incomplete position data\n");
+    CORRADE_COMPARE(out, "Trade::ObjImporter::mesh(): incomplete position data\n");
 }
 
 void ObjImporterTest::meshPrimitivePoints() {
@@ -564,10 +563,10 @@ void ObjImporterTest::invalid() {
 
     CORRADE_COMPARE(importer->meshCount(), 1);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh(0));
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::ObjImporter::mesh(): {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Trade::ObjImporter::mesh(): {}\n", data.message));
 }
 
 void ObjImporterTest::invalidMixedPrimitives() {
@@ -580,10 +579,10 @@ void ObjImporterTest::invalidMixedPrimitives() {
     /* Ensure we didn't forget to test any case */
     CORRADE_COMPARE(importer->meshCount(), Containers::arraySize(InvalidMixedPrimitivesData));
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh(data.name));
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::ObjImporter::mesh(): {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Trade::ObjImporter::mesh(): {}\n", data.message));
 }
 
 void ObjImporterTest::invalidNumbers() {
@@ -596,10 +595,10 @@ void ObjImporterTest::invalidNumbers() {
     /* Ensure we didn't forget to test any case */
     CORRADE_COMPARE(importer->meshCount(), Containers::arraySize(InvalidNumbersData));
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh(data.name));
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::ObjImporter::mesh(): {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Trade::ObjImporter::mesh(): {}\n", data.message));
 }
 
 void ObjImporterTest::invalidNumberCount() {
@@ -612,10 +611,10 @@ void ObjImporterTest::invalidNumberCount() {
     /* Ensure we didn't forget to test any case */
     CORRADE_COMPARE(importer->meshCount(), Containers::arraySize(InvalidNumberCountData));
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh(data.name));
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::ObjImporter::mesh(): {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Trade::ObjImporter::mesh(): {}\n", data.message));
 }
 
 void ObjImporterTest::invalidInconsistentIndexTuple() {
@@ -628,10 +627,10 @@ void ObjImporterTest::invalidInconsistentIndexTuple() {
     /* Ensure we didn't forget to test any case */
     CORRADE_COMPARE(importer->meshCount(), Containers::arraySize(InvalidInconsistentIndexTupleData));
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh(data.name));
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::ObjImporter::mesh(): {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Trade::ObjImporter::mesh(): {}\n", data.message));
 }
 
 void ObjImporterTest::invalidIncompleteData() {
@@ -644,10 +643,10 @@ void ObjImporterTest::invalidIncompleteData() {
     /* Ensure we didn't forget to test any case */
     CORRADE_COMPARE(importer->meshCount(), Containers::arraySize(InvalidIncompleteDataData));
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh(data.name));
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::ObjImporter::mesh(): {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Trade::ObjImporter::mesh(): {}\n", data.message));
 }
 
 void ObjImporterTest::invalidOptionalCoordinate() {
@@ -660,10 +659,10 @@ void ObjImporterTest::invalidOptionalCoordinate() {
     /* Ensure we didn't forget to test any case */
     CORRADE_COMPARE(importer->meshCount(), Containers::arraySize(InvalidOptionalCoordinateData));
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->mesh(data.name));
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::ObjImporter::mesh(): {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Trade::ObjImporter::mesh(): {}\n", data.message));
 }
 
 void ObjImporterTest::openTwice() {

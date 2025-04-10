@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/ArrayView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/DebugTools/CompareMaterial.h"
 #include "Magnum/Math/Color.h"
@@ -208,12 +208,12 @@ const struct {
         "       -  OcclusionTexture @ UnsignedInt: 3\n"},
     {"different attribute types",
         Trade::MaterialData{{}, {
-            {"pointer", reinterpret_cast<void*>(0xdead)},
+            {"pointer", reinterpret_cast<void*>(std::size_t{0xdead})},
             {"integer", 5u},
             {"scale", 0.5f},
         }},
         Trade::MaterialData{{}, {
-            {"pointer", reinterpret_cast<const void*>(0xdead)},
+            {"pointer", reinterpret_cast<const void*>(std::size_t{0xdead})},
             {"integer", 5},
             {"scale", "small"},
         }},
@@ -239,16 +239,16 @@ const struct {
             {Trade::MaterialAttribute::NormalTexture, 5u},
             {Trade::MaterialAttribute::NormalTextureSwizzle, Trade::MaterialTextureSwizzle::RGB},
             {"buffer", Containers::ArrayView<const void>{"\x56\x78\x22"}},
-            {"pointer", reinterpret_cast<const void*>(0xbeef)},
-            {"pointerMutable", reinterpret_cast<void*>(0xdead)},
+            {"pointer", reinterpret_cast<const void*>(std::size_t{0xbeef})},
+            {"pointerMutable", reinterpret_cast<void*>(std::size_t{0xdead})},
         }},
         Trade::MaterialData{{}, {
             {Trade::MaterialAttribute::Metalness, 5.5f},
             {Trade::MaterialAttribute::NormalTexture, 5u},
             {Trade::MaterialAttribute::NormalTextureSwizzle, Trade::MaterialTextureSwizzle::RG},
             {"buffer", Containers::ArrayView<const void>{"\x56\x78\x22"}},
-            {"pointer", reinterpret_cast<const void*>(0xbeef)},
-            {"pointerMutable", reinterpret_cast<void*>(0xdead)},
+            {"pointer", reinterpret_cast<const void*>(std::size_t{0xbeef})},
+            {"pointerMutable", reinterpret_cast<void*>(std::size_t{0xdead})},
         }},
         "Materials a and b have different attribute values. Actual (+) vs expected (-):\n"
         "        Base layer:\n"
@@ -276,13 +276,13 @@ const struct {
             {Trade::MaterialAttribute::NormalTexture, 5u},
             {Trade::MaterialAttribute::NormalTextureScale, 0.5f},
             {Trade::MaterialAttribute::OcclusionTexture, 3u},
-            {"texturePointer", reinterpret_cast<void*>(0xdead)},
+            {"texturePointer", reinterpret_cast<void*>(std::size_t{0xdead})},
         }, {3, 5}},
         Trade::MaterialData{{}, {
             {Trade::MaterialAttribute::DoubleSided, false},
             {Trade::MaterialAttribute::NormalTexture, 5u},
             {Trade::MaterialAttribute::OcclusionTexture, 3u},
-            {"texturePointer", reinterpret_cast<const void*>(0xdead)},
+            {"texturePointer", reinterpret_cast<const void*>(std::size_t{0xdead})},
             {Trade::MaterialAttribute::NormalTextureLayer, 2u},
         }, {2, 4, 5}},
         "Materials a and b have different layers. Actual (+) vs expected (-):\n"
@@ -352,12 +352,12 @@ void CompareMaterialTest::different() {
         compare.printMessage(flags, out, "a", "b");
     }
 
-    std::ostringstream out;
+    Containers::String out;
     {
         Debug dc{&out, Debug::Flag::DisableColors};
         compare.printMessage(flags, dc, "a", "b");
     }
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 
 void CompareMaterialTest::differentReverse() {
@@ -374,12 +374,12 @@ void CompareMaterialTest::differentReverse() {
         compare.printMessage(flags, out, "b", "a");
     }
 
-    std::ostringstream out;
+    Containers::String out;
     {
         Debug dc{&out, Debug::Flag::DisableColors};
         compare.printMessage(flags, dc, "b", "a");
     }
-    CORRADE_COMPARE(out.str(), data.messageReverse);
+    CORRADE_COMPARE(out, data.messageReverse);
 }
 
 }}}}

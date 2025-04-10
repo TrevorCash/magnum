@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -61,7 +62,7 @@ unsigned + signed type, which corresponds to a signed range on Magnum side.
 
 Example usage:
 
-@snippet MagnumVk.cpp Integration
+@snippet Vk.cpp Integration
 
 @see @ref types-thirdparty-integration
 */

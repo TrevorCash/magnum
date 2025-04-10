@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -73,8 +74,9 @@ Containers::ArrayView<const UnsignedInt> spirvFindInstruction(Containers::ArrayV
         }
 
         /* This is the instruction we're looking for, return it and update the
-           view to point after it. */
-        if(instructionOp == op) {
+           view to point after it. SpvOp cast is needed to avoid a MSVC
+           "warning C4389: '==': signed/unsigned mismatch". */
+        if(SpvOp(instructionOp) == op) {
             data = dataIteration.exceptPrefix(instructionSize);
             return dataIteration.prefix(instructionSize);
         }

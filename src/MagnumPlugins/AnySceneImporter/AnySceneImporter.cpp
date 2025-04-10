@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -29,7 +30,6 @@
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/PluginManager/PluginMetadata.h>
 #include <Corrade/Utility/Assert.h>
-#include <Corrade/Utility/DebugStl.h> /* for PluginMetadata::name() */
 #include <Corrade/Utility/Path.h>
 #include <Corrade/Utility/String.h> /* lowercase() */
 
@@ -77,72 +77,108 @@ void AnySceneImporter::doClose() {
 void AnySceneImporter::doOpenFile(const Containers::StringView filename) {
     CORRADE_INTERNAL_ASSERT(manager());
 
-    /* We don't detect any double extensions yet, so we can normalize just the
-       extension. In case we eventually might, it'd have to be split() instead
-       to save at least by normalizing just the filename and not the path. */
-    const Containers::String normalizedExtension = Utility::String::lowercase(Utility::Path::splitExtension(filename).second());
+    /* Can't reliably lowercase just the extension as we detect double
+       extensions as well. But we can lowercase just the filename, at least. */
+    const Containers::String normalized = Utility::String::lowercase(Utility::Path::filename(filename));
+
+    /* Some extensions supported by AssimpImporter are deliberately not
+       recognized due to being overly generic, conflicting, or too obscure. In particular:
+
+        -   `*.mdl`, used by both Quake I and "3D GameStudio (3DGS)"
+        -   `*.md2`, `*.md3`, `*.pk3`, `*.md5*` used by Quake II and III and
+            Doom 3, not recognized because Quake I isn't recognized either
+        -   `*.mesh`, which is OGRE, Meshwork and likely other formats too
+            http://justsolve.archiveteam.org/wiki/Meshwork_model
+            https://file.org/extension/mesh
+        -   `*.nff`, which is both "Neutral File Format" and
+            "Sense8 WorldToolKit"
+        -   `*.off`, which is "Object File Format", likely a variant of the
+            above, feels rather obscure
+        -   `*.ndo`, which is "Izware Nendo", feels rather obscure
+        -   `*.raw`, which can be PovRAY Raw, but also raw image data or just
+            anything. Especially problematic when e.g. magnum-player first
+            tries to open a file as a scene and if that fails, falls back to
+            opening an image.
+        -   `*.xml`, which can be an OGRE XML mesh but also COLLADA. Ogre XML
+            is recognized as `*.mesh.xml` instead.
+        -   `*.ter`, which is Terragen Terrain. I couldn't find any file that
+            would load with Assimp, the only `terrain.ter` I found is an
+            OBJ-like text file for which Assimp complains that "Magic string
+            'TERRAGEN' not found".
+
+       The conflicting extensions are explicitly tested in AnySceneImporterTest
+       to ensure they're not added by accident. */
 
     /* Detect the plugin from extension */
     Containers::StringView plugin;
-    if(normalizedExtension == ".3ds"_s ||
-       normalizedExtension == ".ase"_s)
+    if(normalized.hasSuffix(".3ds"_s) ||
+       normalized.hasSuffix(".ase"_s))
         plugin = "3dsImporter"_s;
-    else if(normalizedExtension == ".3mf"_s)
+    else if(normalized.hasSuffix(".3mf"_s))
         plugin = "3mfImporter"_s;
-    else if(normalizedExtension == ".ac"_s)
+    else if(normalized.hasSuffix(".ac"_s))
         plugin = "Ac3dImporter"_s;
-    else if(normalizedExtension == ".blend"_s)
+    else if(normalized.hasSuffix(".blend"_s))
         plugin = "BlenderImporter"_s;
-    else if(normalizedExtension == ".bvh"_s)
+    else if(normalized.hasSuffix(".bvh"_s))
         plugin = "BvhImporter"_s;
-    else if(normalizedExtension == ".csm"_s)
+    else if(normalized.hasSuffix(".csm"_s))
         plugin = "CsmImporter"_s;
-    else if(normalizedExtension == ".dae"_s)
+    else if(normalized.hasSuffix(".dae"_s))
         plugin = "ColladaImporter"_s;
-    else if(normalizedExtension == ".x"_s)
+    else if(normalized.hasSuffix(".x"_s))
         plugin = "DirectXImporter"_s;
-    else if(normalizedExtension == ".dxf"_s)
+    else if(normalized.hasSuffix(".dxf"_s))
         plugin = "DxfImporter"_s;
-    else if(normalizedExtension == ".fbx"_s)
+    else if(normalized.hasSuffix(".fbx"_s))
         plugin = "FbxImporter"_s;
-    else if(normalizedExtension == ".gltf"_s ||
-            normalizedExtension == ".glb"_s)
+    else if(normalized.hasSuffix(".gltf"_s) ||
+            normalized.hasSuffix(".glb"_s) ||
+            /* https://github.com/vrm-c/vrm-specification/blob/master/specification/0.0/README.md#file-extension */
+            normalized.hasSuffix(".vrm"_s))
         plugin = "GltfImporter"_s;
-    else if(normalizedExtension == ".ifc"_s)
+    else if(normalized.hasSuffix(".ifc"_s))
         plugin = "IfcImporter"_s;
-    else if(normalizedExtension == ".irrmesh"_s ||
-            normalizedExtension == ".irr"_s)
+    else if(normalized.hasSuffix(".irrmesh"_s) ||
+            normalized.hasSuffix(".irr"_s))
         plugin = "IrrlichtImporter"_s;
-    else if(normalizedExtension == ".lwo"_s ||
-            normalizedExtension == ".lws"_s)
+    else if(normalized.hasSuffix(".lwo"_s) ||
+            normalized.hasSuffix(".lws"_s))
         plugin = "LightWaveImporter"_s;
-    else if(normalizedExtension == ".lxo"_s)
+    else if(normalized.hasSuffix(".lxo"_s))
         plugin = "ModoImporter"_s;
-    else if(normalizedExtension == ".ms3d"_s)
+    else if(normalized.hasSuffix(".mesh.xml"_s))
+        plugin = "OgreImporter"_s;
+    else if(normalized.hasSuffix(".ms3d"_s))
         plugin = "MilkshapeImporter"_s;
     /** @todo pass `*.mtl` files to ObjImporter as well, once the builtin one
         can handle materials and can open them directly (UfbxImporter can,
         Assimp tries to open them as a FBX ffs) */
-    else if(normalizedExtension == ".obj"_s)
+    else if(normalized.hasSuffix(".obj"_s))
         plugin = "ObjImporter"_s;
-    else if(normalizedExtension == ".xml"_s)
-        plugin = "OgreImporter"_s;
-    else if(normalizedExtension == ".ogex"_s)
+    else if(normalized.hasSuffix(".ogex"_s))
         plugin = "OpenGexImporter"_s;
-    else if(normalizedExtension == ".ply"_s)
+    else if(normalized.hasSuffix(".ply"_s))
         plugin = "StanfordImporter"_s;
-    else if(normalizedExtension == ".stl"_s)
+    else if(normalized.hasSuffix(".stl"_s))
         plugin = "StlImporter"_s;
-    else if(normalizedExtension == ".cob"_s ||
-            normalizedExtension == ".scn"_s)
+    else if(normalized.hasSuffix(".cob"_s) ||
+            /** @todo isn't *.scn also too generic? */
+            normalized.hasSuffix(".scn"_s))
         plugin = "TrueSpaceImporter"_s;
-    else if(normalizedExtension == ".3d"_s)
+    /* https://en.wikipedia.org/wiki/Universal_Scene_Description */
+    else if(normalized.hasSuffix(".usd"_s) ||
+            normalized.hasSuffix(".usda"_s) ||
+            normalized.hasSuffix(".usdc"_s) ||
+            normalized.hasSuffix(".usdz"_s))
+        plugin = "UsdImporter"_s;
+    else if(normalized.hasSuffix(".3d"_s))
         plugin = "UnrealImporter"_s;
-    else if(normalizedExtension == ".smd"_s ||
-            normalizedExtension == ".vta"_s)
+    else if(normalized.hasSuffix(".smd"_s) ||
+            normalized.hasSuffix(".vta"_s))
         plugin = "ValveImporter"_s;
-    else if(normalizedExtension == ".xgl"_s ||
-            normalizedExtension == ".zgl"_s)
+    else if(normalized.hasSuffix(".xgl"_s) ||
+            normalized.hasSuffix(".zgl"_s))
         plugin = "XglImporter"_s;
     else {
         Error{} << "Trade::AnySceneImporter::openFile(): cannot determine the format of" << filename;

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -131,14 +132,14 @@ void QueueTest::submitInfoConstructCommandBuffers() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
     info.setCommandBuffers({
-        reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(0xbadbeef)),
-        reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(0xcafecafe))
+        reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(std::size_t{0xbadbeef})),
+        reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(std::size_t{0xcafecafe}))
     });
 
     CORRADE_COMPARE(info->commandBufferCount, 2);
     CORRADE_VERIFY(info->pCommandBuffers);
-    CORRADE_COMPARE(info->pCommandBuffers[0], reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(0xbadbeef)));
-    CORRADE_COMPARE(info->pCommandBuffers[1], reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(0xcafecafe)));
+    CORRADE_COMPARE(info->pCommandBuffers[0], reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(std::size_t{0xbadbeef})));
+    CORRADE_COMPARE(info->pCommandBuffers[1], reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(std::size_t{0xcafecafe})));
 }
 
 void QueueTest::submitInfoConstructFromVk() {
@@ -158,14 +159,14 @@ void QueueTest::submitInfoConstructMove() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
     SubmitInfo a;
-    a.setCommandBuffers({{}, reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(0xcafecafe))});
+    a.setCommandBuffers({{}, reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(std::size_t{0xcafecafe}))});
 
     SubmitInfo b = Utility::move(a);
     CORRADE_COMPARE(a->commandBufferCount, 0);
     CORRADE_VERIFY(!a->pCommandBuffers);
     CORRADE_COMPARE(b->commandBufferCount, 2);
     CORRADE_VERIFY(b->pCommandBuffers);
-    CORRADE_COMPARE(b->pCommandBuffers[1], reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(0xcafecafe)));
+    CORRADE_COMPARE(b->pCommandBuffers[1], reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(std::size_t{0xcafecafe})));
 
     SubmitInfo c{VkSubmitInfo{}};
     c = Utility::move(b);
@@ -173,7 +174,7 @@ void QueueTest::submitInfoConstructMove() {
     CORRADE_VERIFY(!b->pCommandBuffers);
     CORRADE_COMPARE(c->commandBufferCount, 2);
     CORRADE_VERIFY(c->pCommandBuffers);
-    CORRADE_COMPARE(c->pCommandBuffers[1], reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(0xcafecafe)));
+    CORRADE_COMPARE(c->pCommandBuffers[1], reinterpret_cast<VkCommandBuffer>(reinterpret_cast<void*>(std::size_t{0xcafecafe})));
 }
 
 }}}}

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2013 <https://github.com/ArEnSc>
     Copyright © 2014 Travis Watkins <https://github.com/amaranth>
     Copyright © 2021 Konstantinos Chatzilygeroudis <costashatz@gmail.com>
@@ -108,10 +109,6 @@ bool WindowlessCglContext::release() {
 WindowlessCglContext::Configuration::Configuration() {
     GL::Context::Configuration::addFlags(GL::Context::Configuration::Flag::Windowless);
 }
-
-#ifndef DOXYGEN_GENERATING_OUTPUT
-WindowlessCglApplication::WindowlessCglApplication(const Arguments& arguments): WindowlessCglApplication{arguments, Configuration{}} {}
-#endif
 
 WindowlessCglApplication::WindowlessCglApplication(const Arguments& arguments, const Configuration& configuration): WindowlessCglApplication{arguments, NoCreate} {
     createContext(configuration);

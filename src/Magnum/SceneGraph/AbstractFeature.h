@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -101,7 +102,7 @@ caching is disabled. You can enable it using @ref setCachedTransformations()
 and then implement corresponding cleaning function(s) --- either @ref clean(),
 @ref cleanInverted() or both. Example:
 
-@snippet MagnumSceneGraph.cpp AbstractFeature-caching
+@snippet SceneGraph.cpp AbstractFeature-caching
 
 Before using the cached value explicitly request object cleaning by calling
 @cpp object()->setClean() @ce.
@@ -113,7 +114,7 @@ know about any used transformation. By using small template trick in the
 constructor it is possible to gain access to transformation interface in the
 constructor:
 
-@snippet MagnumSceneGraph.cpp AbstractFeature-object-transformation
+@snippet SceneGraph.cpp AbstractFeature-object-transformation
 
 See @ref scenegraph-features-transformation for more detailed information.
 
@@ -160,7 +161,7 @@ template<UnsignedInt dimensions, class T> class AbstractFeature
         /* This is here to avoid ambiguity with deleted copy constructor when
            passing `*this` from class subclassing both AbstractFeature and
            AbstractObject */
-        template<class U, class = typename std::enable_if<std::is_base_of<AbstractObject<dimensions, T>, U>::value>::type> AbstractFeature(U& object): AbstractFeature(static_cast<AbstractObject<dimensions, T>&>(object)) {}
+        template<class U, typename std::enable_if<std::is_base_of<AbstractObject<dimensions, T>, U>::value, int>::type = 0> AbstractFeature(U& object): AbstractFeature(static_cast<AbstractObject<dimensions, T>&>(object)) {}
         #endif
 
         virtual ~AbstractFeature() = 0;

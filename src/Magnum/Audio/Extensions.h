@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2015 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -48,9 +49,8 @@ compile-time decisions rather than @ref Extension instances. See
 
 This library depends on the [OpenAL](https://www.openal.org/) library and is
 built if `MAGNUM_WITH_AUDIO` is enabled when building Magnum. To use this
-library with CMake, put [FindOpenAL.cmake](https://github.com/mosra/magnum/blob/master/modules/FindOpenAL.cmake)
-into your `modules/` directory, request the `Audio` component of the `Magnum`
-package and link to the `Magnum::Audio` target:
+library with CMake, request the `Audio` component of the `Magnum` package and
+link to the `Magnum::Audio` target:
 
 @code{.cmake}
 find_package(Magnum REQUIRED Audio)

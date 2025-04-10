@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -128,6 +129,18 @@ Float x11DpiScaling() {
                 return scaling;
             }
         }
+
+        /* On KDE, if the display scaling is set to 100%, the Xft.dpi property
+           isn't even present. Not nice. In that case just assume 100% scaling.
+           A similar change was done in GLFW:
+            https://github.com/glfw/glfw/commit/399c082033945f4f3c1a993d9d4b80b85c66172e
+            "All of this is terrible please send help."
+           I'm being extra strict here and do this only if it looks like it's a
+           KDE session. There are other known cases where this fails, like when
+           running on a Librem 5 phone, but I have no idea how to fix these
+           yet. */
+        if(std::getenv("KDE_SESSION_UID"))
+            return 1.0f;
     }
 
     Warning{} << "Platform: can't get Xft.dpi property for virtual DPI scaling, falling back to physical DPI";

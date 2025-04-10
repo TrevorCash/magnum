@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,16 +24,17 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Array.h>
-#include <Corrade/Containers/StringView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Compare/Container.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
 #include <Corrade/Utility/Algorithms.h>
-#include <Corrade/Utility/DebugStl.h>
 
+#include "Magnum/ImageView.h"
+#include "Magnum/PixelFormat.h"
 #include "Magnum/Math/Color.h"
 #include "Magnum/Math/Range.h"
+#include "Magnum/DebugTools/CompareImage.h"
 #include "Magnum/Vk/BufferCreateInfo.h"
 #include "Magnum/Vk/CommandPoolCreateInfo.h"
 #include "Magnum/Vk/CommandBuffer.h"
@@ -375,14 +377,32 @@ void ImageVkTest::cmdClearColorImageFloat() {
        .end();
     queue().submit({SubmitInfo{}.setCommandBuffers({cmd})}).wait();
 
-    CORRADE_EXPECT_FAIL_IF(a.dedicatedMemory().size() != 4*4*4 && !device().properties().name().hasPrefix("SwiftShader"),
-        "The image doesn't have a tightly-packed memory, the following check won't work.");
-    CORRADE_COMPARE_AS(Containers::arrayCast<const Color4ub>(a.dedicatedMemory().mapRead().prefix(4*4*4)), Containers::arrayView({
+    /* The image memory may be linear but still with some extra row padding, or
+       with extra data at the end. Fetch its layout properties and use the
+       image comparator for robustness. */
+    /** @todo make this a builtin, returning an ImageView or StridedArrayView
+        for pixels */
+    VkSubresourceLayout layout;
+    {
+        VkImageSubresource subresource{};
+        subresource.arrayLayer = 0;
+        subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        subresource.mipLevel = 0;
+        device()->GetImageSubresourceLayout(device(), a, &subresource, &layout);
+    }
+    const Containers::Array<const char, Vk::MemoryMapDeleter> actual = a.dedicatedMemory().mapRead();
+    const Color4ub expected[]{
         0xdeadc0de_rgba, 0xdeadc0de_rgba, 0xdeadc0de_rgba, 0xdeadc0de_rgba,
         0xdeadc0de_rgba, 0xdeadc0de_rgba, 0xdeadc0de_rgba, 0xdeadc0de_rgba,
         0xdeadc0de_rgba, 0xdeadc0de_rgba, 0xdeadc0de_rgba, 0xdeadc0de_rgba,
         0xdeadc0de_rgba, 0xdeadc0de_rgba, 0xdeadc0de_rgba, 0xdeadc0de_rgba
-    }), TestSuite::Compare::Container);
+    };
+    CORRADE_COMPARE_AS(
+        (ImageView2D{
+            PixelStorage{}.setRowLength(layout.rowPitch/4),
+            Magnum::PixelFormat::RGBA8Unorm, {4, 4}, actual}),
+        (ImageView2D{Magnum::PixelFormat::RGBA8Unorm, {4, 4}, expected}),
+        DebugTools::CompareImage);
 }
 
 void ImageVkTest::cmdClearColorImageSignedIntegral() {
@@ -415,14 +435,32 @@ void ImageVkTest::cmdClearColorImageSignedIntegral() {
        .end();
     queue().submit({SubmitInfo{}.setCommandBuffers({cmd})}).wait();
 
-    CORRADE_EXPECT_FAIL_IF(a.dedicatedMemory().size() != 4*4*4 && !device().properties().name().hasPrefix("SwiftShader"),
-        "The image doesn't have a tightly-packed memory, the following check won't work.");
-    CORRADE_COMPARE_AS(Containers::arrayCast<const Vector4b>(a.dedicatedMemory().mapRead().prefix(4*4*4)), Containers::arrayView<Vector4b>({
+    /* The image memory may be linear but still with some extra row padding, or
+       with extra data at the end. Fetch its layout properties and use the
+       image comparator for robustness. */
+    /** @todo make this a builtin, returning an ImageView or StridedArrayView
+        for pixels */
+    VkSubresourceLayout layout;
+    {
+        VkImageSubresource subresource{};
+        subresource.arrayLayer = 0;
+        subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        subresource.mipLevel = 0;
+        device()->GetImageSubresourceLayout(device(), a, &subresource, &layout);
+    }
+    const Containers::Array<const char, Vk::MemoryMapDeleter> actual = a.dedicatedMemory().mapRead();
+    const Vector4b expected[]{
         {15, -7, 2, -1}, {15, -7, 2, -1}, {15, -7, 2, -1}, {15, -7, 2, -1},
         {15, -7, 2, -1}, {15, -7, 2, -1}, {15, -7, 2, -1}, {15, -7, 2, -1},
         {15, -7, 2, -1}, {15, -7, 2, -1}, {15, -7, 2, -1}, {15, -7, 2, -1},
         {15, -7, 2, -1}, {15, -7, 2, -1}, {15, -7, 2, -1}, {15, -7, 2, -1},
-    }), TestSuite::Compare::Container);
+    };
+    CORRADE_COMPARE_AS(
+        (ImageView2D{
+            PixelStorage{}.setRowLength(layout.rowPitch/4),
+            Magnum::PixelFormat::RGBA8I, {4, 4}, actual}),
+        (ImageView2D{Magnum::PixelFormat::RGBA8I, {4, 4}, expected}),
+        DebugTools::CompareImage);
 }
 
 void ImageVkTest::cmdClearColorImageUnsignedIntegral() {
@@ -455,14 +493,29 @@ void ImageVkTest::cmdClearColorImageUnsignedIntegral() {
        .end();
     queue().submit({SubmitInfo{}.setCommandBuffers({cmd})}).wait();
 
-    CORRADE_EXPECT_FAIL_IF(a.dedicatedMemory().size() != 4*4*4 && !device().properties().name().hasPrefix("SwiftShader"),
-        "The image doesn't have a tightly-packed memory, the following check won't work.");
-    CORRADE_COMPARE_AS(Containers::arrayCast<const Vector4ub>(a.dedicatedMemory().mapRead().prefix(4*4*4)), Containers::arrayView<Vector4ub>({
+    /* Check if the image is actually tightly packed for the comparison */
+    /** @todo make this a builtin, returning a StridedArrayView for pixels */
+    VkSubresourceLayout layout;
+    {
+        VkImageSubresource subresource{};
+        subresource.arrayLayer = 0;
+        subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        subresource.mipLevel = 0;
+        device()->GetImageSubresourceLayout(device(), a, &subresource, &layout);
+    }
+    const Containers::Array<const char, Vk::MemoryMapDeleter> actual = a.dedicatedMemory().mapRead();
+    const Vector4ub expected[]{
         {15, 37, 2, 1}, {15, 37, 2, 1}, {15, 37, 2, 1}, {15, 37, 2, 1},
         {15, 37, 2, 1}, {15, 37, 2, 1}, {15, 37, 2, 1}, {15, 37, 2, 1},
         {15, 37, 2, 1}, {15, 37, 2, 1}, {15, 37, 2, 1}, {15, 37, 2, 1},
         {15, 37, 2, 1}, {15, 37, 2, 1}, {15, 37, 2, 1}, {15, 37, 2, 1},
-    }), TestSuite::Compare::Container);
+    };
+    CORRADE_COMPARE_AS(
+        (ImageView2D{
+            PixelStorage{}.setRowLength(layout.rowPitch/4),
+            Magnum::PixelFormat::RGBA8I, {4, 4}, actual}),
+        (ImageView2D{Magnum::PixelFormat::RGBA8I, {4, 4}, expected}),
+        DebugTools::CompareImage);
 }
 
 void ImageVkTest::cmdClearDepthStencilImage() {
@@ -621,28 +674,40 @@ void ImageVkTest::cmdCopyImage2D() {
         device().properties().pickQueueFamily(QueueFlag::Graphics)}};
     CommandBuffer cmd = pool.allocate();
 
-    /* To avoid going through a buffer which can guarantee the packing we want,
-       the tests uses a linear tiling image. These are poorly supported, have
-       weird paddings and the required allocation size is usually much larger
-       than expected. To prevent issues as much as possible, we'll thus create
-       images with non-insane sizes (so not 6 or 7 pixels wide, but 8), 4-byte
-       pixel format and explicitly slice the mapped memory. */
-
     /* Source image */
     ImageCreateInfo2D aInfo{ImageUsage::TransferSource,
         PixelFormat::RGBA8UI, {8, 10}, 1, 1, ImageLayout::Preinitialized};
     aInfo->tiling = VK_IMAGE_TILING_LINEAR;
     Image a{device(), aInfo, MemoryFlag::HostVisible};
-    Utility::copy("________________________________"
-                  "________________________________"
-                  "________________________________"
-                  "________________________________"
-                  "____________AaaaAaaaAaaaAaaa____"
-                  "____________BbbbBbbbBbbbBbbb____"
-                  "____________CcccCcccCcccCccc____"
-                  "____________DdddDdddDdddDddd____"
-                  "________________________________"
-                  "________________________________"_s, a.dedicatedMemory().map().prefix(8*10*4));
+
+    /* The image memory may be linear but still with some extra row padding, or
+       with extra data at the end. Fetch its layout properties and create an
+       appropriate strided array view for the copy. */
+    /** @todo make this a builtin, returning an ImageView or StridedArrayView
+        for pixels */
+    VkSubresourceLayout aLayout;
+    {
+        VkImageSubresource subresource{};
+        subresource.arrayLayer = 0;
+        subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        subresource.mipLevel = 0;
+        device()->GetImageSubresourceLayout(device(), a, &subresource, &aLayout);
+    }
+    Utility::copy(Containers::stridedArrayView(
+            "________________________________"
+            "________________________________"
+            "________________________________"
+            "________________________________"
+            "____________AaaaAaaaAaaaAaaa____"
+            "____________BbbbBbbbBbbbBbbb____"
+            "____________CcccCcccCcccCccc____"
+            "____________DdddDdddDdddDddd____"
+            "________________________________"
+            "________________________________"_s).expanded<0, 2>({10, 8*4}),
+        Containers::StridedArrayView2D<char>{a.dedicatedMemory().map(),
+            {10, 8*4},
+            {std::ptrdiff_t(aLayout.rowPitch), 1},
+        });
 
     /* Destination image */
     ImageCreateInfo2D bInfo{ImageUsage::TransferDestination,
@@ -672,14 +737,31 @@ void ImageVkTest::cmdCopyImage2D() {
        .end();
     queue().submit({SubmitInfo{}.setCommandBuffers({cmd})}).wait();
 
-    CORRADE_EXPECT_FAIL_IF(b.dedicatedMemory().size() != 8*5*4 && !device().properties().name().hasPrefix("SwiftShader"),
-        "The image doesn't have a tightly-packed memory, the following check won't work.");
-    CORRADE_COMPARE(b.dedicatedMemory().mapRead().prefix(8*5*4),
-        "--------------------------------"
-        "----AaaaAaaaAaaaAaaa------------"
-        "----BbbbBbbbBbbbBbbb------------"
-        "----CcccCcccCcccCccc------------"
-        "----DdddDdddDdddDddd------------"_s);
+    /* The image memory may be linear but still with some extra row padding, or
+       with extra data at the end. Fetch its layout properties and use the
+       image comparator for robustness. */
+    /** @todo make this a builtin, returning an ImageView or StridedArrayView
+        for pixels */
+    VkSubresourceLayout bLayout;
+    {
+        VkImageSubresource subresource{};
+        subresource.arrayLayer = 0;
+        subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        subresource.mipLevel = 0;
+        device()->GetImageSubresourceLayout(device(), b, &subresource, &bLayout);
+    }
+    const Containers::Array<const char, Vk::MemoryMapDeleter> data = b.dedicatedMemory().mapRead();
+    CORRADE_COMPARE_AS(
+        (ImageView2D{
+            PixelStorage{}.setRowLength(bLayout.rowPitch/4),
+            Magnum::PixelFormat::RGBA8UI, {8, 5}, data}),
+        (ImageView2D{Magnum::PixelFormat::RGBA8UI, {8, 5},
+            "--------------------------------"
+            "----AaaaAaaaAaaaAaaa------------"
+            "----BbbbBbbbBbbbBbbb------------"
+            "----CcccCcccCcccCccc------------"
+            "----DdddDdddDdddDddd------------"}),
+        DebugTools::CompareImage);
 }
 
 void ImageVkTest::cmdCopyImage2DArrayTo3D() {
@@ -786,10 +868,10 @@ void ImageVkTest::cmdCopyImageDisallowedConversion() {
 
     /* The commands shouldn't do anything, so it should be fine to just call
        them without any render pass set up */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     cmd.copyImage(a);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Vk::CommandBuffer::copyImage(): disallowing extraction of CopyImageInfo with non-empty pNext to prevent information loss\n");
 }
 
@@ -808,7 +890,7 @@ void ImageVkTest::cmdCopyBufferImage1D() {
     Image b{device(), ImageCreateInfo1D{
         ImageUsage::TransferDestination|ImageUsage::TransferSource,
         PixelFormat::RGBA8UI, 6, 1
-    }, MemoryFlag::HostVisible};
+    }, MemoryFlags{}};
 
     /* Destination buffer, clear as well */
     Buffer c{device(), BufferCreateInfo{
@@ -869,7 +951,7 @@ void ImageVkTest::cmdCopyBufferImage2D() {
     Image b{device(), ImageCreateInfo2D{
         ImageUsage::TransferDestination|ImageUsage::TransferSource,
         PixelFormat::RGBA8UI, {6, 5}, 1
-    }, MemoryFlag::HostVisible};
+    }, MemoryFlags{}};
 
     /* Destination buffer */
     Buffer c{device(), BufferCreateInfo{
@@ -943,7 +1025,7 @@ void ImageVkTest::cmdCopyBufferImage3D() {
     Image b{device(), ImageCreateInfo3D{
         ImageUsage::TransferDestination|ImageUsage::TransferSource,
         PixelFormat::RGBA8UI, {5, 4, 3}, 1
-    }, MemoryFlag::HostVisible};
+    }, MemoryFlags{}};
 
     /* Destination buffer */
     Buffer c{device(), BufferCreateInfo{
@@ -1012,7 +1094,7 @@ void ImageVkTest::cmdCopyBufferImage1DArray() {
     Image b{device(), ImageCreateInfo1DArray{
         ImageUsage::TransferDestination|ImageUsage::TransferSource,
         PixelFormat::RGBA8UI, {4, 3}, 1
-    }, MemoryFlag::HostVisible};
+    }, MemoryFlags{}};
 
     /* Destination buffer */
     Buffer c{device(), BufferCreateInfo{BufferUsage::TransferDestination, 6*5*4}, MemoryFlag::HostVisible};
@@ -1073,7 +1155,7 @@ void ImageVkTest::cmdCopyBufferImage2DArray() {
     Image b{device(), ImageCreateInfo2DArray{
         ImageUsage::TransferDestination|ImageUsage::TransferSource,
         PixelFormat::RGBA8UI, {4, 4, 3}, 1
-    }, MemoryFlag::HostVisible};
+    }, MemoryFlags{}};
 
     /* Destination buffer */
     Buffer c{device(), BufferCreateInfo{BufferUsage::TransferDestination, 4*5*2*4}, MemoryFlag::HostVisible};
@@ -1152,7 +1234,7 @@ void ImageVkTest::cmdCopyBufferImageCubeMap() {
     Image b{device(), ImageCreateInfoCubeMap{
         ImageUsage::TransferDestination|ImageUsage::TransferSource,
         PixelFormat::RGBA8UI, {4, 4}, 1
-    }, MemoryFlag::HostVisible};
+    }, MemoryFlags{}};
 
     /* Destination buffer */
     Buffer c{device(), BufferCreateInfo{
@@ -1251,7 +1333,7 @@ void ImageVkTest::cmdCopyBufferImageCubeMapArray() {
     Image b{device(), ImageCreateInfoCubeMapArray{
         ImageUsage::TransferDestination|ImageUsage::TransferSource,
         PixelFormat::RGBA8UI, {4, 4, 8}, 1
-    }, MemoryFlag::HostVisible};
+    }, MemoryFlags{}};
 
     /* Destination buffer */
     Buffer c{device(), BufferCreateInfo{BufferUsage::TransferDestination, 3*4*7*4}, MemoryFlag::HostVisible};
@@ -1328,11 +1410,11 @@ void ImageVkTest::cmdCopyBufferImageDisallowedConversion() {
 
     /* The commands shouldn't do anything, so it should be fine to just call
        them without any render pass set up */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     cmd.copyBufferToImage(a)
        .copyImageToBuffer(b);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Vk::CommandBuffer::copyBufferToImage(): disallowing extraction of CopyBufferToImageInfo with non-empty pNext to prevent information loss\n"
         "Vk::CommandBuffer::copyImageToBuffer(): disallowing extraction of CopyImageToBufferInfo with non-empty pNext to prevent information loss\n");
 }

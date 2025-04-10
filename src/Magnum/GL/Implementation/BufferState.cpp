@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Pablo Escobar <mail@rvrs.in>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -99,15 +100,15 @@ BufferState::BufferState(Context& context, Containers::StaticArrayView<Implement
         && (!(context.detectedDriver() & Context::DetectedDriver::IntelWindows) ||
         context.isDriverWorkaroundDisabled("intel-windows-crazy-broken-buffer-dsa"_s))
         #endif
+        && (!(context.detectedDriver() & Context::DetectedDriver::NVidia) ||
+        context.isDriverWorkaroundDisabled("nv-broken-buffer-dsa"_s))
     ) {
         extensions[Extensions::ARB::direct_state_access::Index] =
                    Extensions::ARB::direct_state_access::string();
 
         createImplementation = &Buffer::createImplementationDSA;
         copyImplementation = &Buffer::copyImplementationDSA;
-        #ifndef MAGNUM_TARGET_GLES
         storageImplementation = &Buffer::storageImplementationDSA;
-        #endif
         getParameterImplementation = &Buffer::getParameterImplementationDSA;
         getSubDataImplementation = &Buffer::getSubDataImplementationDSA;
         dataImplementation = &Buffer::dataImplementationDSA;
@@ -123,7 +124,7 @@ BufferState::BufferState(Context& context, Containers::StaticArrayView<Implement
         #ifndef MAGNUM_TARGET_GLES2
         copyImplementation = &Buffer::copyImplementationDefault;
         #endif
-        #ifndef MAGNUM_TARGET_GLES
+        #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
         storageImplementation = &Buffer::storageImplementationDefault;
         #endif
         getParameterImplementation = &Buffer::getParameterImplementationDefault;

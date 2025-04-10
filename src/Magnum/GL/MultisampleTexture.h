@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -78,7 +79,7 @@ also @ref AbstractTexture documentation for more information.
 As multisample textures have no sampler state, the only thing you need is to
 set storage:
 
-@snippet MagnumGL.cpp MultisampleTexture-usage
+@snippet GL.cpp MultisampleTexture-usage
 
 In shader, the texture is used via @glsl sampler2DMS @ce / @glsl sampler2DMSArray @ce,
 @glsl isampler2DMS @ce / @glsl isampler2DMSArray @ce or @glsl usampler2DMS @ce
@@ -164,7 +165,7 @@ MultisampleTexture: public AbstractTexture {
          *      @gl_extension{EXT,texture_view}
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 2>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 2, int>::type = 0>
         #endif
         static MultisampleTexture<dimensions> view(MultisampleTexture2DArray& original, TextureFormat internalFormat, Int layer);
 
@@ -185,7 +186,7 @@ MultisampleTexture: public AbstractTexture {
          *      @gl_extension{EXT,texture_view}
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 3>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 3, int>::type = 0>
         #endif
         static MultisampleTexture<dimensions> view(MultisampleTexture2DArray& original, TextureFormat internalFormat, Int layerOffset, Int layerCount);
 
@@ -251,7 +252,7 @@ MultisampleTexture: public AbstractTexture {
          * @requires_gl42 Extension @gl_extension{ARB,shader_image_load_store}
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 2>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 2, int>::type = 0>
         #endif
         void bindImage(Int imageUnit, ImageAccess access, ImageFormat format) {
             bindImageInternal(imageUnit, 0, false, 0, access, format);
@@ -278,7 +279,7 @@ MultisampleTexture: public AbstractTexture {
          *      multisample 2D array textures.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 3>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 3, int>::type = 0>
         #endif
         void bindImage(Int imageUnit, Int layer, ImageAccess access, ImageFormat format) {
             bindImageInternal(imageUnit, 0, false, layer, access, format);
@@ -304,7 +305,7 @@ MultisampleTexture: public AbstractTexture {
          *      multisample 2D array textures.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 3>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 3, int>::type = 0>
         #endif
         void bindImageLayered(Int imageUnit, ImageAccess access, ImageFormat format) {
             bindImageInternal(imageUnit, 0, true, 0, access, format);

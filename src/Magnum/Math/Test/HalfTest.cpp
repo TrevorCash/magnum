@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,12 +24,11 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <cstring>
-#include <sstream>
+#include <new>
 #include <Corrade/Containers/StridedArrayView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
-#if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+#if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
 #include <Corrade/Utility/Tweakable.h>
 #endif
 
@@ -70,7 +70,7 @@ struct HalfTest: TestSuite::Tester {
 
     void literal();
     void debug();
-    #if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+    #if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
     void tweakable();
     void tweakableError();
     #endif
@@ -80,7 +80,7 @@ using Magnum::Constants;
 
 using namespace Literals;
 
-#if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+#if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
 const struct {
     const char* name;
     const char* data;
@@ -144,7 +144,7 @@ HalfTest::HalfTest() {
               &HalfTest::literal,
               &HalfTest::debug});
 
-    #if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+    #if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
     addInstancedTests({&HalfTest::tweakable},
         Containers::arraySize(TweakableData));
 
@@ -623,18 +623,18 @@ void HalfTest::literal() {
 }
 
 void HalfTest::debug() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << -36.41_h << Half{Constants::inf()}
         << Math::Vector3<Half>{3.14159_h, -1.4142_h, 1.618_h};
     #ifdef CORRADE_TARGET_MSVC
-    CORRADE_COMPARE(out.str(), "-36.41 inf Vector(3.141, -1.414, 1.618)\n");
+    CORRADE_COMPARE(out, "-36.41 inf Vector(3.141, -1.414, 1.618)\n");
     #else
-    CORRADE_COMPARE(out.str(), "-36.41 inf Vector(3.141, -1.414, 1.618)\n");
+    CORRADE_COMPARE(out, "-36.41 inf Vector(3.141, -1.414, 1.618)\n");
     #endif
 }
 
-#if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+#if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
 void HalfTest::tweakable() {
     auto&& data = TweakableData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
@@ -647,11 +647,11 @@ void HalfTest::tweakableError() {
     auto&& data = TweakableErrorData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Error redirectError{&out};
     Utility::TweakableState state = Utility::TweakableParser<Half>::parse(data.data).first();
-    CORRADE_COMPARE(out.str(), data.error);
+    CORRADE_COMPARE(out, data.error);
     CORRADE_COMPARE(state, data.state);
 }
 #endif

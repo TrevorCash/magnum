@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2016 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -45,7 +46,7 @@ namespace Magnum { namespace Math { namespace Distance {
 Same as @cpp (b - a).dot() @ce. More efficient than @ref pointPoint(const Vector2<T>&, const Vector2<T>&)
 for comparing distance with other values, because it doesn't calculate the
 square root.
-@see @ref Vector::dot()
+@see @ref Vector::dot() const
 */
 template<class T> T pointPointSquared(const Vector2<T>& a, const Vector2<T>& b) {
     return (b - a).dot();

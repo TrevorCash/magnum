@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -89,18 +90,26 @@ template<std::size_t size, class T> class Matrix: public RectangularMatrix<size,
         /** @brief Construct with one value for all elements */
         constexpr explicit Matrix(T value) noexcept: RectangularMatrix<size, size, T>{value} {}
 
+        /** @copydoc RectangularMatrix::RectangularMatrix(const T(&)[cols_][rows_]) */
+        #if !defined(CORRADE_TARGET_GCC) || defined(CORRADE_TARGET_CLANG) || __GNUC__ >= 5
+        template<std::size_t cols_, std::size_t rows_> constexpr explicit Matrix(const T(&data)[cols_][rows_]) noexcept: RectangularMatrix<size, size, T>{data} {}
+        #else
+        /* GCC 4.8 workaround, see the RectangularMatrix base for details */
+        constexpr explicit Matrix(const T(&data)[size][size]) noexcept: RectangularMatrix<size, size, T>{data} {}
+        #endif
+
         /**
          * @brief Construct from a matrix of a different type
          *
          * Performs only default casting on the values, no rounding or
          * anything else. Example usage:
          *
-         * @snippet MagnumMath.cpp Matrix-conversion
+         * @snippet Math.cpp Matrix-conversion
          */
         template<class U> constexpr explicit Matrix(const RectangularMatrix<size, size, U>& other) noexcept: RectangularMatrix<size, size, T>(other) {}
 
-        /** @brief Construct matrix from external representation */
-        template<class U, class V = decltype(Implementation::RectangularMatrixConverter<size, size, T, U>::from(std::declval<U>()))> constexpr explicit Matrix(const U& other): RectangularMatrix<size, size, T>(Implementation::RectangularMatrixConverter<size, size, T, U>::from(other)) {}
+        /** @brief Construct a matrix from external representation */
+        template<class U, class = decltype(Implementation::RectangularMatrixConverter<size, size, T, U>::from(std::declval<U>()))> constexpr explicit Matrix(const U& other): RectangularMatrix<size, size, T>(Implementation::RectangularMatrixConverter<size, size, T, U>::from(other)) {}
 
         /** @copydoc RectangularMatrix::RectangularMatrix(IdentityInitT, const RectangularMatrix<otherCols, otherRows, T>&, T) */
         template<std::size_t otherCols, std::size_t otherRows> constexpr explicit Matrix(IdentityInitT, const RectangularMatrix<otherCols, otherRows, T>& other, T value = T(1)) noexcept: RectangularMatrix<size, size, T>{IdentityInit, other, value} {}
@@ -124,6 +133,7 @@ template<std::size_t size, class T> class Matrix: public RectangularMatrix<size,
         /**
          * @brief Whether the matrix is orthogonal
          *
+         * Also called an [orthonormal matrix](https://en.wikipedia.org/wiki/Orthogonal_matrix).
          * Returns @cpp true @ce if all basis vectors have unit length and are
          * orthogonal to each other. In other words, when its transpose is
          * equal to its inverse: @f[
@@ -469,7 +479,7 @@ template<std::size_t size, class T> bool Matrix<size, T>::isOrthogonal() const {
     /* Orthogonality */
     for(std::size_t i = 0; i != size-1; ++i)
         for(std::size_t j = i+1; j != size; ++j)
-            if(dot(RectangularMatrix<size, size, T>::_data[i], RectangularMatrix<size, size, T>::_data[j]) > TypeTraits<T>::epsilon())
+            if(std::abs(dot(RectangularMatrix<size, size, T>::_data[i], RectangularMatrix<size, size, T>::_data[j])) > TypeTraits<T>::epsilon())
                 return false;
 
     return true;

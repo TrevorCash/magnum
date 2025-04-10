@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -191,12 +192,41 @@ template<UnsignedInt location, class T> class Attribute {
          */
         #ifdef DOXYGEN_GENERATING_OUTPUT
         enum class DataType: GLenum {
-            UnsignedByte = GL_UNSIGNED_BYTE,    /**< Unsigned byte */
-            Byte = GL_BYTE,                     /**< Byte */
-            UnsignedShort = GL_UNSIGNED_SHORT,  /**< Unsigned short */
-            Short = GL_SHORT,                   /**< Short */
-            UnsignedInt = GL_UNSIGNED_INT,      /**< Unsigned int */
-            Int = GL_INT,                       /**< Int */
+            /**
+             * Unsigned byte. On WebGL is only for float and unsigned integer
+             * attributes, cannot be used with signed integer attributes.
+             */
+            UnsignedByte = GL_UNSIGNED_BYTE,
+
+            /**
+             * Byte. On WebGL is only for float and signed integer attributes,
+             * cannot be used with unsigned integer attributes.
+             */
+            Byte = GL_BYTE,
+
+            /**
+             * Unsigned short. On WebGL is only for float and unsigned integer
+             * attributes, cannot be used with signed integer attributes.
+             */
+            UnsignedShort = GL_UNSIGNED_SHORT,
+
+            /**
+             * Short. On WebGL is only for float and signed integer attributes,
+             * cannot be used with unsigned integer attributes.
+             */
+            Short = GL_SHORT,
+
+            /**
+             * Unsigned int. On WebGL is only for float and unsigned integer
+             * attributes, cannot be used with signed integer attributes.
+             */
+            UnsignedInt = GL_UNSIGNED_INT,
+
+            /**
+             * Int. On WebGL is only for float and signed integer attributes,
+             * cannot be used with unsigned integer attributes.
+             */
+            Int = GL_INT,
 
             #ifndef MAGNUM_TARGET_WEBGL
             /**
@@ -306,15 +336,29 @@ template<UnsignedInt location, class T> class Attribute {
 
         /**
          * @brief Constructor
-         * @param dataType      Type of passed data. Default is the same as
-         *      type used in shader (e.g. @ref DataType::Int for
-         *      @ref Magnum::Vector4i "Vector4i").
+         * @param dataOptions   Data options. Default is no options.
+         *
+         * Data type is the same as type used in shader (e.g.
+         * @ref DataType::Int for @ref Magnum::Vector4i "Vector4i"). Component
+         * count is set to the same value as in type used in shader (e.g.
+         * @ref Components::Three for @ref Magnum::Vector3 "Vector3").
+         */
+        constexpr Attribute(DataOptions dataOptions = DataOptions()): Attribute{
+            Implementation::Attribute<T>::DefaultComponents,
+            /* Cast one enum to avoid -Wdeprecated-anon-enum-conversion when
+               compiling as C++20 */
+            Implementation::Attribute<T>::DefaultComponentCount*UnsignedInt(Implementation::Attribute<T>::DefaultDataTypeSize),
+            Implementation::Attribute<T>::DefaultDataType, dataOptions} {}
+
+        /**
+         * @brief Constructor
+         * @param dataType      Type of passed data
          * @param dataOptions   Data options. Default is no options.
          *
          * Component count is set to the same value as in type used in shader
          * (e.g. @ref Components::Three for @ref Magnum::Vector3 "Vector3").
          */
-        constexpr Attribute(DataType dataType = Implementation::Attribute<T>::DefaultDataType, DataOptions dataOptions = DataOptions()): Attribute{Implementation::Attribute<T>::DefaultComponents, dataType, dataOptions} {}
+        /*implicit*/ Attribute(DataType dataType, DataOptions dataOptions = DataOptions()): Attribute{Implementation::Attribute<T>::DefaultComponents, dataType, dataOptions} {}
 
         /**
          * @brief Constructor
@@ -324,10 +368,10 @@ template<UnsignedInt location, class T> class Attribute {
          *      @ref Magnum::Vector4i "Vector4i").
          * @param dataOptions   Data options. Default is no options.
          *
-         * Vector stride is set to the size of the vector type (e.g. 9 for a
-         * @ref Magnum::Matrix3 "Matrix3").
+         * Vector stride is set to the size of the vector type (e.g.
+         * @cpp 12 @ce for a @ref Magnum::Matrix3 "Matrix3").
          */
-        constexpr Attribute(Components components, DataType dataType = Implementation::Attribute<T>::DefaultDataType, DataOptions dataOptions = DataOptions()): Attribute{components, Implementation::Attribute<T>::size(GLint(components), dataType), dataType, dataOptions} {}
+        /*implicit*/ Attribute(Components components, DataType dataType = Implementation::Attribute<T>::DefaultDataType, DataOptions dataOptions = DataOptions()): Attribute{components, Implementation::Attribute<T>::size(GLint(components), dataType), dataType, dataOptions} {}
 
         /**
          * @brief Construct with a custom vector stride
@@ -421,7 +465,7 @@ class MAGNUM_GL_EXPORT DynamicAttribute {
          * Specifies what kind of shader type matches the attribute.
          * @see @ref DynamicAttribute()
          */
-        enum class Kind {
+        enum class Kind: UnsignedByte {
             /** Generic, matches single-precision floating-point shader type */
             Generic,
 
@@ -742,18 +786,18 @@ MAGNUM_GL_EXPORT bool hasVertexFormat(Magnum::VertexFormat format);
 
 namespace Implementation {
 
-template<UnsignedInt location, class T> constexpr DynamicAttribute::Kind kindFor(typename std::enable_if<std::is_same<typename Implementation::Attribute<T>::ScalarType, Float>::value, typename GL::Attribute<location, T>::DataOptions>::type options) {
+template<UnsignedInt location, class T, typename std::enable_if<std::is_same<typename Implementation::Attribute<T>::ScalarType, Float>::value, int>::type = 0> constexpr DynamicAttribute::Kind kindFor(typename GL::Attribute<location, T>::DataOptions options) {
     return options & GL::Attribute<location, T>::DataOption::Normalized ?
         DynamicAttribute::Kind::GenericNormalized : DynamicAttribute::Kind::Generic;
 }
 
 #ifndef MAGNUM_TARGET_GLES2
-template<UnsignedInt location, class T> constexpr DynamicAttribute::Kind kindFor(typename std::enable_if<std::is_integral<typename Implementation::Attribute<T>::ScalarType>::value, typename GL::Attribute<location, T>::DataOptions>::type) {
+template<UnsignedInt location, class T, typename std::enable_if<std::is_integral<typename Implementation::Attribute<T>::ScalarType>::value, int>::type = 0> constexpr DynamicAttribute::Kind kindFor(typename GL::Attribute<location, T>::DataOptions) {
     return DynamicAttribute::Kind::Integral;
 }
 
 #ifndef MAGNUM_TARGET_GLES
-template<UnsignedInt location, class T> constexpr DynamicAttribute::Kind kindFor(typename std::enable_if<std::is_same<typename Implementation::Attribute<T>::ScalarType, Double>::value, typename GL::Attribute<location, T>::DataOptions>::type) {
+template<UnsignedInt location, class T, typename std::enable_if<std::is_same<typename Implementation::Attribute<T>::ScalarType, Double>::value, int>::type = 0> constexpr DynamicAttribute::Kind kindFor(typename GL::Attribute<location, T>::DataOptions) {
     return DynamicAttribute::Kind::Long;
 }
 #endif
@@ -769,18 +813,22 @@ template<std::size_t cols> struct SizedVectorAttribute {
 template<> struct SizedAttribute<1, 1>: SizedVectorAttribute<1> {
     enum class Components: GLint { One = 1 };
     constexpr static Components DefaultComponents = Components::One;
+    enum: UnsignedInt { DefaultComponentCount = 1 };
 };
 template<> struct SizedAttribute<1, 2>: SizedVectorAttribute<1> {
     enum class Components: GLint { One = 1, Two = 2 };
     constexpr static Components DefaultComponents = Components::Two;
+    enum: UnsignedInt { DefaultComponentCount = 2 };
 };
 template<> struct SizedAttribute<1, 3>: SizedVectorAttribute<1> {
     enum class Components: GLint { One = 1, Two = 2, Three = 3 };
     constexpr static Components DefaultComponents = Components::Three;
+    enum: UnsignedInt { DefaultComponentCount = 3 };
 };
 template<> struct SizedAttribute<1, 4>: SizedVectorAttribute<1> {
     enum class Components: GLint { One = 1, Two = 2, Three = 3, Four = 4 };
     constexpr static Components DefaultComponents = Components::Four;
+    enum: UnsignedInt { DefaultComponentCount = 4 };
 };
 MAGNUM_GL_EXPORT Debug& operator<<(Debug& debug, SizedAttribute<1, 1>::Components value);
 MAGNUM_GL_EXPORT Debug& operator<<(Debug& debug, SizedAttribute<1, 2>::Components value);
@@ -792,14 +840,17 @@ template<std::size_t rows> struct SizedMatrixAttribute;
 template<> struct SizedMatrixAttribute<2> {
     enum class Components: GLint { Two   = 2 };
     constexpr static Components DefaultComponents = Components::Two;
+    enum: UnsignedInt { DefaultComponentCount = 2 };
 };
 template<> struct SizedMatrixAttribute<3> {
     enum class Components: GLint { Three = 3 };
     constexpr static Components DefaultComponents = Components::Three;
+    enum: UnsignedInt { DefaultComponentCount = 3 };
 };
 template<> struct SizedMatrixAttribute<4> {
     enum class Components: GLint { Four  = 4 };
     constexpr static Components DefaultComponents = Components::Four;
+    enum: UnsignedInt { DefaultComponentCount = 4 };
 };
 MAGNUM_GL_EXPORT Debug& operator<<(Debug& debug, SizedMatrixAttribute<2>::Components value);
 MAGNUM_GL_EXPORT Debug& operator<<(Debug& debug, SizedMatrixAttribute<3>::Components value);
@@ -848,6 +899,7 @@ struct FloatAttribute {
         #endif
     };
     constexpr static DataType DefaultDataType = DataType::Float;
+    enum: UnsignedInt { DefaultDataTypeSize = 4 };
 
     enum class DataOption: UnsignedByte {
         Normalized = 1 << 0
@@ -867,14 +919,29 @@ struct IntAttribute {
     typedef Int ScalarType;
 
     enum class DataType: GLenum {
-        UnsignedByte = GL_UNSIGNED_BYTE,
         Byte = GL_BYTE,
-        UnsignedShort = GL_UNSIGNED_SHORT,
         Short = GL_SHORT,
-        UnsignedInt = GL_UNSIGNED_INT,
-        Int = GL_INT
+        Int = GL_INT,
+        #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
+        UnsignedByte
+            #ifdef MAGNUM_TARGET_WEBGL
+            CORRADE_DEPRECATED_ENUM("using an unsigned type with a signed attribute isn't supported in WebGL, either make the attribute and the GLSL definition unsigned or use a signed type")
+            #endif
+            = GL_UNSIGNED_BYTE,
+        UnsignedShort
+            #ifdef MAGNUM_TARGET_WEBGL
+            CORRADE_DEPRECATED_ENUM("using an unsigned type with a signed attribute isn't supported in WebGL, either make the attribute and the GLSL definition unsigned or use a signed type")
+            #endif
+            = GL_UNSIGNED_SHORT,
+        UnsignedInt
+            #ifdef MAGNUM_TARGET_WEBGL
+            CORRADE_DEPRECATED_ENUM("using an unsigned type with a signed attribute isn't supported in WebGL, either make the attribute and the GLSL definition unsigned or use a signed type")
+            #endif
+            = GL_UNSIGNED_INT,
+        #endif
     };
     constexpr static DataType DefaultDataType = DataType::Int;
+    enum: UnsignedInt { DefaultDataTypeSize = 4 };
 
     enum class DataOption: UnsignedByte {};
     typedef Containers::EnumSet<DataOption> DataOptions;
@@ -890,16 +957,38 @@ MAGNUM_GL_EXPORT Debug& operator<<(Debug& debug, IntAttribute::DataType value);
 struct UnsignedIntAttribute {
     typedef UnsignedInt ScalarType;
 
-    typedef IntAttribute::DataType DataType;
+    enum class DataType: GLenum {
+        UnsignedByte = GL_UNSIGNED_BYTE,
+        UnsignedShort = GL_UNSIGNED_SHORT,
+        UnsignedInt = GL_UNSIGNED_INT,
+        #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
+        Byte
+            #ifdef MAGNUM_TARGET_WEBGL
+            CORRADE_DEPRECATED_ENUM("using a signed type with an unsigned attribute isn't supported in WebGL, either make the attribute and the GLSL definition signed or use an unsigned type")
+            #endif
+            = GL_BYTE,
+        Short
+            #ifdef MAGNUM_TARGET_WEBGL
+            CORRADE_DEPRECATED_ENUM("using a signed type with an unsigned attribute isn't supported in WebGL, either make the attribute and the GLSL definition signed or use an unsigned type")
+            #endif
+            = GL_SHORT,
+        Int
+            #ifdef MAGNUM_TARGET_WEBGL
+            CORRADE_DEPRECATED_ENUM("using a signed type with an unsigned attribute isn't supported in WebGL, either make the attribute and the GLSL definition signed or use an unsigned type")
+            #endif
+            = GL_INT
+        #endif
+    };
     constexpr static DataType DefaultDataType = DataType::UnsignedInt;
+    enum: UnsignedInt { DefaultDataTypeSize = 4 };
 
     typedef IntAttribute::DataOption DataOption;
     typedef IntAttribute::DataOptions DataOptions;
 
-    static UnsignedInt size(GLint components, DataType dataType) {
-        return IntAttribute::size(components, dataType);
-    }
+    static UnsignedInt MAGNUM_GL_EXPORT size(GLint components, DataType dataType);
 };
+
+MAGNUM_GL_EXPORT Debug& operator<<(Debug& debug, UnsignedIntAttribute::DataType value);
 #endif
 
 #ifndef MAGNUM_TARGET_GLES
@@ -911,6 +1000,7 @@ struct DoubleAttribute {
         Double = GL_DOUBLE
     };
     constexpr static DataType DefaultDataType = DataType::Double;
+    enum: UnsignedInt { DefaultDataTypeSize = 8 };
 
     typedef IntAttribute::DataOption DataOption;
     typedef IntAttribute::DataOptions DataOptions;
@@ -952,6 +1042,7 @@ template<> struct Attribute<Math::Vector<3, Float>>: SizedAttribute<1, 3> {
         #endif
     };
     constexpr static DataType DefaultDataType = DataType::Float;
+    enum: UnsignedInt { DefaultDataTypeSize = 4 };
 
     typedef FloatAttribute::DataOption DataOption;
     typedef FloatAttribute::DataOptions DataOptions;
@@ -976,6 +1067,7 @@ template<> struct Attribute<Math::Vector<4, Float>> {
         #endif
     };
     constexpr static Components DefaultComponents = Components::Four;
+    enum: UnsignedInt { DefaultComponentCount = 4 };
 
     enum class DataType: GLenum {
         UnsignedByte = GL_UNSIGNED_BYTE,
@@ -1006,6 +1098,7 @@ template<> struct Attribute<Math::Vector<4, Float>> {
         #endif
     };
     constexpr static DataType DefaultDataType = DataType::Float;
+    enum: UnsignedInt { DefaultDataTypeSize = 4 };
 
     typedef FloatAttribute::DataOption DataOption;
     typedef FloatAttribute::DataOptions DataOptions;

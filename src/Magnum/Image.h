@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -140,6 +141,14 @@ template<UnsignedInt dimensions> class Image {
          * parameters. For a 3D image, if @p flags contain
          * @ref ImageFlag3D::CubeMap, the @p size is expected to match its
          * restrictions.
+         *
+         * The @p format is expected to not be implementation-specific, use the
+         * @ref Image(PixelStorage, PixelFormat, UnsignedInt, UnsignedInt, const VectorTypeFor<dimensions, Int>&, Containers::Array<char>&&, ImageFlags<dimensions>)
+         * overload to explicitly pass an implementation-specific
+         * @ref PixelFormat along with a pixel size, or the
+         * @ref Image(PixelStorage, T, const VectorTypeFor<dimensions, Int>&, Containers::Array<char>&&, ImageFlags<dimensions>)
+         * overload with the original implementation-specific enum type to have
+         * the pixel size determined implicitly.
          */
         explicit Image(PixelStorage storage, PixelFormat format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, ImageFlags<dimensions> flags = {}) noexcept;
 
@@ -163,6 +172,14 @@ template<UnsignedInt dimensions> class Image {
          * Size is set to zero, data pointer to @cpp nullptr @ce and data
          * layout flags are empty. Move over a non-empty instance to make it
          * useful.
+         *
+         * The @p format is expected to not be implementation-specific, use the
+         * @ref Image(PixelStorage, PixelFormat, UnsignedInt, UnsignedInt)
+         * overload to explicitly pass an implementation-specific
+         * @ref PixelFormat along with a pixel size, or the
+         * @ref Image(PixelStorage, T) overload with the original
+         * implementation-specific enum type to have the pixel size determined
+         * implicitly.
          */
         /* No ImageFlags parameter here as this constructor is mainly used to
            query GL textures, and there the flags are forcibly reset */
@@ -190,11 +207,12 @@ template<UnsignedInt dimensions> class Image {
          * @param flags             Image layout flags
          *
          * Unlike with @ref Image(PixelStorage, PixelFormat, const VectorTypeFor<dimensions, Int>&, Containers::Array<char>&&, ImageFlags<dimensions>),
-         * where pixel size is calculated automatically using
+         * where pixel size is determined automatically using
          * @ref pixelFormatSize(), this allows you to specify an
          * implementation-specific pixel format and pixel size directly. Uses
          * @ref pixelFormatWrap() internally to wrap @p format in
-         * @ref PixelFormat.
+         * @ref PixelFormat. The @p pixelSize is expected to be non-zero and
+         * less than @cpp 256 @ce.
          *
          * The @p data array is expected to be of proper size for given
          * parameters. For a 3D image, if @p flags contain
@@ -218,10 +236,11 @@ template<UnsignedInt dimensions> class Image {
          * @param pixelSize         Size of a pixel in given format, in bytes
          *
          * Unlike with @ref Image(PixelStorage, PixelFormat), where pixel size
-         * is calculated automatically using @ref pixelFormatSize(), this
+         * is determined automatically using @ref pixelFormatSize(), this
          * allows you to specify an implementation-specific pixel format and
          * pixel size directly. Uses @ref pixelFormatWrap() internally to wrap
-         * @p format in @ref PixelFormat.
+         * @p format in @ref PixelFormat. The @p pixelSize is expected to be
+         * non-zero and less than @cpp 256 @ce.
          */
         /* No ImageFlags parameter here as this constructor is mainly used to
            query GL textures, and there the flags are forcibly reset */
@@ -247,7 +266,7 @@ template<UnsignedInt dimensions> class Image {
          *
          * Uses ADL to find a corresponding @cpp pixelFormatSize(T, U) @ce
          * overload, then calls @ref Image(PixelStorage, UnsignedInt, UnsignedInt, UnsignedInt, const VectorTypeFor<dimensions, Int>&, Containers::Array<char>&&, ImageFlags<dimensions>)
-         * with calculated pixel size.
+         * with determined pixel size.
          */
         template<class T, class U> explicit Image(PixelStorage storage, T format, U formatExtra, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, ImageFlags<dimensions> flags = {}) noexcept;
 
@@ -261,7 +280,7 @@ template<UnsignedInt dimensions> class Image {
          *
          * Uses ADL to find a corresponding @cpp pixelFormatSize(T) @ce
          * overload, then calls @ref Image(PixelStorage, UnsignedInt, UnsignedInt, UnsignedInt, const VectorTypeFor<dimensions, Int>&, Containers::Array<char>&&, ImageFlags<dimensions>)
-         * with calculated pixel size and @p formatExtra set to @cpp 0 @ce.
+         * with determined pixel size and @p formatExtra set to @cpp 0 @ce.
          */
         template<class T> explicit Image(PixelStorage storage, T format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, ImageFlags<dimensions> flags = {}) noexcept;
 
@@ -298,7 +317,7 @@ template<UnsignedInt dimensions> class Image {
          *
          * Uses ADL to find a corresponding @cpp pixelFormatSize(T, U) @ce
          * overload, then calls @ref Image(PixelStorage, UnsignedInt, UnsignedInt, UnsignedInt)
-         * with calculated pixel size.
+         * with determined pixel size.
          */
         /* No ImageFlags parameter here as this constructor is mainly used to
            query GL textures, and there the flags are forcibly reset */
@@ -323,7 +342,7 @@ template<UnsignedInt dimensions> class Image {
          *
          * Uses ADL to find a corresponding @cpp pixelFormatSize(T) @ce
          * overload, then calls @ref Image(PixelStorage, UnsignedInt, UnsignedInt, UnsignedInt)
-         * with calculated pixel size and @p formatExtra set to @cpp 0 @ce.
+         * with determined pixel size and @p formatExtra set to @cpp 0 @ce.
          */
         /* No ImageFlags parameter here as this constructor is mainly used to
            query GL textures, and there the flags are forcibly reset */
@@ -339,9 +358,9 @@ template<UnsignedInt dimensions> class Image {
         template<class T
             #ifndef DOXYGEN_GENERATING_OUTPUT
             /* Otherwise this catches too much, resulting in weird errors */
-            , class = typename std::enable_if<std::is_enum<T>::value || std::is_integral<T>::value>::type
+            , typename std::enable_if<std::is_enum<T>::value || std::is_integral<T>::value, int>::type = 0
             #endif
-            > /*implicit*/ Image(T format) noexcept: Image{{}, format} {}
+        > /*implicit*/ Image(T format) noexcept: Image{{}, format} {}
 
         /** @brief Copying is not allowed */
         Image(const Image<dimensions>&) = delete;
@@ -404,6 +423,9 @@ template<UnsignedInt dimensions> class Image {
         UnsignedInt pixelSize() const { return _pixelSize; }
 
         /** @brief Image size in pixels */
+        /* Unlike other getters this one is a const& so it's possible to slice
+           to the sizes when all images are in an array, for example for use
+           in TextureTools atlas APIs */
         const VectorTypeFor<dimensions, Int>& size() const { return _size; }
 
         /**
@@ -439,28 +461,6 @@ template<UnsignedInt dimensions> class Image {
          * @todo what to do here?!
          */
         Containers::Array<char> data() const && = delete;
-
-        #ifdef MAGNUM_BUILD_DEPRECATED
-        /**
-         * @brief Image data in a particular type
-         * @m_deprecated_since{2019,10} Use non-templated @ref data() together
-         *      with @ref Corrade::Containers::arrayCast() instead for properly
-         *      bounds-checked type conversion.
-         */
-        template<class T> CORRADE_DEPRECATED("use data() together with Containers::arrayCast() instead") T* data() {
-            return reinterpret_cast<T*>(_data.data());
-        }
-
-        /**
-         * @brief Image data in a particular type
-         * @m_deprecated_since{2019,10} Use non-templated @ref data() together
-         *      with @ref Corrade::Containers::arrayCast() instead for properly
-         *      bounds-checked type conversion.
-         */
-        template<class T> CORRADE_DEPRECATED("use data() together with Containers::arrayCast() instead") const T* data() const {
-            return reinterpret_cast<const T*>(_data.data());
-        }
-        #endif
 
         /**
          * @brief Pixel data
@@ -512,8 +512,8 @@ template<UnsignedInt dimensions> class Image {
         UnsignedInt _formatExtra;
         /** @todo this could be a short, saving 8 bytes for 1D and 3D images on
             64bit and 4 bytes for all dimensions on 32bit. Worth the pain? */
-        UnsignedInt _pixelSize;
-        /* 2-byte gap */
+        UnsignedByte _pixelSize;
+        /* 1 byte free */
         ImageFlags<dimensions> _flags;
         VectorTypeFor<dimensions, Int> _size;
         Containers::Array<char> _data;
@@ -682,6 +682,9 @@ template<UnsignedInt dimensions> class CompressedImage {
         CompressedPixelFormat format() const { return _format; }
 
         /** @brief Image size in pixels */
+        /* Unlike other getters this one is a const& so it's possible to slice
+           to the sizes when all images are in an array, for example for use
+           in TextureTools atlas APIs */
         const VectorTypeFor<dimensions, Int>& size() const { return _size; }
 
         /**
@@ -719,28 +722,6 @@ template<UnsignedInt dimensions> class CompressedImage {
          */
         Containers::Array<char> data() const && = delete;
 
-        #ifdef MAGNUM_BUILD_DEPRECATED
-        /**
-         * @brief Image data in a particular type
-         * @m_deprecated_since{2019,10} Use non-templated @ref data() together
-         *      with @ref Corrade::Containers::arrayCast() instead for properly
-         *      bounds-checked type conversion.
-         */
-        template<class T> CORRADE_DEPRECATED("use data() together with Containers::arrayCast() instead") T* data() {
-            return reinterpret_cast<T*>(_data.data());
-        }
-
-        /**
-         * @brief Image data in a particular type
-         * @m_deprecated_since{2019,10} Use non-templated @ref data() together
-         *      with @ref Corrade::Containers::arrayCast() instead for properly
-         *      bounds-checked type conversion.
-         */
-        template<class T> CORRADE_DEPRECATED("use data() together with Containers::arrayCast() instead") const T* data() const {
-            return reinterpret_cast<const T*>(_data.data());
-        }
-        #endif
-
         /**
          * @brief Release data storage
          *
@@ -771,22 +752,22 @@ typedef CompressedImage<2> CompressedImage2D;
 /** @brief Three-dimensional compressed image */
 typedef CompressedImage<3> CompressedImage3D;
 
-template<UnsignedInt dimensions> template<class T, class U> inline Image<dimensions>::Image(const PixelStorage storage, const T format, const U formatExtra, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags) noexcept: Image{storage, UnsignedInt(format), UnsignedInt(formatExtra), Implementation::pixelFormatSizeAdl(format, formatExtra), size, Utility::move(data), flags} {
+template<UnsignedInt dimensions> template<class T, class U> inline Image<dimensions>::Image(const PixelStorage storage, const T format, const U formatExtra, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags) noexcept: Image{storage, UnsignedInt(format), UnsignedInt(formatExtra), pixelFormatSize(format, formatExtra), size, Utility::move(data), flags} {
     static_assert(sizeof(T) <= 4 && sizeof(U) <= 4,
         "format types larger than 32bits are not supported");
 }
 
-template<UnsignedInt dimensions> template<class T> inline  Image<dimensions>::Image(const PixelStorage storage, const T format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags) noexcept: Image{storage, UnsignedInt(format), {}, Implementation::pixelFormatSizeAdl(format), size, Utility::move(data), flags} {
+template<UnsignedInt dimensions> template<class T> inline  Image<dimensions>::Image(const PixelStorage storage, const T format, const VectorTypeFor<dimensions, Int>& size, Containers::Array<char>&& data, const ImageFlags<dimensions> flags) noexcept: Image{storage, UnsignedInt(format), {}, pixelFormatSize(format), size, Utility::move(data), flags} {
     static_assert(sizeof(T) <= 4,
         "format types larger than 32bits are not supported");
 }
 
-template<UnsignedInt dimensions> template<class T, class U> inline Image<dimensions>::Image(const PixelStorage storage, const T format, const U formatExtra) noexcept: Image{storage, UnsignedInt(format), UnsignedInt(formatExtra), Implementation::pixelFormatSizeAdl(format, formatExtra)} {
+template<UnsignedInt dimensions> template<class T, class U> inline Image<dimensions>::Image(const PixelStorage storage, const T format, const U formatExtra) noexcept: Image{storage, UnsignedInt(format), UnsignedInt(formatExtra), pixelFormatSize(format, formatExtra)} {
     static_assert(sizeof(T) <= 4 && sizeof(U) <= 4,
         "format types larger than 32bits are not supported");
 }
 
-template<UnsignedInt dimensions> template<class T> inline Image<dimensions>::Image(const PixelStorage storage, const T format) noexcept: Image{storage, UnsignedInt(format), {}, Implementation::pixelFormatSizeAdl(format)} {
+template<UnsignedInt dimensions> template<class T> inline Image<dimensions>::Image(const PixelStorage storage, const T format) noexcept: Image{storage, UnsignedInt(format), {}, pixelFormatSize(format)} {
     static_assert(sizeof(T) <= 4,
         "format types larger than 32bits are not supported");
 }

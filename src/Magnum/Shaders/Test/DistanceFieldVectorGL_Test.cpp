@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Format.h>
 
 #include "Magnum/Shaders/DistanceFieldVectorGL.h"
@@ -84,17 +83,17 @@ template<UnsignedInt dimensions> void DistanceFieldVectorGL_Test::constructCopy(
 }
 
 void DistanceFieldVectorGL_Test::debugFlag() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << DistanceFieldVectorGL2D::Flag::TextureTransformation << DistanceFieldVectorGL2D::Flag(0xf0);
-    CORRADE_COMPARE(out.str(), "Shaders::DistanceFieldVectorGL::Flag::TextureTransformation Shaders::DistanceFieldVectorGL::Flag(0xf0)\n");
+    CORRADE_COMPARE(out, "Shaders::DistanceFieldVectorGL::Flag::TextureTransformation Shaders::DistanceFieldVectorGL::Flag(0xf0)\n");
 }
 
 void DistanceFieldVectorGL_Test::debugFlags() {
-    std::ostringstream out;
+    Containers::String out;
 
-    Debug{&out} << DistanceFieldVectorGL3D::Flags{DistanceFieldVectorGL3D::Flag::TextureTransformation|DistanceFieldVectorGL3D::Flag(0xf0)} << DistanceFieldVectorGL3D::Flags{};
-    CORRADE_COMPARE(out.str(), "Shaders::DistanceFieldVectorGL::Flag::TextureTransformation|Shaders::DistanceFieldVectorGL::Flag(0xf0) Shaders::DistanceFieldVectorGL::Flags{}\n");
+    Debug{&out} << DistanceFieldVectorGL3D::Flags{DistanceFieldVectorGL3D::Flag::TextureTransformation|DistanceFieldVectorGL3D::Flag(0x80)} << DistanceFieldVectorGL3D::Flags{};
+    CORRADE_COMPARE(out, "Shaders::DistanceFieldVectorGL::Flag::TextureTransformation|Shaders::DistanceFieldVectorGL::Flag(0x80) Shaders::DistanceFieldVectorGL::Flags{}\n");
 }
 
 #ifndef MAGNUM_TARGET_GLES2
@@ -102,19 +101,19 @@ void DistanceFieldVectorGL_Test::debugFlagsSupersets() {
     /* MultiDraw and ShaderStorageBuffers are a superset of UniformBuffers so
        only one should be printed, but if there are both then both should be */
     {
-        std::ostringstream out;
+        Containers::String out;
         Debug{&out} << (DistanceFieldVectorGL3D::Flag::MultiDraw|DistanceFieldVectorGL3D::Flag::UniformBuffers);
-        CORRADE_COMPARE(out.str(), "Shaders::DistanceFieldVectorGL::Flag::MultiDraw\n");
+        CORRADE_COMPARE(out, "Shaders::DistanceFieldVectorGL::Flag::MultiDraw\n");
     }
     #ifndef MAGNUM_TARGET_WEBGL
     {
-        std::ostringstream out;
+        Containers::String out;
         Debug{&out} << (DistanceFieldVectorGL2D::Flag::ShaderStorageBuffers|DistanceFieldVectorGL2D::Flag::UniformBuffers);
-        CORRADE_COMPARE(out.str(), "Shaders::DistanceFieldVectorGL::Flag::ShaderStorageBuffers\n");
+        CORRADE_COMPARE(out, "Shaders::DistanceFieldVectorGL::Flag::ShaderStorageBuffers\n");
     } {
-        std::ostringstream out;
+        Containers::String out;
         Debug{&out} << (DistanceFieldVectorGL3D::Flag::MultiDraw|DistanceFieldVectorGL3D::Flag::ShaderStorageBuffers|DistanceFieldVectorGL3D::Flag::UniformBuffers);
-        CORRADE_COMPARE(out.str(), "Shaders::DistanceFieldVectorGL::Flag::MultiDraw|Shaders::DistanceFieldVectorGL::Flag::ShaderStorageBuffers\n");
+        CORRADE_COMPARE(out, "Shaders::DistanceFieldVectorGL::Flag::MultiDraw|Shaders::DistanceFieldVectorGL::Flag::ShaderStorageBuffers\n");
     }
     #endif
 }

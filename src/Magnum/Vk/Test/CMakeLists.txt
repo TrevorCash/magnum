@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #   Copyright © 2016 Jonathan Hale <squareys@googlemail.com>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
@@ -166,7 +167,7 @@ if(MAGNUM_BUILD_VK_TESTS)
     corrade_add_test(VkFenceVkTest FenceVkTest.cpp LIBRARIES MagnumVk MagnumVulkanTester)
     corrade_add_test(VkFramebufferVkTest FramebufferVkTest.cpp LIBRARIES MagnumVk MagnumVulkanTester)
     corrade_add_test(VkLayerPropertiesVkTest LayerPropertiesVkTest.cpp LIBRARIES MagnumVkTestLib)
-    corrade_add_test(VkImageVkTest ImageVkTest.cpp LIBRARIES MagnumVkTestLib MagnumVulkanTester)
+    corrade_add_test(VkImageVkTest ImageVkTest.cpp LIBRARIES MagnumVkTestLib MagnumDebugTools MagnumVulkanTester)
     corrade_add_test(VkImageViewVkTest ImageViewVkTest.cpp LIBRARIES MagnumVk MagnumVulkanTester)
     corrade_add_test(VkInstanceVkTest InstanceVkTest.cpp LIBRARIES MagnumVkTestLib)
     corrade_add_test(VkMemoryVkTest MemoryVkTest.cpp LIBRARIES MagnumVk MagnumVulkanTester)

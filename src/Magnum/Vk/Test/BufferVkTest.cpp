@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,12 +24,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Array.h>
-#include <Corrade/Containers/StringView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
 #include <Corrade/Utility/Algorithms.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Vk/BufferCreateInfo.h"
 #include "Magnum/Vk/CommandBuffer.h"
@@ -227,11 +226,13 @@ void BufferVkTest::cmdCopyBuffer() {
 
     /* Source buffer */
     Buffer a{device(), BufferCreateInfo{BufferUsage::TransferSource, 7}, MemoryFlag::HostVisible};
-    Utility::copy("__ABCD_"_s, a.dedicatedMemory().map());
+    /* It might be allocated larger, copy to just a prefix */
+    Utility::copy("__ABCD_"_s, a.dedicatedMemory().map().prefix(7));
 
     /* Destination buffer, clear it to have predictable output */
     Buffer b{device(), BufferCreateInfo{BufferUsage::TransferDestination, 10}, MemoryFlag::HostVisible};
-    Utility::copy(".........."_s, b.dedicatedMemory().map());
+    /* It might be allocated larger, copy to just a prefix */
+    Utility::copy(".........."_s, b.dedicatedMemory().map().prefix(10));
 
     cmd.begin()
        .copyBuffer({a, b, {{2, 5, 4}}})
@@ -241,7 +242,8 @@ void BufferVkTest::cmdCopyBuffer() {
        .end();
     queue().submit({SubmitInfo{}.setCommandBuffers({cmd})}).wait();
 
-    CORRADE_COMPARE(arrayView(b.dedicatedMemory().mapRead()),
+    /* It might be allocated larger, compare just a prefix */
+    CORRADE_COMPARE(arrayView(b.dedicatedMemory().mapRead()).prefix(10),
         ".....ABCD."_s);
 }
 
@@ -260,10 +262,10 @@ void BufferVkTest::cmdCopyBufferDisallowedConversion() {
 
     /* The commands shouldn't do anything, so it should be fine to just call
        them without any render pass set up */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     cmd.copyBuffer(a);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Vk::CommandBuffer::copyBuffer(): disallowing extraction of CopyBufferInfo with non-empty pNext to prevent information loss\n");
 }
 

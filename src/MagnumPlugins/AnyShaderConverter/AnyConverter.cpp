@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -31,7 +32,6 @@
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/PluginManager/PluginMetadata.h>
 #include <Corrade/Utility/Assert.h>
-#include <Corrade/Utility/DebugStl.h> /* for PluginMetadata::name() */
 #include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 #include <Corrade/Utility/String.h> /* lowercase() */
@@ -125,7 +125,7 @@ Containers::StringView stringForFormat(const Format format) {
 Format formatForExtension(const char* prefix, const Containers::StringView filename) {
     /* Can't reliably lowercase just the extension as we detect double
        extensions as well. But we can lowercase just the filename, at least. */
-    const Containers::String normalized = Utility::String::lowercase(Utility::Path::split(filename).second());
+    const Containers::String normalized = Utility::String::lowercase(Utility::Path::filename(filename));
 
     /* https://github.com/KhronosGroup/SPIRV-Tools/blob/a715b1b4053519ad0f2bdb2d22ace35d35867cff/README.md#command-line-tools
        "It's a convention to name SPIR-V assembly and binary files with suffix

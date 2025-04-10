@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -33,9 +34,9 @@
 
 #include "Magnum/Magnum.h"
 
+#ifndef DOXYGEN_GENERATING_OUTPUT
 namespace Magnum { namespace Vk {
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 enum class Access: UnsignedInt;
 typedef Containers::EnumSet<Access> Accesses;
 class Buffer;
@@ -137,15 +138,15 @@ class ShaderSet;
 enum class ShaderStage: UnsignedInt;
 /* 0x7FFFFFFF = VK_SHADER_STAGE_ALL, but that would mean including the whole
    Vulkan headers. Using a number here and then the actual enum value in
-   Shadder.h to ensure it doesn't get out of sync. */
+   Shader.h to ensure it doesn't get out of sync. */
 typedef Containers::EnumSet<ShaderStage, 0x7FFFFFFF> ShaderStages;
 class SubmitInfo;
 class SubpassBeginInfo;
 class SubpassEndInfo;
 enum class Version: UnsignedInt;
 enum class VertexFormat: Int;
-#endif
 
 }}
+#endif
 
 #endif

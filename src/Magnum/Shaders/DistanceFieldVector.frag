@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -41,7 +42,7 @@
 
 #ifndef UNIFORM_BUFFERS
 #ifdef EXPLICIT_UNIFORM_LOCATION
-layout(location = 2)
+layout(location = 3)
 #endif
 uniform lowp vec4 color
     #ifndef GL_ES
@@ -50,12 +51,12 @@ uniform lowp vec4 color
     ;
 
 #ifdef EXPLICIT_UNIFORM_LOCATION
-layout(location = 3)
+layout(location = 4)
 #endif
 uniform lowp vec4 outlineColor; /* defaults to zero */
 
 #ifdef EXPLICIT_UNIFORM_LOCATION
-layout(location = 4)
+layout(location = 5)
 #endif
 uniform lowp vec2 outlineRange
     #ifndef GL_ES
@@ -64,7 +65,7 @@ uniform lowp vec2 outlineRange
     ;
 
 #ifdef EXPLICIT_UNIFORM_LOCATION
-layout(location = 5)
+layout(location = 6)
 #endif
 uniform lowp float smoothness
     #ifndef GL_ES
@@ -140,11 +141,23 @@ layout(std140
 #ifdef EXPLICIT_BINDING
 layout(binding = 6)
 #endif
-uniform lowp sampler2D vectorTexture;
+uniform lowp
+    #ifndef TEXTURE_ARRAYS
+    sampler2D
+    #else
+    sampler2DArray
+    #endif
+    vectorTexture;
 
 /* Inputs */
 
-in mediump vec2 interpolatedTextureCoordinates;
+in mediump
+    #ifndef TEXTURE_ARRAYS
+    vec2
+    #else
+    vec3
+    #endif
+    interpolatedTextureCoordinates;
 
 #ifdef MULTI_DRAW
 flat in highp uint drawId;

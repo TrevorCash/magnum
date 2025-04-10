@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,7 +25,6 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pair.h>
 #include <Corrade/Containers/StridedArrayView.h>
@@ -32,15 +32,9 @@
 #include <Corrade/Containers/StringIterable.h>
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Utility/Algorithms.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 #include <Corrade/Utility/System.h>
-
-#ifdef CORRADE_TARGET_APPLE
-#include <Corrade/Containers/Pair.h>
-#include <Corrade/Utility/System.h> /* isSandboxed() */
-#endif
 
 #include "Magnum/Image.h"
 #include "Magnum/ImageView.h"
@@ -1175,7 +1169,7 @@ FlatGLTest::FlatGLTest() {
         && std::getenv("SIMULATOR_UDID")
         #endif
     ) {
-        _testDir = Utility::Path::split(*Utility::Path::executableLocation()).first();
+        _testDir = Utility::Path::path(*Utility::Path::executableLocation());
     } else
     #endif
     {
@@ -1450,7 +1444,7 @@ template<UnsignedInt dimensions> void FlatGLTest::constructInvalid() {
 
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     FlatGL<dimensions>{typename FlatGL<dimensions>::Configuration{}
         .setFlags(data.flags)
@@ -1458,7 +1452,7 @@ template<UnsignedInt dimensions> void FlatGLTest::constructInvalid() {
         .setJointCount(data.jointCount, data.perVertexJointCount, data.secondaryPerVertexJointCount)
         #endif
     };
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Shaders::FlatGL: {}\n", data.message));
 }
 
@@ -1475,14 +1469,14 @@ template<UnsignedInt dimensions> void FlatGLTest::constructUniformBuffersInvalid
         CORRADE_SKIP(GL::Extensions::ARB::uniform_buffer_object::string() << "is not supported.");
     #endif
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     FlatGL<dimensions>{typename FlatGL<dimensions>::Configuration{}
         .setFlags(data.flags)
         .setJointCount(data.jointCount, data.perVertexJointCount, data.secondaryPerVertexJointCount)
         .setMaterialCount(data.materialCount)
         .setDrawCount(data.drawCount)};
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Shaders::FlatGL: {}\n", data.message));
 }
 #endif
@@ -1503,12 +1497,12 @@ template<UnsignedInt dimensions> void FlatGLTest::setPerVertexJointCountInvalid(
         .setFlags(FlatGL<dimensions>::Flag::DynamicPerVertexJointCount)
         .setJointCount(16, 3, 2)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     a.setPerVertexJointCount(3, 2);
     b.setPerVertexJointCount(4);
     b.setPerVertexJointCount(3, 3);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::FlatGL::setPerVertexJointCount(): the shader was not created with dynamic per-vertex joint count enabled\n"
         "Shaders::FlatGL::setPerVertexJointCount(): expected at most 3 per-vertex joints, got 4\n"
         "Shaders::FlatGL::setPerVertexJointCount(): expected at most 2 secondary per-vertex joints, got 3\n");
@@ -1529,7 +1523,7 @@ template<UnsignedInt dimensions> void FlatGLTest::setUniformUniformBuffersEnable
     FlatGL<dimensions> shader{typename FlatGL<dimensions>::Configuration{}
         .setFlags(FlatGL<dimensions>::Flag::UniformBuffers)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader
         /* setPerVertexJointCount() works on both UBOs and classic */
@@ -1542,7 +1536,7 @@ template<UnsignedInt dimensions> void FlatGLTest::setUniformUniformBuffersEnable
         .setJointMatrices({})
         .setJointMatrix(0, {})
         .setPerInstanceJointCount(0);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::FlatGL::setTransformationProjectionMatrix(): the shader was created with uniform buffers enabled\n"
         "Shaders::FlatGL::setTextureMatrix(): the shader was created with uniform buffers enabled\n"
         "Shaders::FlatGL::setTextureLayer(): the shader was created with uniform buffers enabled\n"
@@ -1562,7 +1556,7 @@ template<UnsignedInt dimensions> void FlatGLTest::bindBufferUniformBuffersNotEna
     GL::Buffer buffer;
     FlatGL<dimensions> shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindTransformationProjectionBuffer(buffer)
           .bindTransformationProjectionBuffer(buffer, 0, 16)
@@ -1575,7 +1569,7 @@ template<UnsignedInt dimensions> void FlatGLTest::bindBufferUniformBuffersNotEna
           .bindJointBuffer(buffer)
           .bindJointBuffer(buffer, 0, 16)
           .setDrawOffset(0);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::FlatGL::bindTransformationProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::FlatGL::bindTransformationProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::FlatGL::bindDrawBuffer(): the shader was not created with uniform buffers enabled\n"
@@ -1606,13 +1600,13 @@ template<UnsignedInt dimensions> void FlatGLTest::bindTexturesInvalid() {
     FlatGL<dimensions> shader{typename FlatGL<dimensions>::Configuration{}
         .setFlags(data.flags)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindTexture(texture);
     #ifndef MAGNUM_TARGET_GLES2
     shader.bindObjectIdTexture(texture);
     #endif
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 
 #ifndef MAGNUM_TARGET_GLES2
@@ -1632,11 +1626,11 @@ template<UnsignedInt dimensions> void FlatGLTest::bindTextureArraysInvalid() {
     FlatGL<dimensions> shader{typename FlatGL<dimensions>::Configuration{}
         .setFlags(data.flags)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindTexture(textureArray);
     shader.bindObjectIdTexture(textureArray);
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 #endif
 
@@ -1647,10 +1641,10 @@ template<UnsignedInt dimensions> void FlatGLTest::setAlphaMaskNotEnabled() {
 
     FlatGL<dimensions> shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setAlphaMask(0.75f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::FlatGL::setAlphaMask(): the shader was not created with alpha mask enabled\n");
 }
 
@@ -1661,10 +1655,10 @@ template<UnsignedInt dimensions> void FlatGLTest::setTextureMatrixNotEnabled() {
 
     FlatGL<dimensions> shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setTextureMatrix({});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::FlatGL::setTextureMatrix(): the shader was not created with texture transformation enabled\n");
 }
 
@@ -1676,10 +1670,10 @@ template<UnsignedInt dimensions> void FlatGLTest::setTextureLayerNotArray() {
 
     FlatGL<dimensions> shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setTextureLayer(37);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::FlatGL::setTextureLayer(): the shader was not created with texture arrays enabled\n");
 }
 #endif
@@ -1699,11 +1693,11 @@ template<UnsignedInt dimensions> void FlatGLTest::bindTextureTransformBufferNotE
     FlatGL<dimensions> shader{typename FlatGL<dimensions>::Configuration{}
         .setFlags(FlatGL<dimensions>::Flag::UniformBuffers)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindTextureTransformationBuffer(buffer)
           .bindTextureTransformationBuffer(buffer, 0, 16);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::FlatGL::bindTextureTransformationBuffer(): the shader was not created with texture transformation enabled\n"
         "Shaders::FlatGL::bindTextureTransformationBuffer(): the shader was not created with texture transformation enabled\n");
 }
@@ -1717,10 +1711,10 @@ template<UnsignedInt dimensions> void FlatGLTest::setObjectIdNotEnabled() {
 
     FlatGL<dimensions> shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setObjectId(33376);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::FlatGL::setObjectId(): the shader was not created with object ID enabled\n");
 }
 #endif
@@ -1739,13 +1733,13 @@ template<UnsignedInt dimensions> void FlatGLTest::setWrongJointCountOrId() {
     FlatGL<dimensions> shader{typename FlatGL<dimensions>::Configuration{}
         .setJointCount(5, 1)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* Calling setJointMatrices() with less items is fine, tested in
        renderSkinning*D() */
     shader.setJointMatrices({{}, {}, {}, {}, {}, {}})
         .setJointMatrix(5, MatrixTypeFor<dimensions, Float>{});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::FlatGL::setJointMatrices(): expected at most 5 items but got 6\n"
         "Shaders::FlatGL::setJointMatrix(): joint ID 5 is out of range for 5 joints\n");
 }
@@ -1767,10 +1761,10 @@ template<UnsignedInt dimensions> void FlatGLTest::setWrongDrawOffset() {
         .setMaterialCount(2)
         .setDrawCount(5)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setDrawOffset(5);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::FlatGL::setDrawOffset(): draw offset 5 is out of range for 5 draws\n");
 }
 #endif
@@ -1895,7 +1889,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderDefaults2D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/defaults.tga"),
         /* SwiftShader has 8 different pixels on the edges */
         (DebugTools::CompareImageToFile{_manager, 238.0f, 0.2975f}));
@@ -1971,7 +1965,7 @@ template<FlatGL3D::Flag flag> void FlatGLTest::renderDefaults3D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/defaults.tga"),
         /* SwiftShader has 8 different pixels on the edges */
         (DebugTools::CompareImageToFile{_manager, 238.0f, 0.2975f}));
@@ -2058,7 +2052,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderColored2D() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/colored2D.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -2154,7 +2148,7 @@ template<FlatGL3D::Flag flag> void FlatGLTest::renderColored3D() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/colored3D.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -2304,7 +2298,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderSinglePixelTextured2D() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/colored2D.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -2449,7 +2443,7 @@ template<FlatGL3D::Flag flag> void FlatGLTest::renderSinglePixelTextured3D() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/colored3D.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -2588,7 +2582,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderTextured2D() {
     Image2D rendered = _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm});
     /* Dropping the alpha channel, as it's always 1.0 */
     Containers::StridedArrayView2D<Color3ub> pixels =
-        Containers::arrayCast<Color3ub>(rendered.pixels<Color4ub>());
+        rendered.pixels<Color4ub>().slice(&Color4ub::rgb);
     if(data.flip) pixels = pixels.flipped<0>().flipped<1>();
 
     #if !(defined(MAGNUM_TARGET_GLES2) && defined(MAGNUM_TARGET_WEBGL))
@@ -2747,7 +2741,7 @@ template<FlatGL3D::Flag flag> void FlatGLTest::renderTextured3D() {
     Image2D rendered = _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm});
     /* Dropping the alpha channel, as it's always 1.0 */
     Containers::StridedArrayView2D<Color3ub> pixels =
-        Containers::arrayCast<Color3ub>(rendered.pixels<Color4ub>());
+        rendered.pixels<Color4ub>().slice(&Color4ub::rgb);
     if(data.flip) pixels = pixels.flipped<0>().flipped<1>();
 
     #if !(defined(MAGNUM_TARGET_GLES2) && defined(MAGNUM_TARGET_WEBGL))
@@ -2869,7 +2863,7 @@ template<class T, FlatGL2D::Flag flag> void FlatGLTest::renderVertexColor2D() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/vertexColor2D.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -2990,7 +2984,7 @@ template<class T, FlatGL2D::Flag flag> void FlatGLTest::renderVertexColor3D() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/vertexColor3D.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -3113,7 +3107,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderAlpha2D() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, data.expected2D),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -3243,7 +3237,7 @@ template<FlatGL3D::Flag flag> void FlatGLTest::renderAlpha3D() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, data.expected3D}),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -3393,7 +3387,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderObjectId2D() {
     const Float maxThreshold = 0.0f, meanThreshold = 0.0f;
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/colored2D.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 
@@ -3575,7 +3569,7 @@ template<FlatGL3D::Flag flag> void FlatGLTest::renderObjectId3D() {
     CORRADE_COMPARE(_framebuffer.checkStatus(GL::FramebufferTarget::Read), GL::Framebuffer::Status::Complete);
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/colored3D.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 
@@ -3749,7 +3743,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderSkinning2D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "TestFiles", data.expected}),
         (DebugTools::CompareImageToFile{_manager}));
 }
@@ -3902,7 +3896,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderSkinning3D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "TestFiles", data.expected}),
         (DebugTools::CompareImageToFile{_manager}));
 }
@@ -4228,7 +4222,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderInstanced2D() {
     */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "FlatTestFiles", data.expected2D}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 
@@ -4579,7 +4573,7 @@ template<FlatGL3D::Flag flag> void FlatGLTest::renderInstanced3D() {
     */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "FlatTestFiles", data.expected3D}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 
@@ -4747,7 +4741,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderInstancedSkinning2D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "TestFiles/skinning-instanced.tga"),
         (DebugTools::CompareImageToFile{_manager}));
 }
@@ -4896,7 +4890,7 @@ template<FlatGL2D::Flag flag> void FlatGLTest::renderInstancedSkinning3D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "TestFiles/skinning-instanced.tga"),
         (DebugTools::CompareImageToFile{_manager}));
 }
@@ -5248,7 +5242,7 @@ void FlatGLTest::renderMulti2D() {
     */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "FlatTestFiles", data.expected2D}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 
@@ -5620,7 +5614,7 @@ void FlatGLTest::renderMulti3D() {
     */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "FlatTestFiles", data.expected3D}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 
@@ -5887,7 +5881,7 @@ void FlatGLTest::renderMultiSkinning2D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "TestFiles/skinning-multi.tga"),
         (DebugTools::CompareImageToFile{_manager}));
 }
@@ -6139,7 +6133,7 @@ void FlatGLTest::renderMultiSkinning3D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "TestFiles/skinning-multi.tga"),
         (DebugTools::CompareImageToFile{_manager}));
 }

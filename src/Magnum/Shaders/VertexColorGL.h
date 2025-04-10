@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -26,11 +27,16 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#ifdef MAGNUM_TARGET_GL
 /** @file
  * @brief Class @ref Magnum::Shaders::VertexColorGL, typedef @ref Magnum::Shaders::VertexColorGL2D, @ref Magnum::Shaders::VertexColorGL3D
  * @m_since_latest
  */
+#endif
 
+#include "Magnum/configure.h"
+
+#ifdef MAGNUM_TARGET_GL
 #include <Corrade/Utility/Move.h>
 
 #include "Magnum/DimensionTraits.h"
@@ -76,16 +82,20 @@ working on the framebuffer, you need to enable
 @ref GL::Renderer::Feature::Blending and set up the blending function. See
 @ref GL::Renderer::setBlendFunction() for details.
 
+@note This class is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+
 @section Shaders-VertexColorGL-example Example usage
 
 Common mesh setup. The shader accepts either three- or four-component color
 attribute, use either @ref Color3 or @ref Color4 to specify which one you use.
 
-@snippet MagnumShaders-gl.cpp VertexColorGL-usage1
+@snippet Shaders-gl.cpp VertexColorGL-usage1
 
 Common rendering setup:
 
-@snippet MagnumShaders-gl.cpp VertexColorGL-usage2
+@snippet Shaders-gl.cpp VertexColorGL-usage2
 
 @section Shaders-VertexColorGL-ubo Uniform buffers
 
@@ -97,7 +107,7 @@ buffer bound with @ref bindTransformationProjectionBuffer(). This is also the
 only buffer supplied, as there are no other draw parameters. A uniform buffer
 setup equivalent to the above would look like this:
 
-@snippet MagnumShaders-gl.cpp VectorGL-ubo
+@snippet Shaders-gl.cpp VectorGL-ubo
 
 For a multidraw workflow enable @ref Flag::MultiDraw and supply desired draw
 count via @ref Configuration::setDrawCount(). The usage is similar for all
@@ -557,12 +567,20 @@ template<UnsignedInt dimensions> class VertexColorGL<dimensions>::CompileState: 
 /**
 @brief 2D vertex color OpenGL shader
 @m_since_latest
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 */
 typedef VertexColorGL<2> VertexColorGL2D;
 
 /**
 @brief 3D vertex color OpenGL shader
 @m_since_latest
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 */
 typedef VertexColorGL<3> VertexColorGL3D;
 
@@ -580,5 +598,8 @@ namespace Implementation {
 #endif
 
 }}
+#else
+#error this header is available only in the OpenGL build
+#endif
 
 #endif

@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -78,7 +79,7 @@ See @ref Texture documentation for introduction.
 Common usage is to fully configure all texture parameters and then set the
 data from e.g. set of Image objects:
 
-@snippet MagnumGL.cpp CubeMapTexture-usage
+@snippet GL.cpp CubeMapTexture-usage
 
 In shader, the texture is used via @glsl samplerCube @ce, @glsl samplerCubeShadow @ce,
 @glsl isamplerCube @ce or @glsl usamplerCube @ce. Unlike in classic textures,
@@ -541,16 +542,17 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
         }
         #endif
 
-        #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
+        #ifndef MAGNUM_TARGET_GLES2
         /**
          * @brief @copybrief Texture::setDepthStencilMode()
          * @return Reference to self (for method chaining)
          *
          * See @ref Texture::setDepthStencilMode() for more information.
          * @requires_gl43 Extension @gl_extension{ARB,stencil_texturing}
-         * @requires_gles31 Stencil texturing is not available in OpenGL ES 3.0
-         *      and older.
-         * @requires_gles Stencil texturing is not available in WebGL.
+         * @requires_gles31 Extension @m_class{m-doc-external} [ANGLE_stencil_texturing](https://chromium.googlesource.com/angle/angle/+/HEAD/extensions/ANGLE_stencil_texturing.txt)
+         *      in OpenGL ES 3.0.
+         * @requires_webgl_extension WebGL 2.0 and extension
+         *      @webgl_extension{WEBGL,stencil_texturing}
          */
         CubeMapTexture& setDepthStencilMode(SamplerDepthStencilMode mode) {
             AbstractTexture::setDepthStencilMode(mode);
@@ -622,7 +624,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-image1
+         * @snippet GL.cpp CubeMapTexture-image1
          */
         Image3D image(Int level, Image3D&& image);
 
@@ -654,7 +656,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-image2
+         * @snippet GL.cpp CubeMapTexture-image2
          */
         BufferImage3D image(Int level, BufferImage3D&& image, BufferUsage usage);
 
@@ -686,7 +688,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-compressedImage1
+         * @snippet GL.cpp CubeMapTexture-compressedImage1
          */
         CompressedImage3D compressedImage(Int level, CompressedImage3D&& image);
 
@@ -721,7 +723,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-compressedImage2
+         * @snippet GL.cpp CubeMapTexture-compressedImage2
          */
         CompressedBufferImage3D compressedImage(Int level, CompressedBufferImage3D&& image, BufferUsage usage);
 
@@ -760,7 +762,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-image3
+         * @snippet GL.cpp CubeMapTexture-image3
          */
         Image2D image(CubeMapCoordinate coordinate, Int level, Image2D&& image);
 
@@ -793,7 +795,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-image4
+         * @snippet GL.cpp CubeMapTexture-image4
          */
         BufferImage2D image(CubeMapCoordinate coordinate, Int level, BufferImage2D&& image, BufferUsage usage);
 
@@ -835,7 +837,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-compressedImage3
+         * @snippet GL.cpp CubeMapTexture-compressedImage3
          */
         CompressedImage2D compressedImage(CubeMapCoordinate coordinate, Int level, CompressedImage2D&& image);
 
@@ -872,7 +874,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-compressedImage4
+         * @snippet GL.cpp CubeMapTexture-compressedImage4
          */
         CompressedBufferImage2D compressedImage(CubeMapCoordinate coordinate, Int level, CompressedBufferImage2D&& image, BufferUsage usage);
 
@@ -901,7 +903,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-subImage1
+         * @snippet GL.cpp CubeMapTexture-subImage1
          */
         Image3D subImage(Int level, const Range3Di& range, Image3D&& image);
 
@@ -938,7 +940,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-subImage2
+         * @snippet GL.cpp CubeMapTexture-subImage2
          */
         BufferImage3D subImage(Int level, const Range3Di& range, BufferImage3D&& image, BufferUsage usage);
 
@@ -968,7 +970,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-compressedSubImage1
+         * @snippet GL.cpp CubeMapTexture-compressedSubImage1
          */
         CompressedImage3D compressedSubImage(Int level, const Range3Di& range, CompressedImage3D&& image);
 
@@ -1007,7 +1009,7 @@ class MAGNUM_GL_EXPORT CubeMapTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp CubeMapTexture-compressedSubImage2
+         * @snippet GL.cpp CubeMapTexture-compressedSubImage2
          */
         CompressedBufferImage3D compressedSubImage(Int level, const Range3Di& range, CompressedBufferImage3D&& image, BufferUsage usage);
         #endif

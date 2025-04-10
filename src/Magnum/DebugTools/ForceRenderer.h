@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -31,6 +32,9 @@
  */
 #endif
 
+#include "Magnum/configure.h"
+
+#ifdef MAGNUM_TARGET_GL
 #include "Magnum/Resource.h"
 #include "Magnum/DebugTools/DebugTools.h"
 #include "Magnum/DebugTools/visibility.h"
@@ -39,7 +43,6 @@
 #include "Magnum/SceneGraph/Drawable.h"
 #include "Magnum/Shaders/Shaders.h"
 
-#ifdef MAGNUM_TARGET_GL
 namespace Magnum { namespace DebugTools {
 
 /**
@@ -72,14 +75,6 @@ class ForceRendererOptions {
         /** @brief Size of rendered arrow */
         constexpr Float size() const { return _size; }
 
-        #ifdef MAGNUM_BUILD_DEPRECATED
-        /**
-         * @brief @copybrief size()
-         * @m_deprecated_since{2019,10} Use @ref size() instead.
-         */
-        constexpr CORRADE_DEPRECATED("use size() instead") Float scale() const { return _size; }
-        #endif
-
         /**
          * @brief Set scale of rendered arrow
          * @return Reference to self (for method chaining)
@@ -110,7 +105,7 @@ it must be available for the whole lifetime of the renderer. The renderer is
 automatically added to object's features so you don't need to keep a reference
 to it.
 
-@snippet MagnumDebugTools-gl.cpp ForceRenderer
+@snippet DebugTools-gl.cpp ForceRenderer
 
 @note This class is available only if Magnum is compiled with
     @ref MAGNUM_TARGET_GL "TARGET_GL" and `MAGNUM_WITH_SCENEGRAPH` enabled
@@ -139,20 +134,6 @@ template<UnsignedInt dimensions> class ForceRenderer: public SceneGraph::Drawabl
          */
         explicit ForceRenderer(ResourceManager&, SceneGraph::AbstractObject<dimensions, Float>&, const VectorTypeFor<dimensions, Float>&, VectorTypeFor<dimensions, Float>&&, ResourceKey = ResourceKey(), SceneGraph::DrawableGroup<dimensions, Float>* = nullptr) = delete;
 
-        #ifdef MAGNUM_BUILD_DEPRECATED
-        /**
-         * @brief Constructor
-         * @m_deprecated_since{2019,10} Implicit @ref ResourceManager singleton
-         *      is deprecated, use @ref ForceRenderer(ResourceManager&, SceneGraph::AbstractObject<dimensions, Float>&, const VectorTypeFor<dimensions, Float>&, const VectorTypeFor<dimensions, Float>&, ResourceKey, SceneGraph::DrawableGroup<dimensions, Float>*)
-         *      instead.
-         */
-        explicit CORRADE_DEPRECATED("implicit ResourceManager singleton is deprecated, use a constructor with explicit ResourceManager reference instead") ForceRenderer(SceneGraph::AbstractObject<dimensions, Float>& object, const VectorTypeFor<dimensions, Float>& forcePosition, const VectorTypeFor<dimensions, Float>& force, ResourceKey options = ResourceKey(), SceneGraph::DrawableGroup<dimensions, Float>* drawables = nullptr);
-
-        #ifndef DOXYGEN_GENERATOR_OUTPUT
-        explicit CORRADE_DEPRECATED("implicit ResourceManager singleton is deprecated, use a constructor with explicit DebugTools::ResourceManager reference instead") ForceRenderer(SceneGraph::AbstractObject<dimensions, Float>&, const VectorTypeFor<dimensions, Float>&, VectorTypeFor<dimensions, Float>&&, ResourceKey = ResourceKey(), SceneGraph::DrawableGroup<dimensions, Float>* = nullptr) = delete;
-        #endif
-        #endif
-
         ~ForceRenderer();
 
     private:
@@ -166,10 +147,22 @@ template<UnsignedInt dimensions> class ForceRenderer: public SceneGraph::Drawabl
         Resource<GL::Mesh> _mesh;
 };
 
-/** @brief Two-dimensional force renderer */
+/**
+@brief Two-dimensional force renderer
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+*/
 typedef ForceRenderer<2> ForceRenderer2D;
 
-/** @brief Three-dimensional force renderer */
+/**
+@brief Three-dimensional force renderer
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+*/
 typedef ForceRenderer<3> ForceRenderer3D;
 
 }}

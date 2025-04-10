@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,16 +24,16 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <Corrade/Containers/Pair.h>
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Utility/Arguments.h>
 #include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Path.h>
 
+#include "Magnum/PixelFormat.h"
 #include "Magnum/Math/ConfigurationValue.h"
 #include "Magnum/Text/AbstractFont.h"
 #include "Magnum/Text/AbstractFontConverter.h"
-#include "Magnum/Text/DistanceFieldGlyphCache.h"
+#include "Magnum/Text/DistanceFieldGlyphCacheGL.h"
 #include "Magnum/Trade/AbstractImageConverter.h"
 
 #ifdef MAGNUM_TARGET_EGL
@@ -49,7 +50,7 @@
 #error no windowless application available on this platform
 #endif
 
-namespace Magnum {
+namespace Magnum { namespace {
 
 /**
 @page magnum-fontconverter Font conversion utility
@@ -123,8 +124,7 @@ The resulting font files can be then used as specified in the documentation of
 `converter` plugin.
 */
 
-namespace Text {
-
+#ifndef DOXYGEN_GENERATING_OUTPUT
 class FontConverter: public Platform::WindowlessApplication {
     public:
         explicit FontConverter(const Arguments& arguments);
@@ -162,32 +162,32 @@ int FontConverter::exec() {
     PluginManager::Manager<Trade::AbstractImageConverter> imageConverterManager{
         #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
         args.value("plugin-dir").empty() ? Containers::String{} :
-        Utility::Path::join(args.value("plugin-dir"), Utility::Path::split(Trade::AbstractImageConverter::pluginSearchPaths().back()).second())
+        Utility::Path::join(args.value("plugin-dir"), Utility::Path::filename(Trade::AbstractImageConverter::pluginSearchPaths().back()))
         #endif
     };
 
     /* Load font */
-    PluginManager::Manager<AbstractFont> fontManager{
+    PluginManager::Manager<Text::AbstractFont> fontManager{
         #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
         args.value("plugin-dir").empty() ? Containers::String{} :
-        Utility::Path::join(args.value("plugin-dir"), Utility::Path::split(AbstractFont::pluginSearchPaths().back()).second())
+        Utility::Path::join(args.value("plugin-dir"), Utility::Path::filename(Text::AbstractFont::pluginSearchPaths().back()))
         #endif
     };
-    Containers::Pointer<AbstractFont> font = fontManager.loadAndInstantiate(args.value("font"));
+    Containers::Pointer<Text::AbstractFont> font = fontManager.loadAndInstantiate(args.value("font"));
     if(!font) return 1;
 
     /* Register the image converter manager for potential dependencies
        (MagnumFontConverter needs TgaImageConverter, for example) */
-    PluginManager::Manager<AbstractFontConverter> converterManager{
+    PluginManager::Manager<Text::AbstractFontConverter> converterManager{
         #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
         args.value("plugin-dir").empty() ? Containers::String{} :
-        Utility::Path::join(args.value("plugin-dir"), Utility::Path::split(AbstractFontConverter::pluginSearchPaths().back()).second())
+        Utility::Path::join(args.value("plugin-dir"), Utility::Path::filename(Text::AbstractFontConverter::pluginSearchPaths().back()))
         #endif
     };
     converterManager.registerExternalManager(imageConverterManager);
 
     /* Load font converter */
-    Containers::Pointer<AbstractFontConverter> converter = converterManager.loadAndInstantiate(args.value("converter"));
+    Containers::Pointer<Text::AbstractFontConverter> converter = converterManager.loadAndInstantiate(args.value("converter"));
     if(!converter) return 2;
 
     /* Open font */
@@ -197,11 +197,11 @@ int FontConverter::exec() {
     }
 
     /* Create distance field glyph cache if radius is specified */
-    Containers::Pointer<GlyphCache> cache;
+    Containers::Pointer<Text::GlyphCacheGL> cache;
     if(!args.value<Vector2i>("output-size").isZero()) {
         Debug() << "Populating distance field glyph cache...";
 
-        cache.emplace<DistanceFieldGlyphCache>(
+        cache.emplace<Text::DistanceFieldGlyphCacheGL>(
             args.value<Vector2i>("atlas-size"),
             args.value<Vector2i>("output-size"),
             args.value<UnsignedInt>("radius"));
@@ -210,7 +210,7 @@ int FontConverter::exec() {
     } else {
         Debug() << "Zero-size distance field output specified, populating normal glyph cache...";
 
-        cache.emplace<GlyphCache>(args.value<Vector2i>("atlas-size"));
+        cache.emplace<Text::GlyphCacheGL>(PixelFormat::R8Unorm, args.value<Vector2i>("atlas-size"));
     }
 
     /* Fill the cache */
@@ -228,9 +228,8 @@ int FontConverter::exec() {
 
     return 0;
 }
+#endif
 
-}
+}}
 
-}
-
-MAGNUM_WINDOWLESSAPPLICATION_MAIN(Magnum::Text::FontConverter)
+MAGNUM_WINDOWLESSAPPLICATION_MAIN(Magnum::FontConverter)

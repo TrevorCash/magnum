@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -151,7 +152,11 @@ template<class T> class AbstractResourceLoader {
         }
 
         /** @overload */
-        template<class U, class = typename std::enable_if<!std::is_same<typename std::decay<U>::type, std::nullptr_t>::value>::type> void set(ResourceKey key, U&& data, ResourceDataState state, ResourcePolicy policy) {
+        template<class U
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!std::is_same<typename std::decay<U>::type, std::nullptr_t>::value, int>::type = 0
+            #endif
+        > void set(ResourceKey key, U&& data, ResourceDataState state, ResourcePolicy policy) {
             set(key, new typename std::decay<U>::type(std::forward<U>(data)), state, policy);
         }
 
@@ -171,7 +176,11 @@ template<class T> class AbstractResourceLoader {
         }
 
         /** @overload */
-        template<class U, class = typename std::enable_if<!std::is_same<typename std::decay<U>::type, std::nullptr_t>::value>::type> void set(ResourceKey key, U&& data) {
+        template<class U
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!std::is_same<typename std::decay<U>::type, std::nullptr_t>::value, int>::type = 0
+            #endif
+        > void set(ResourceKey key, U&& data) {
             set(key, new typename std::decay<U>::type(std::forward<U>(data)));
         }
 

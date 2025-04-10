@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -64,22 +65,25 @@ namespace Implementation {
 @tparam rows    Row count
 @tparam T       Underlying data type
 
-See @ref matrix-vector for brief introduction. See also @ref Matrix (square)
-and @ref Vector.
+See @ref matrix-vector for brief introduction. See also @ref Matrix (square),
+@ref Matrix3, @ref Matrix4 and @ref Vector.
 
 The data are stored in column-major order, to reflect that, all indices in
 math formulas are in reverse order (i.e. @f$ \boldsymbol A_{ji} @f$ instead
 of @f$ \boldsymbol A_{ij} @f$).
-@see @ref Matrix2x3, @ref Matrix3x2, @ref Matrix2x4, @ref Matrix4x2,
-    @ref Matrix3x4, @ref Matrix4x3, @ref Magnum::Matrix2x3,
-    @ref Magnum::Matrix2x3d, @ref Magnum::Matrix2x3h, @ref Magnum::Matrix2x3b,
-    @ref Magnum::Matrix2x3s, @ref Magnum::Matrix3x2, @ref Magnum::Matrix3x2d,
-    @ref Magnum::Matrix3x2h, @ref Magnum::Matrix3x2b, @ref Magnum::Matrix3x2s,
-    @ref Magnum::Matrix2x4, @ref Magnum::Matrix2x4d, @ref Magnum::Matrix2x4h,
-    @ref Magnum::Matrix2x4b, @ref Magnum::Matrix2x4s, @ref Magnum::Matrix4x2,
-    @ref Magnum::Matrix4x2d, @ref Magnum::Matrix4x2h, @ref Magnum::Matrix4x2b,
-    @ref Magnum::Matrix4x2s, @ref Magnum::Matrix3x4, @ref Magnum::Matrix3x4d,
-    @ref Magnum::Matrix3x4h, @ref Magnum::Matrix3x4b, @ref Magnum::Matrix3x4s,
+@see @ref Matrix2x1, @ref Matrix2x3, @ref Matrix2x4, @ref Matrix3x1,
+    @ref Matrix3x2, @ref Matrix3x4, @ref Matrix4x1, @ref Matrix4x2,
+    @ref Matrix4x3, @ref Magnum::Matrix2x1, @ref Magnum::Matrix2x1d,
+    @ref Magnum::Matrix2x3, @ref Magnum::Matrix2x3d, @ref Magnum::Matrix2x3h,
+    @ref Magnum::Matrix2x3b, @ref Magnum::Matrix2x3s, @ref Magnum::Matrix2x4,
+    @ref Magnum::Matrix2x4d, @ref Magnum::Matrix2x4h, @ref Magnum::Matrix2x4b,
+    @ref Magnum::Matrix2x4s, @ref Magnum::Matrix3x1, @ref Magnum::Matrix3x1d,
+    @ref Magnum::Matrix3x2, @ref Magnum::Matrix3x2d, @ref Magnum::Matrix3x2h,
+    @ref Magnum::Matrix3x2b, @ref Magnum::Matrix3x2s, @ref Magnum::Matrix3x4,
+    @ref Magnum::Matrix3x4d, @ref Magnum::Matrix3x4h, @ref Magnum::Matrix3x4b,
+    @ref Magnum::Matrix3x4s, @ref Magnum::Matrix4x1, @ref Magnum::Matrix4x1,
+    @ref Magnum::Matrix4x1d, @ref Magnum::Matrix4x2, @ref Magnum::Matrix4x2d,
+    @ref Magnum::Matrix4x2h, @ref Magnum::Matrix4x2b, @ref Magnum::Matrix4x2s,
     @ref Magnum::Matrix4x3, @ref Magnum::Matrix4x3d, @ref Magnum::Matrix4x3h,
     @ref Magnum::Matrix4x3b, @ref Magnum::Matrix4x3s
 */
@@ -107,8 +111,9 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
          * @return Reference to the data as if it was matrix, thus doesn't
          *      perform any copying.
          *
-         * @attention Use with caution, the function doesn't check whether the
-         *      array is long enough.
+         * Use with caution, the function doesn't check whether the array is
+         * long enough. If possible, prefer to use the
+         * @ref RectangularMatrix(const T(&)[cols_][rows_]) constructor.
          */
         static RectangularMatrix<cols, rows, T>& from(T* data) {
             return *reinterpret_cast<RectangularMatrix<cols, rows, T>*>(data);
@@ -174,12 +179,30 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
         constexpr explicit RectangularMatrix(T value) noexcept: RectangularMatrix{typename Containers::Implementation::GenerateSequence<cols>::Type{}, value} {}
 
         /**
+         * @brief Construct from a fixed-size array
+         * @m_since_latest
+         *
+         * Use @ref Vector::from(T*) "from(const T*)" to reinterpret an
+         * arbitrary pointer to a matrix.
+         */
+        #if !defined(CORRADE_TARGET_GCC) || defined(CORRADE_TARGET_CLANG) || __GNUC__ >= 5
+        template<std::size_t cols_, std::size_t rows_> constexpr explicit RectangularMatrix(const T(&data)[cols_][rows_]) noexcept: RectangularMatrix{typename Containers::Implementation::GenerateSequence<cols_>::Type{}, data} {
+            static_assert(cols_ == cols && rows_ == rows, "wrong number of initializers");
+        }
+        #else
+        /* GCC 4.8 isn't able to figure out the size on its own. Which means
+           there we use the type-provided size and lose the check for element
+           count, but at least it compiles. */
+        constexpr explicit RectangularMatrix(const T(&data)[cols][rows]) noexcept: RectangularMatrix{typename Containers::Implementation::GenerateSequence<cols>::Type{}, data} {}
+        #endif
+
+        /**
          * @brief Construct from a matrix of a different type
          *
          * Performs only default casting on the values, no rounding or
          * anything else. Example usage:
          *
-         * @snippet MagnumMath.cpp RectangularMatrix-conversion
+         * @snippet Math.cpp RectangularMatrix-conversion
          */
         template<class U> constexpr explicit RectangularMatrix(const RectangularMatrix<cols, rows, U>& other) noexcept: RectangularMatrix(typename Containers::Implementation::GenerateSequence<cols>::Type{}, other) {}
 
@@ -213,10 +236,10 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
         template<std::size_t otherCols, std::size_t otherRows> constexpr explicit RectangularMatrix(const RectangularMatrix<otherCols, otherRows, T>& other) noexcept: RectangularMatrix<cols, rows, T>{ZeroInit, typename Containers::Implementation::GenerateSequence<cols>::Type{}, other} {}
 
         /** @brief Construct a matrix from external representation */
-        template<class U, class V = decltype(Implementation::RectangularMatrixConverter<cols, rows, T, U>::from(std::declval<U>()))> constexpr explicit RectangularMatrix(const U& other): RectangularMatrix(Implementation::RectangularMatrixConverter<cols, rows, T, U>::from(other)) {}
+        template<class U, class = decltype(Implementation::RectangularMatrixConverter<cols, rows, T, U>::from(std::declval<U>()))> constexpr explicit RectangularMatrix(const U& other): RectangularMatrix(Implementation::RectangularMatrixConverter<cols, rows, T, U>::from(other)) {}
 
-        /** @brief Convert a matrix to external representation */
-        template<class U, class V = decltype(Implementation::RectangularMatrixConverter<cols, rows, T, U>::to(std::declval<RectangularMatrix<cols, rows, T>>()))> constexpr explicit operator U() const {
+        /** @brief Convert the matrix to external representation */
+        template<class U, class = decltype(Implementation::RectangularMatrixConverter<cols, rows, T, U>::to(std::declval<RectangularMatrix<cols, rows, T>>()))> constexpr explicit operator U() const {
             return Implementation::RectangularMatrixConverter<cols, rows, T, U>::to(*this);
         }
 
@@ -256,7 +279,7 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
          * Particular elements can be accessed using @ref Vector::operator[](),
          * e.g.:
          *
-         * @snippet MagnumMath.cpp RectangularMatrix-access
+         * @snippet Math.cpp RectangularMatrix-access
          *
          * @see @ref row(), @ref data()
          */
@@ -284,7 +307,13 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
          */
         void setRow(std::size_t row, const Vector<cols, T>& data);
 
-        /** @brief Equality comparison */
+        /**
+         * @brief Equality comparison
+         *
+         * Done by comparing the underlying vectors, which internally uses
+         * @ref TypeTraits::equals(), i.e. a fuzzy compare for floating-point
+         * types.
+         */
         bool operator==(const RectangularMatrix<cols, rows, T>& other) const {
             for(std::size_t i = 0; i != cols; ++i)
                 if(_data[i] != other._data[i]) return false;
@@ -295,6 +324,9 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
         /**
          * @brief Non-equality comparison
          *
+         * Done by comparing the underlying vectors, which internally uses
+         * @ref TypeTraits::equals(), i.e. a fuzzy compare for floating-point
+         * types.
          * @see @ref Vector::operator<(), @ref Vector::operator<=(),
          *      @ref Vector::operator>=(), @ref Vector::operator>()
          */
@@ -425,6 +457,22 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
         }
 
         /**
+         * @brief Multiply a scalar with a matrix
+         *
+         * Same as @ref operator*(T) const.
+         */
+        friend RectangularMatrix<cols, rows, T> operator*(
+            #ifdef DOXYGEN_GENERATING_OUTPUT
+            T
+            #else
+            typename std::common_type<T>::type
+            #endif
+            scalar, const RectangularMatrix<cols, rows, T>& matrix)
+        {
+            return matrix*scalar;
+        }
+
+        /**
          * @brief Divide with a scalar and assign
          *
          * The computation is done column-wise in-place. @f[
@@ -449,6 +497,30 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
         }
 
         /**
+         * @brief Divide a matrix with a scalar and invert
+         *
+         * The computation is done column-wise. @f[
+         *      \boldsymbol B_j = \frac a {\boldsymbol A_j}
+         * @f]
+         * @see @ref operator/(T) const
+         */
+        friend RectangularMatrix<cols, rows, T> operator/(
+            #ifdef DOXYGEN_GENERATING_OUTPUT
+            T
+            #else
+            typename std::common_type<T>::type
+            #endif
+            scalar, const RectangularMatrix<cols, rows, T>& matrix)
+        {
+            RectangularMatrix<cols, rows, T> out{Magnum::NoInit};
+
+            for(std::size_t i = 0; i != cols; ++i)
+                out._data[i] = scalar/matrix._data[i];
+
+            return out;
+        }
+
+        /**
          * @brief Multiply a matrix
          *
          * @f[
@@ -461,10 +533,16 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
         /**
          * @brief Multiply a vector
          *
-         * Internally the same as multiplying with one-column matrix, but
-         * returns vector. @f[
+         * Internally the same as multiplying with a one-column matrix, but
+         * returns a vector instead of a one-column matrix. @f[
          *      (\boldsymbol {Aa})_i = \sum_{k=0}^{m-1} \boldsymbol A_{ki} \boldsymbol a_k
          * @f]
+         *
+         * Vectors are treated as columns. An equivalent operation is
+         * multiplying a transposed matrix with an one-row matrix from the left
+         * side instead:
+         *
+         * @snippet Math.cpp RectangularMatrix-multiply-vector
          */
         Vector<rows, T> operator*(const Vector<cols, T>& other) const {
             return operator*(RectangularMatrix<1, cols, T>(other))[0];
@@ -539,6 +617,10 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
         /* Implementation for RectangularMatrix<cols, rows, T>::fromDiagonal() and RectangularMatrix<cols, rows, T>(IdentityInitT, T) */
         template<std::size_t ...sequence> constexpr explicit RectangularMatrix(Containers::Implementation::Sequence<sequence...>, const Vector<DiagonalSize, T>& diagonal);
 
+        /* Implementation for RectangularMatrix<cols, rows, T>::RectangularMatrix(const T(&data)[cols_][rows_]).
+           Can't use Vector<rows, T>{} here because MSVC 2015 chokes on it. */
+        template<std::size_t rows_, std::size_t ...sequence> constexpr explicit RectangularMatrix(Containers::Implementation::Sequence<sequence...>, const T(&data)[sizeof...(sequence)][rows_]) noexcept: _data{Vector<rows, T>(data[sequence])...} {}
+
         /* Implementation for RectangularMatrix<cols, rows, T>::RectangularMatrix(const RectangularMatrix<cols, rows, U>&) */
         template<class U, std::size_t ...sequence> constexpr explicit RectangularMatrix(Containers::Implementation::Sequence<sequence...>, const RectangularMatrix<cols, rows, U>& matrix) noexcept: _data{Vector<rows, T>(matrix[sequence])...} {}
 
@@ -566,6 +648,18 @@ template<std::size_t cols, std::size_t rows, class T> class RectangularMatrix {
 };
 
 /**
+@brief Matrix with 2 columns and 1 row
+@m_since_latest
+
+Convenience alternative to @cpp RectangularMatrix<2, 1, T> @ce. See
+@ref RectangularMatrix for more information. There's no 1-column 2-row matrix typedef, use @ref Vector2 instead.
+@see @ref Magnum::Matrix2x1, @ref Magnum::Matrix2x1d
+*/
+#ifndef CORRADE_MSVC2015_COMPATIBILITY /* Multiple definitions still broken */
+template<class T> using Matrix2x1 = RectangularMatrix<2, 1, T>;
+#endif
+
+/**
 @brief Matrix with 2 columns and 3 rows
 
 Convenience alternative to @cpp RectangularMatrix<2, 3, T> @ce. See
@@ -575,18 +669,6 @@ Convenience alternative to @cpp RectangularMatrix<2, 3, T> @ce. See
 */
 #ifndef CORRADE_MSVC2015_COMPATIBILITY /* Multiple definitions still broken */
 template<class T> using Matrix2x3 = RectangularMatrix<2, 3, T>;
-#endif
-
-/**
-@brief Matrix with 3 columns and 2 rows
-
-Convenience alternative to @cpp RectangularMatrix<3, 2, T> @ce. See
-@ref RectangularMatrix for more information.
-@see @ref Magnum::Matrix3x2, @ref Magnum::Matrix3x2d, @ref Magnum::Matrix3x2h,
-    @ref Magnum::Matrix3x2b, @ref Magnum::Matrix3x2s
-*/
-#ifndef CORRADE_MSVC2015_COMPATIBILITY /* Multiple definitions still broken */
-template<class T> using Matrix3x2 = RectangularMatrix<3, 2, T>;
 #endif
 
 /**
@@ -602,15 +684,27 @@ template<class T> using Matrix2x4 = RectangularMatrix<2, 4, T>;
 #endif
 
 /**
-@brief Matrix with 4 columns and 2 rows
+@brief Matrix with 3 columns and 1 row
+@m_since_latest
 
-Convenience alternative to @cpp RectangularMatrix<4, 2, T> @ce. See
-@ref RectangularMatrix for more information.
-@see @ref Magnum::Matrix4x2, @ref Magnum::Matrix4x2d, @ref Magnum::Matrix4x2h,
-    @ref Magnum::Matrix4x2b, @ref Magnum::Matrix4x2s
+Convenience alternative to @cpp RectangularMatrix<3, 1, T> @ce. See
+@ref RectangularMatrix for more information. There's no 1-column 3-row matrix typedef, use @ref Vector3 instead.
+@see @ref Magnum::Matrix3x1, @ref Magnum::Matrix3x1d
 */
 #ifndef CORRADE_MSVC2015_COMPATIBILITY /* Multiple definitions still broken */
-template<class T> using Matrix4x2 = RectangularMatrix<4, 2, T>;
+template<class T> using Matrix3x1 = RectangularMatrix<3, 1, T>;
+#endif
+
+/**
+@brief Matrix with 3 columns and 2 rows
+
+Convenience alternative to @cpp RectangularMatrix<3, 2, T> @ce. See
+@ref RectangularMatrix for more information.
+@see @ref Magnum::Matrix3x2, @ref Magnum::Matrix3x2d, @ref Magnum::Matrix3x2h,
+    @ref Magnum::Matrix3x2b, @ref Magnum::Matrix3x2s
+*/
+#ifndef CORRADE_MSVC2015_COMPATIBILITY /* Multiple definitions still broken */
+template<class T> using Matrix3x2 = RectangularMatrix<3, 2, T>;
 #endif
 
 /**
@@ -626,6 +720,30 @@ template<class T> using Matrix3x4 = RectangularMatrix<3, 4, T>;
 #endif
 
 /**
+@brief Matrix with 4 columns and 1 row
+@m_since_latest
+
+Convenience alternative to @cpp RectangularMatrix<4, 1, T> @ce. See
+@ref RectangularMatrix for more information. There's no 1-column 4-row matrix typedef, use @ref Vector4 instead.
+@see @ref Magnum::Matrix4x1, @ref Magnum::Matrix4x1d
+*/
+#ifndef CORRADE_MSVC2015_COMPATIBILITY /* Multiple definitions still broken */
+template<class T> using Matrix4x1 = RectangularMatrix<4, 1, T>;
+#endif
+
+/**
+@brief Matrix with 4 columns and 2 rows
+
+Convenience alternative to @cpp RectangularMatrix<4, 2, T> @ce. See
+@ref RectangularMatrix for more information.
+@see @ref Magnum::Matrix4x2, @ref Magnum::Matrix4x2d, @ref Magnum::Matrix4x2h,
+    @ref Magnum::Matrix4x2b, @ref Magnum::Matrix4x2s
+*/
+#ifndef CORRADE_MSVC2015_COMPATIBILITY /* Multiple definitions still broken */
+template<class T> using Matrix4x2 = RectangularMatrix<4, 2, T>;
+#endif
+
+/**
 @brief Matrix with 4 columns and 3 rows
 
 Convenience alternative to @cpp RectangularMatrix<4, 3, T> @ce. See
@@ -636,46 +754,6 @@ Convenience alternative to @cpp RectangularMatrix<4, 3, T> @ce. See
 #ifndef CORRADE_MSVC2015_COMPATIBILITY /* Multiple definitions still broken */
 template<class T> using Matrix4x3 = RectangularMatrix<4, 3, T>;
 #endif
-
-/** @relates RectangularMatrix
-@brief Multiply a scalar with a matrix
-
-Same as @ref RectangularMatrix::operator*(T) const.
-*/
-template<std::size_t cols, std::size_t rows, class T> inline RectangularMatrix<cols, rows, T> operator*(
-    #ifdef DOXYGEN_GENERATING_OUTPUT
-    T
-    #else
-    typename std::common_type<T>::type
-    #endif
-    scalar, const RectangularMatrix<cols, rows, T>& matrix)
-{
-    return matrix*scalar;
-}
-
-/** @relates RectangularMatrix
-@brief Divide a matrix with a scalar and invert
-
-The computation is done column-wise. @f[
-    \boldsymbol B_j = \frac a {\boldsymbol A_j}
-@f]
-@see @ref RectangularMatrix::operator/(T) const
-*/
-template<std::size_t cols, std::size_t rows, class T> inline RectangularMatrix<cols, rows, T> operator/(
-    #ifdef DOXYGEN_GENERATING_OUTPUT
-    T
-    #else
-    typename std::common_type<T>::type
-    #endif
-    scalar, const RectangularMatrix<cols, rows, T>& matrix)
-{
-    RectangularMatrix<cols, rows, T> out{Magnum::NoInit};
-
-    for(std::size_t i = 0; i != cols; ++i)
-        out[i] = scalar/matrix[i];
-
-    return out;
-}
 
 /** @relates RectangularMatrix
 @brief Multiply a vector with a rectangular matrix
@@ -784,6 +862,9 @@ extern template MAGNUM_EXPORT Debug& operator<<(Debug&, const RectangularMatrix<
     constexpr __VA_ARGS__ flippedRows() const {                             \
         return Math::RectangularMatrix<cols, rows, T>::flippedRows();       \
     }                                                                       \
+
+/* Unlike with Vector, these are kept non-member and non-friend as it'd mean
+   too many macro combinations otherwise */
 
 #define MAGNUM_MATRIX_OPERATOR_IMPLEMENTATION(...)                          \
     template<std::size_t size, class T> inline __VA_ARGS__ operator*(typename std::common_type<T>::type number, const __VA_ARGS__& matrix) { \

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Pablo Escobar <mail@rvrs.in>
     Copyright @ 2022 Hugo Amiard <hugo.amiard@wonderlandengine.com>
 
@@ -145,6 +146,14 @@ Int Buffer::maxUniformBindings() {
 }
 
 void Buffer::unbind(const Target target, const UnsignedInt index) {
+    /* Inverse of what's in bind(Target, UnsignedInt, GLintptr, GLsizeiptr)
+       below -- unbinding a buffer via glBindBufferBase() / glBindBufferRange()
+       also unbinds it from the "regular" binding target as a side effect. */
+    Context::current().state().buffer.bindings[Implementation::BufferState::indexForTarget(
+        /* The Target enum is a subset of TargetHint and the values match, so
+           no expensive translation is necessary */
+        TargetHint(UnsignedInt(target)))] = 0;
+
     glBindBufferBase(GLenum(target), index, 0);
 }
 
@@ -302,17 +311,50 @@ auto Buffer::bindSomewhereInternal(const TargetHint hint) -> TargetHint {
 
 #ifndef MAGNUM_TARGET_GLES2
 Buffer& Buffer::bind(const Target target, const UnsignedInt index, const GLintptr offset, const GLsizeiptr size) {
+    /* glBindBufferBase() and glBindBufferRange() bind the buffer to the
+       "regular" binding target as a side effect:
+        https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindBufferBase.xhtml
+       So update the state tracker to be aware of that. Apart from saving a
+       needless rebind in some cases, this also prevents an inverse case where
+       it would think a buffer is bound and won't call glBindBuffer() for it,
+       causing for example a (DSA-less) data upload to happen to some entirely
+       different buffer. In comparison, the multi-bind APIs don't have this
+       side effect:
+        https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindBuffersBase.xhtml
+
+       See BufferGLTest::bindBaseRangeUpdateRegularBinding() for a
+       corresponding test case. */
+    Context::current().state().buffer.bindings[Implementation::BufferState::indexForTarget(
+        /* The Target enum is a subset of TargetHint and the values match, so
+           no expensive translation is necessary */
+        TargetHint(UnsignedInt(target)))] = _id;
+    /* As the "regular" binding target is a side effect, I assume it also
+       creates the object internally if not already, equivalently to
+       glBindBuffer() and to what the createIfNotAlready() call does, and
+       satisfying the internal assertion there which in turn expects that if a
+       buffer is in the bindings state tracker array, it also has the Created
+       flag set. */
+    _flags |= ObjectFlag::Created;
+
     glBindBufferRange(GLenum(target), index, _id, offset, size);
     return *this;
 }
 
 Buffer& Buffer::bind(const Target target, const UnsignedInt index) {
+    /* Same as in bind(Target, UnsignedInt, GLintptr, GLsizeiptr) above */
+    Context::current().state().buffer.bindings[Implementation::BufferState::indexForTarget(
+        /* The Target enum is a subset of TargetHint and the values match, so
+           no expensive translation is necessary */
+        TargetHint(UnsignedInt(target)))] = _id;
+    /* Ditto */
+    _flags |= ObjectFlag::Created;
+
     glBindBufferBase(GLenum(target), index, _id);
     return *this;
 }
 #endif
 
-#ifndef MAGNUM_TARGET_GLES
+#if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
 Buffer& Buffer::setStorage(const Containers::ArrayView<const void> data, const StorageFlags flags) {
     Context::current().state().buffer.storageImplementation(*this, data, flags);
     return *this;
@@ -405,6 +447,10 @@ void Buffer::bindImplementationMulti(const Target target, const GLuint firstInde
         }
     }
 
+    /* Unlike Buffer::bind(Target, UnsignedInt) this doesn't affect the regular
+       binding points:
+        https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindBuffersBase.xhtml
+       See the comment in that function for details. */
     glBindBuffersBase(GLenum(target), firstIndex, buffers.size(), ids);
 }
 #endif
@@ -451,11 +497,18 @@ void Buffer::copyImplementationDSA(Buffer& read, Buffer& write, const GLintptr r
 #endif
 #endif
 
-#ifndef MAGNUM_TARGET_GLES
+#if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
 void Buffer::storageImplementationDefault(Buffer& self, Containers::ArrayView<const void> data, StorageFlags flags) {
-    glBufferStorage(GLenum(self.bindSomewhereInternal(self._targetHint)), data.size(), data.data(), GLbitfield(flags));
+    #ifndef MAGNUM_TARGET_GLES
+    glBufferStorage
+    #else
+    glBufferStorageEXT
+    #endif
+        (GLenum(self.bindSomewhereInternal(self._targetHint)), data.size(), data.data(), GLbitfield(flags));
 }
+#endif
 
+#ifndef MAGNUM_TARGET_GLES
 void Buffer::storageImplementationDSA(Buffer& self, Containers::ArrayView<const void> data, const StorageFlags flags) {
     glNamedBufferStorage(self._id, data.size(), data.data(), GLbitfield(flags));
 }
@@ -634,7 +687,6 @@ bool Buffer::unmapImplementationApple(Buffer& self) {
 }
 #endif
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 Debug& operator<<(Debug& debug, const Buffer::TargetHint value) {
     debug << "GL::Buffer::TargetHint" << Debug::nospace;
 
@@ -672,7 +724,7 @@ Debug& operator<<(Debug& debug, const Buffer::TargetHint value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 #ifndef MAGNUM_TARGET_GLES2
@@ -689,9 +741,8 @@ Debug& operator<<(Debug& debug, const Buffer::Target value) {
         #undef _c
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
-#endif
 #endif
 
 }}

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -25,7 +26,6 @@
 
 #include "Combine.h"
 
-#include <numeric>
 #include <Corrade/Containers/Iterable.h>
 #include <Corrade/Utility/Algorithms.h>
 
@@ -71,7 +71,7 @@ Trade::MeshData combineIndexedImplementation(
                    this is easier; plus the user gets a less confusing function
                    name in the message */
                 CORRADE_ASSERT(!isVertexFormatImplementationSpecific(format),
-                    assertPrefix << "attribute" << j << "of mesh" << i << "has an implementation-specific format" << reinterpret_cast<void*>(vertexFormatUnwrap(format)),
+                    assertPrefix << "attribute" << j << "of mesh" << i << "has an implementation-specific format" << Debug::hex << vertexFormatUnwrap(format),
                     (Trade::MeshData{MeshPrimitive::Points, 0}));
                 attributes[attributeOffset++] = mesh.attributeData(j);
             }
@@ -130,7 +130,7 @@ Trade::MeshData combineIndexedAttributes(const Containers::Iterable<const Trade:
             (Trade::MeshData{MeshPrimitive{}, 0}));
         const MeshIndexType indexType = meshes[i].indexType();
         CORRADE_ASSERT(!isMeshIndexTypeImplementationSpecific(indexType),
-            "MeshTools::combineIndexedAttributes(): data" << i << "has an implementation-specific index type" << reinterpret_cast<void*>(meshIndexTypeUnwrap(indexType)),
+            "MeshTools::combineIndexedAttributes(): data" << i << "has an implementation-specific index type" << Debug::hex << meshIndexTypeUnwrap(indexType),
             (Trade::MeshData{MeshPrimitive{}, 0}));
         if(i == 0) {
             primitive = meshes[i].primitive();
@@ -188,13 +188,13 @@ Trade::MeshData combineFaceAttributes(const Trade::MeshData& mesh, const Trade::
     /* Make a combined index array. First copy the mesh indices as-is. */
     const MeshIndexType meshIndexType = mesh.indexType();
     CORRADE_ASSERT(!isMeshIndexTypeImplementationSpecific(meshIndexType),
-        "MeshTools::combineFaceAttributes(): vertex mesh has an implementation-specific index type" << reinterpret_cast<void*>(meshIndexTypeUnwrap(meshIndexType)),
+        "MeshTools::combineFaceAttributes(): vertex mesh has an implementation-specific index type" << Debug::hex << meshIndexTypeUnwrap(meshIndexType),
         (Trade::MeshData{MeshPrimitive{}, 0}));
     const UnsignedInt meshIndexSize = meshIndexTypeSize(meshIndexType);
     UnsignedInt faceIndexSize;
     if(faceAttributes.isIndexed()) {
         CORRADE_ASSERT(!isMeshIndexTypeImplementationSpecific(faceAttributes.indexType()),
-            "MeshTools::combineFaceAttributes(): face mesh has an implementation-specific index type" << reinterpret_cast<void*>(meshIndexTypeUnwrap(faceAttributes.indexType())),
+            "MeshTools::combineFaceAttributes(): face mesh has an implementation-specific index type" << Debug::hex << meshIndexTypeUnwrap(faceAttributes.indexType()),
             (Trade::MeshData{MeshPrimitive{}, 0}));
         faceIndexSize = meshIndexTypeSize(faceAttributes.indexType());
     } else faceIndexSize = 4;

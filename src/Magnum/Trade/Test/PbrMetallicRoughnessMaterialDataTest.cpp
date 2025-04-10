@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Color.h"
 #include "Magnum/Math/Matrix3.h"
@@ -41,10 +40,11 @@ struct PbrMetallicRoughnessMaterialDataTest: TestSuite::Tester {
     void defaults();
     void textured();
     void texturedDefaults();
-    void texturedImplicitPackedMetallicRoughness();
-    void texturedExplicitPackedMetallicRoughness();
-    void texturedExplicitPackedRoughnessMetallicOcclusion();
+    void texturedImplicitPackedNoneRoughnessMetallic();
+    void texturedExplicitPackedNoneRoughnessMetallic();
+    void texturedImplicitPackedOcclusionRoughnessMetallic();
     void texturedExplicitPackedOcclusionRoughnessMetallic();
+    void texturedExplicitPackedRoughnessMetallicOcclusion();
     void texturedExplicitPackedNormalRoughnessMetallic();
     void texturedSingleMatrixCoordinatesLayer();
     void invalidTextures();
@@ -69,10 +69,11 @@ PbrMetallicRoughnessMaterialDataTest::PbrMetallicRoughnessMaterialDataTest() {
               &PbrMetallicRoughnessMaterialDataTest::defaults,
               &PbrMetallicRoughnessMaterialDataTest::textured,
               &PbrMetallicRoughnessMaterialDataTest::texturedDefaults,
-              &PbrMetallicRoughnessMaterialDataTest::texturedImplicitPackedMetallicRoughness,
-              &PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedMetallicRoughness,
-              &PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedRoughnessMetallicOcclusion,
+              &PbrMetallicRoughnessMaterialDataTest::texturedImplicitPackedNoneRoughnessMetallic,
+              &PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedNoneRoughnessMetallic,
+              &PbrMetallicRoughnessMaterialDataTest::texturedImplicitPackedOcclusionRoughnessMetallic,
               &PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedOcclusionRoughnessMetallic,
+              &PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedRoughnessMetallicOcclusion,
               &PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedNormalRoughnessMetallic,
               &PbrMetallicRoughnessMaterialDataTest::texturedSingleMatrixCoordinatesLayer,
               &PbrMetallicRoughnessMaterialDataTest::invalidTextures,
@@ -308,7 +309,7 @@ void PbrMetallicRoughnessMaterialDataTest::texturedSingleMatrixCoordinatesLayer(
     CORRADE_COMPARE(data.emissiveTextureLayer(), 8);
 }
 
-void PbrMetallicRoughnessMaterialDataTest::texturedImplicitPackedMetallicRoughness() {
+void PbrMetallicRoughnessMaterialDataTest::texturedImplicitPackedNoneRoughnessMetallic() {
     /* Just the texture ID, the rest is implicit */
     {
         PbrMetallicRoughnessMaterialData data{{}, {
@@ -386,7 +387,7 @@ void PbrMetallicRoughnessMaterialDataTest::texturedImplicitPackedMetallicRoughne
     }
 }
 
-void PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedMetallicRoughness() {
+void PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedNoneRoughnessMetallic() {
     /* Just the texture IDs and swizzles, the rest is implicit */
     {
         PbrMetallicRoughnessMaterialData data{{}, {
@@ -476,111 +477,103 @@ void PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedMetallicRoughne
     }
 }
 
-void PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedRoughnessMetallicOcclusion() {
-    /* Just the texture IDs and swizzles, the rest is implicit */
+void PbrMetallicRoughnessMaterialDataTest::texturedImplicitPackedOcclusionRoughnessMetallic() {
+    /* Just the texture IDs, the rest is implicit */
     {
         PbrMetallicRoughnessMaterialData data{{}, {
-            {MaterialAttribute::RoughnessTexture, 2u},
-            {MaterialAttribute::MetalnessTexture, 2u},
-            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
             {MaterialAttribute::OcclusionTexture, 2u},
-            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::NoneRoughnessMetallicTexture, 2u},
         }};
-        CORRADE_VERIFY(data.hasRoughnessMetallicOcclusionTexture());
-        /* This isn't a superset */
-        CORRADE_VERIFY(!data.hasNoneRoughnessMetallicTexture());
+        CORRADE_VERIFY(data.hasOcclusionRoughnessMetallicTexture());
+        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+        /* This is a superset */
+        CORRADE_VERIFY(data.hasNoneRoughnessMetallicTexture());
 
     /* Explicit parameters for everything, but all the same */
     } {
         PbrMetallicRoughnessMaterialData data{{}, {
-            {MaterialAttribute::RoughnessTexture, 2u},
-            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::R},
-            {MaterialAttribute::RoughnessTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
-            {MaterialAttribute::RoughnessTextureCoordinates, 3u},
-            {MaterialAttribute::RoughnessTextureLayer, 7u},
-            {MaterialAttribute::MetalnessTexture, 2u},
-            {MaterialAttribute::MetalnessTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
-            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
-            {MaterialAttribute::MetalnessTextureCoordinates, 3u},
-            {MaterialAttribute::MetalnessTextureLayer, 7u},
             {MaterialAttribute::OcclusionTexture, 2u},
-            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::NoneRoughnessMetallicTexture, 2u},
+            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::R},
             {MaterialAttribute::OcclusionTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
             {MaterialAttribute::OcclusionTextureCoordinates, 3u},
-            {MaterialAttribute::OcclusionTextureLayer, 7u},
+            {MaterialAttribute::OcclusionTextureLayer, 17u},
+            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::RoughnessTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
+            {MaterialAttribute::RoughnessTextureCoordinates, 3u},
+            {MaterialAttribute::RoughnessTextureLayer, 17u},
+            {MaterialAttribute::MetalnessTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::MetalnessTextureCoordinates, 3u},
+            {MaterialAttribute::MetalnessTextureLayer, 17u}
         }};
-        CORRADE_VERIFY(data.hasRoughnessMetallicOcclusionTexture());
-        /* This isn't a superset */
-        CORRADE_VERIFY(!data.hasNoneRoughnessMetallicTexture());
+        CORRADE_VERIFY(data.hasOcclusionRoughnessMetallicTexture());
+        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+        /* This is a superset */
+        CORRADE_VERIFY(data.hasNoneRoughnessMetallicTexture());
 
     /* Different texture ID */
     } {
         PbrMetallicRoughnessMaterialData data{{}, {
-            {MaterialAttribute::RoughnessTexture, 2u},
-            {MaterialAttribute::MetalnessTexture, 3u},
-            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
             {MaterialAttribute::OcclusionTexture, 2u},
-            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::NoneRoughnessMetallicTexture, 3u},
+            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::B},
         }};
-        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+        CORRADE_VERIFY(!data.hasOcclusionRoughnessMetallicTexture());
 
     /* One texture missing */
     } {
         PbrMetallicRoughnessMaterialData data{{}, {
-            {MaterialAttribute::RoughnessTexture, 2u},
-            {MaterialAttribute::MetalnessTexture, 2u},
-            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
-            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::NoneRoughnessMetallicTexture, 2u},
+            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::B},
         }};
-        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+        CORRADE_VERIFY(!data.hasOcclusionRoughnessMetallicTexture());
 
     /* Unexpected swizzle */
     } {
         PbrMetallicRoughnessMaterialData data{{}, {
-            {MaterialAttribute::RoughnessTexture, 2u},
-            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::A},
-            {MaterialAttribute::MetalnessTexture, 2u},
-            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
             {MaterialAttribute::OcclusionTexture, 2u},
-            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::NoneRoughnessMetallicTexture, 2u},
+            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::A},
+            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::B},
         }};
-        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+        CORRADE_VERIFY(!data.hasOcclusionRoughnessMetallicTexture());
 
     /* Unexpected texture matrix */
     } {
         PbrMetallicRoughnessMaterialData data{{}, {
-            {MaterialAttribute::RoughnessTexture, 2u},
-            {MaterialAttribute::MetalnessTexture, 2u},
-            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
             {MaterialAttribute::OcclusionTexture, 2u},
-            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::NoneRoughnessMetallicTexture, 2u},
             {MaterialAttribute::OcclusionTextureMatrix, Matrix3::scaling({0.5f, 1.0f})},
+            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::B},
         }};
-        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+        CORRADE_VERIFY(!data.hasOcclusionRoughnessMetallicTexture());
 
     /* Unexpected texture coordinates */
     } {
         PbrMetallicRoughnessMaterialData data{{}, {
-            {MaterialAttribute::RoughnessTexture, 2u},
-            {MaterialAttribute::MetalnessTexture, 2u},
-            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
-            {MaterialAttribute::MetalnessTextureCoordinates, 1u},
             {MaterialAttribute::OcclusionTexture, 2u},
-            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::NoneRoughnessMetallicTexture, 2u},
+            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::MetalnessTextureCoordinates, 1u},
         }};
-        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+        CORRADE_VERIFY(!data.hasOcclusionRoughnessMetallicTexture());
 
     /* Unexpected array texture layer */
     } {
         PbrMetallicRoughnessMaterialData data{{}, {
-            {MaterialAttribute::RoughnessTexture, 2u},
-            {MaterialAttribute::RoughnessTextureLayer, 1u},
-            {MaterialAttribute::MetalnessTexture, 2u},
-            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
             {MaterialAttribute::OcclusionTexture, 2u},
-            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::NoneRoughnessMetallicTexture, 2u},
+            {MaterialAttribute::OcclusionTextureLayer, 1u},
+            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::B},
         }};
-        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+        CORRADE_VERIFY(!data.hasOcclusionRoughnessMetallicTexture());
     }
 }
 
@@ -605,14 +598,17 @@ void PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedOcclusionRoughn
             {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::R},
             {MaterialAttribute::OcclusionTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
             {MaterialAttribute::OcclusionTextureCoordinates, 3u},
+            {MaterialAttribute::OcclusionTextureLayer, 17u},
             {MaterialAttribute::RoughnessTexture, 2u},
             {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::G},
             {MaterialAttribute::RoughnessTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
             {MaterialAttribute::RoughnessTextureCoordinates, 3u},
+            {MaterialAttribute::RoughnessTextureLayer, 17u},
             {MaterialAttribute::MetalnessTexture, 2u},
             {MaterialAttribute::MetalnessTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
             {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::B},
-            {MaterialAttribute::MetalnessTextureCoordinates, 3u}
+            {MaterialAttribute::MetalnessTextureCoordinates, 3u},
+            {MaterialAttribute::MetalnessTextureLayer, 17u}
         }};
         CORRADE_VERIFY(data.hasOcclusionRoughnessMetallicTexture());
         /* This is a superset */
@@ -689,6 +685,116 @@ void PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedOcclusionRoughn
     }
 }
 
+void PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedRoughnessMetallicOcclusion() {
+    /* Just the texture IDs and swizzles, the rest is implicit */
+    {
+        PbrMetallicRoughnessMaterialData data{{}, {
+            {MaterialAttribute::RoughnessTexture, 2u},
+            {MaterialAttribute::MetalnessTexture, 2u},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::OcclusionTexture, 2u},
+            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+        }};
+        CORRADE_VERIFY(!data.hasOcclusionRoughnessMetallicTexture());
+        CORRADE_VERIFY(data.hasRoughnessMetallicOcclusionTexture());
+        /* This isn't a superset */
+        CORRADE_VERIFY(!data.hasNoneRoughnessMetallicTexture());
+
+    /* Explicit parameters for everything, but all the same */
+    } {
+        PbrMetallicRoughnessMaterialData data{{}, {
+            {MaterialAttribute::RoughnessTexture, 2u},
+            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::R},
+            {MaterialAttribute::RoughnessTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
+            {MaterialAttribute::RoughnessTextureCoordinates, 3u},
+            {MaterialAttribute::RoughnessTextureLayer, 7u},
+            {MaterialAttribute::MetalnessTexture, 2u},
+            {MaterialAttribute::MetalnessTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::MetalnessTextureCoordinates, 3u},
+            {MaterialAttribute::MetalnessTextureLayer, 7u},
+            {MaterialAttribute::OcclusionTexture, 2u},
+            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::OcclusionTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
+            {MaterialAttribute::OcclusionTextureCoordinates, 3u},
+            {MaterialAttribute::OcclusionTextureLayer, 7u},
+        }};
+        CORRADE_VERIFY(!data.hasOcclusionRoughnessMetallicTexture());
+        CORRADE_VERIFY(data.hasRoughnessMetallicOcclusionTexture());
+        /* This isn't a superset */
+        CORRADE_VERIFY(!data.hasNoneRoughnessMetallicTexture());
+
+    /* Different texture ID */
+    } {
+        PbrMetallicRoughnessMaterialData data{{}, {
+            {MaterialAttribute::RoughnessTexture, 2u},
+            {MaterialAttribute::MetalnessTexture, 3u},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::OcclusionTexture, 2u},
+            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+        }};
+        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+
+    /* One texture missing */
+    } {
+        PbrMetallicRoughnessMaterialData data{{}, {
+            {MaterialAttribute::RoughnessTexture, 2u},
+            {MaterialAttribute::MetalnessTexture, 2u},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+        }};
+        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+
+    /* Unexpected swizzle */
+    } {
+        PbrMetallicRoughnessMaterialData data{{}, {
+            {MaterialAttribute::RoughnessTexture, 2u},
+            {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::A},
+            {MaterialAttribute::MetalnessTexture, 2u},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::OcclusionTexture, 2u},
+            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+        }};
+        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+
+    /* Unexpected texture matrix */
+    } {
+        PbrMetallicRoughnessMaterialData data{{}, {
+            {MaterialAttribute::RoughnessTexture, 2u},
+            {MaterialAttribute::MetalnessTexture, 2u},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::OcclusionTexture, 2u},
+            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+            {MaterialAttribute::OcclusionTextureMatrix, Matrix3::scaling({0.5f, 1.0f})},
+        }};
+        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+
+    /* Unexpected texture coordinates */
+    } {
+        PbrMetallicRoughnessMaterialData data{{}, {
+            {MaterialAttribute::RoughnessTexture, 2u},
+            {MaterialAttribute::MetalnessTexture, 2u},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::MetalnessTextureCoordinates, 1u},
+            {MaterialAttribute::OcclusionTexture, 2u},
+            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+        }};
+        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+
+    /* Unexpected array texture layer */
+    } {
+        PbrMetallicRoughnessMaterialData data{{}, {
+            {MaterialAttribute::RoughnessTexture, 2u},
+            {MaterialAttribute::RoughnessTextureLayer, 1u},
+            {MaterialAttribute::MetalnessTexture, 2u},
+            {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::G},
+            {MaterialAttribute::OcclusionTexture, 2u},
+            {MaterialAttribute::OcclusionTextureSwizzle, MaterialTextureSwizzle::B},
+        }};
+        CORRADE_VERIFY(!data.hasRoughnessMetallicOcclusionTexture());
+    }
+}
+
 void PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedNormalRoughnessMetallic() {
     /* Just the texture IDs and swizzles, the rest is implicit */
     {
@@ -709,14 +815,17 @@ void PbrMetallicRoughnessMaterialDataTest::texturedExplicitPackedNormalRoughness
             {MaterialAttribute::NormalTextureSwizzle, MaterialTextureSwizzle::RG},
             {MaterialAttribute::NormalTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
             {MaterialAttribute::NormalTextureCoordinates, 3u},
+            {MaterialAttribute::NormalTextureLayer, 17u},
             {MaterialAttribute::RoughnessTexture, 2u},
             {MaterialAttribute::RoughnessTextureSwizzle, MaterialTextureSwizzle::B},
             {MaterialAttribute::RoughnessTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
             {MaterialAttribute::RoughnessTextureCoordinates, 3u},
+            {MaterialAttribute::RoughnessTextureLayer, 17u},
             {MaterialAttribute::MetalnessTexture, 2u},
             {MaterialAttribute::MetalnessTextureMatrix, Matrix3::scaling({0.5f, 0.5f})},
             {MaterialAttribute::MetalnessTextureSwizzle, MaterialTextureSwizzle::A},
-            {MaterialAttribute::MetalnessTextureCoordinates, 3u}
+            {MaterialAttribute::MetalnessTextureCoordinates, 3u},
+            {MaterialAttribute::MetalnessTextureLayer, 17u}
         }};
         CORRADE_VERIFY(data.hasNormalRoughnessMetallicTexture());
 
@@ -800,7 +909,7 @@ void PbrMetallicRoughnessMaterialDataTest::invalidTextures() {
 
     PbrMetallicRoughnessMaterialData data{{}, {}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     data.baseColorTexture();
     data.baseColorTextureMatrix();
@@ -832,7 +941,7 @@ void PbrMetallicRoughnessMaterialDataTest::invalidTextures() {
     data.emissiveTextureMatrix();
     data.emissiveTextureCoordinates();
     data.emissiveTextureLayer();
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::MaterialData::attribute(): attribute BaseColorTexture not found in layer 0\n"
         "Trade::PbrMetallicRoughnessMaterialData::baseColorTextureMatrix(): the material doesn't have a base color texture\n"
         "Trade::PbrMetallicRoughnessMaterialData::baseColorTextureCoordinates(): the material doesn't have a base color texture\n"
@@ -978,12 +1087,12 @@ void PbrMetallicRoughnessMaterialDataTest::noCommonTransformationCoordinatesLaye
     CORRADE_VERIFY(!data.hasCommonTextureCoordinates());
     CORRADE_VERIFY(!data.hasCommonTextureLayer());
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     data.commonTextureMatrix();
     data.commonTextureCoordinates();
     data.commonTextureLayer();
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::PbrMetallicRoughnessMaterialData::commonTextureMatrix(): the material doesn't have a common texture coordinate transformation\n"
         "Trade::PbrMetallicRoughnessMaterialData::commonTextureCoordinates(): the material doesn't have a common texture coordinate set\n"
         "Trade::PbrMetallicRoughnessMaterialData::commonTextureLayer(): the material doesn't have a common array texture layer\n");

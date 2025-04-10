@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
 #   copy of this software and associated documentation files (the "Software"),
@@ -35,17 +36,20 @@ set(MagnumMaterialTools_SRCS
 # Files compiled with different flags for main library and unit test library
 set(MagnumMaterialTools_GracefulAssert_SRCS
     Filter.cpp
-    Merge.cpp)
+    Merge.cpp
+    RemoveDuplicates.cpp)
 
 set(MagnumMaterialTools_HEADERS
     Copy.h
     Filter.h
     Merge.h
     PhongToPbrMetallicRoughness.h
+    RemoveDuplicates.h
 
     visibility.h)
 
-set(MagnumSceneTools_PRIVATE_HEADERS )
+set(MagnumMaterialTools_PRIVATE_HEADERS
+    Implementation/attributesEqual.h)
 
 # Objects shared between main and test library
 add_library(MagnumMaterialToolsObjects OBJECT

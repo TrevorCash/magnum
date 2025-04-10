@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2019 Daniel Guzman <daniel.guzman85@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,9 +25,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
+#include <Corrade/Utility/FormatStl.h> /** @todo remove once HashDigest is std::string-free */
 
 #include "Magnum/AbstractResourceLoader.h"
 #include "Magnum/ResourceManager.h"
@@ -265,16 +267,16 @@ void ResourceManagerTest::stateDisallowed() {
 
     ResourceManager rm;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     Data d; /* Done this way to prevent memory leak on assertion (yes, the code is bad) */
     rm.set("data", &d, ResourceDataState::Loading, ResourcePolicy::Resident);
-    CORRADE_COMPARE(out.str(), "ResourceManager::set(): data should be null if and only if state is NotFound or Loading\n");
+    CORRADE_COMPARE(out, "ResourceManager::set(): data should be null if and only if state is NotFound or Loading\n");
 
-    out.str({});
+    out = {};
     rm.set<Data>("data", nullptr, ResourceDataState::Final, ResourcePolicy::Resident);
-    CORRADE_COMPARE(out.str(), "ResourceManager::set(): data should be null if and only if state is NotFound or Loading\n");
+    CORRADE_COMPARE(out, "ResourceManager::set(): data should be null if and only if state is NotFound or Loading\n");
 }
 
 void ResourceManagerTest::basic() {
@@ -314,12 +316,12 @@ void ResourceManagerTest::changeFinalResource() {
     CORRADE_COMPARE(rm.count<Int>(), 1);
 
     /* Final can not be changed */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     int a = 43; /* Done this way to prevent a memory leak on assert (yes, the code is bad) */
     rm.set(answerKey, &a, ResourceDataState::Mutable, ResourcePolicy::Resident);
     CORRADE_COMPARE(*theAnswer, 42);
-    CORRADE_COMPARE(out.str(), Utility::formatString("ResourceManager::set(): cannot change already final resource ResourceKey(0x{})\n", answerKey.hexString()));
+    CORRADE_COMPARE(out, Utility::format("ResourceManager::set(): cannot change already final resource ResourceKey(0x{})\n", answerKey.hexString()));
 }
 
 void ResourceManagerTest::residentPolicy() {
@@ -412,7 +414,7 @@ void ResourceManagerTest::clearWhileReferenced() {
 
     /* Should cover also the destruction case */
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     ResourceManager rm;
@@ -423,7 +425,7 @@ void ResourceManagerTest::clearWhileReferenced() {
     new Resource<Int>(rm.get<Int>("blah"));
 
     rm.clear();
-    CORRADE_COMPARE(out.str(), "ResourceManager: cleared/destroyed while data are still referenced\n");
+    CORRADE_COMPARE(out, "ResourceManager: cleared/destroyed while data are still referenced\n");
 }
 
 void ResourceManagerTest::loader() {
@@ -531,16 +533,16 @@ void ResourceManagerTest::loaderSetNullptr() {
 }
 
 void ResourceManagerTest::debugResourceState() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << ResourceState::Loading << ResourceState(0xbe);
-    CORRADE_COMPARE(out.str(), "ResourceState::Loading ResourceState(0xbe)\n");
+    CORRADE_COMPARE(out, "ResourceState::Loading ResourceState(0xbe)\n");
 }
 
 void ResourceManagerTest::debugResourceKey() {
-    std::ostringstream out;
+    Containers::String out;
     ResourceKey hello = "hello";
     Debug{&out} << hello;
-    CORRADE_COMPARE(out.str(), Utility::formatString("ResourceKey(0x{})\n", hello.hexString()));
+    CORRADE_COMPARE(out, Utility::format("ResourceKey(0x{})\n", hello.hexString()));
 }
 
 }}}

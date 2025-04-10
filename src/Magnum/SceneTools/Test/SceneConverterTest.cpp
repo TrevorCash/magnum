@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -65,7 +66,7 @@ const struct {
     {"importer", {InPlaceInit, {
             "--info-importer", "-i", "someOption=yes"
         }},
-        "AnySceneImporter", nullptr, nullptr,
+        nullptr, nullptr, nullptr,
         "info-importer.txt"},
     {"converter", {InPlaceInit, {
             "-C", "AnySceneConverter", "--info-converter", "-c", "someOption=yes"
@@ -770,7 +771,7 @@ const struct {
         "UfbxImporter", "PngImporter", "GltfSceneConverter", {"PngImageConverter", nullptr}, nullptr,
         /* The file should contain also material names and everything */
         "materials-pbr.gltf", nullptr,
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::AmbientColor attribute, skipping\n"},
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::AmbientColor attribute, skipping\n"},
     {"Phong to PBR, verbose", {InPlaceInit, {
             /* Same as above, just with -v added */
             "-I", "UfbxImporter", "-C", "GltfSceneConverter", "--phong-to-pbr",
@@ -780,7 +781,7 @@ const struct {
         "UfbxImporter", "PngImporter", "GltfSceneConverter", {"PngImageConverter", nullptr}, nullptr,
         "materials-pbr.gltf", nullptr,
         "Converting material 0 to PBR\n"
-        "MaterialTools::phongToPbrMetallicRoughness(): unconvertable Trade::MaterialAttribute::AmbientColor attribute, skipping\n"
+        "MaterialTools::phongToPbrMetallicRoughness(): unconvertible Trade::MaterialAttribute::AmbientColor attribute, skipping\n"
         "Converting material 1 to PBR\n"
         "Trade::AbstractSceneConverter::addImporterContents(): adding 2D image 0 out of 2\n"
         "Trade::AnyImageImporter::openFile(): using PngImporter\n"
@@ -791,6 +792,24 @@ const struct {
         "Trade::AbstractSceneConverter::addImporterContents(): adding mesh 0 out of 2\n"
         "Trade::AbstractSceneConverter::addImporterContents(): adding mesh 1 out of 2\n"
         "Trade::AbstractSceneConverter::addImporterContents(): adding scene 0 out of 1\n"},
+    {"remove duplicate materials", {InPlaceInit, {
+            "-I" "GltfImporter", "-C", "GltfSceneConverter", "--remove-duplicate-materials", "-c", "generator=",
+            Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterTestFiles/materials-duplicate.gltf"), Utility::Path::join(SCENETOOLS_TEST_OUTPUT_DIR, "SceneConverterTestFiles/materials-duplicate-removed.gltf")
+        }},
+        "GltfImporter", nullptr, "GltfSceneConverter", {}, nullptr,
+        "materials-duplicate-removed.gltf", nullptr,
+        {}},
+    {"remove duplicate materials, verbose", {InPlaceInit, {
+            /* Same as above, just with -v added */
+            "-I" "GltfImporter", "-C", "GltfSceneConverter", "--remove-duplicate-materials", "-c", "generator=", "-v",
+            Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterTestFiles/materials-duplicate.gltf"), Utility::Path::join(SCENETOOLS_TEST_OUTPUT_DIR, "SceneConverterTestFiles/materials-duplicate-removed.gltf")
+        }},
+        "GltfImporter", nullptr, "GltfSceneConverter", {}, nullptr,
+        "materials-duplicate-removed.gltf", nullptr,
+        "Duplicate material removal: 3 -> 2 materials\n"
+        "Trade::AbstractSceneConverter::addImporterContents(): adding mesh 0 out of 3\n"
+        "Trade::AbstractSceneConverter::addImporterContents(): adding mesh 1 out of 3\n"
+        "Trade::AbstractSceneConverter::addImporterContents(): adding mesh 2 out of 3\n"},
     {"data unsupported by the converter", {InPlaceInit, {
             "-I", "GltfImporter", "-i", "experimentalKhrTextureKtx",
             "-C", "StanfordSceneConverter",
@@ -803,7 +822,8 @@ const struct {
         "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 2D images not supported by the converter\n"
         "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 3D images not supported by the converter\n"
         "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 2 textures not supported by the converter\n"
-        "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 materials not supported by the converter\n"},
+        "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 materials not supported by the converter\n"
+        "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 scenes not supported by the converter\n"},
     {"per-image processed images unsupported by the converter", {InPlaceInit, {
             "-I", "GltfImporter", "-i", "experimentalKhrTextureKtx",
             "-P", "StbResizeImageConverter", "-p", "size=\"1 1\"",
@@ -819,7 +839,8 @@ const struct {
         "Ignoring 1 2D images not supported by the converter\n"
         "Ignoring 1 3D images not supported by the converter\n"
         "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 2 textures not supported by the converter\n"
-        "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 materials not supported by the converter\n"},
+        "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 materials not supported by the converter\n"
+        "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 scenes not supported by the converter\n"},
     {"per-material processed materials unsupported by the converter", {InPlaceInit, {
             "-I", "GltfImporter", "-i", "experimentalKhrTextureKtx",
             "--phong-to-pbr", "-C", "StanfordSceneConverter",
@@ -834,7 +855,28 @@ const struct {
         "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 2 textures not supported by the converter\n"
         /* Compared to "data unsupported by the converter" this message is
            printed by sceneconverter itself, not the converter interface */
-        "Ignoring 1 materials not supported by the converter\n"},
+        "Ignoring 1 materials not supported by the converter\n"
+        "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 scenes not supported by the converter\n"},
+    {"per-scene processed scenes unsupported by the converter", {InPlaceInit, {
+            "-I", "GltfImporter", "-i", "experimentalKhrTextureKtx",
+            "--remove-duplicate-materials", "-C", "StanfordSceneConverter",
+            Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterTestFiles/ignoring-unsupported.gltf"),
+            Utility::Path::join(SCENETOOLS_TEST_OUTPUT_DIR, "SceneConverterTestFiles/quad.ply")
+        }},
+        "GltfImporter", "KtxImporter", "StanfordSceneConverter",
+        {"StbResizeImageConverter", nullptr}, nullptr,
+        "quad.ply", nullptr,
+        "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 2D images not supported by the converter\n"
+        "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 1 3D images not supported by the converter\n"
+        "Trade::AbstractSceneConverter::addSupportedImporterContents(): ignoring 2 textures not supported by the converter\n"
+        /* Compared to "data unsupported by the converter" these messages are
+           printed by sceneconverter itself, not the converter interface. Both
+           scenes and materials get imported directly for duplicate material
+           removal. */
+        /** @todo switch to something that only touches scenes and not
+            materials once it exists */
+        "Ignoring 1 materials not supported by the converter\n"
+        "Ignoring 1 scenes not supported by the converter\n"},
     {"preferred importer plugin", {InPlaceInit, {
             /* First is not found, second should be always found, third might
                be also but shouldn't be picked. The trailing comma should be allowed, using the plugin itself in the list should work too. */
@@ -1104,6 +1146,7 @@ const struct {
         "ObjImporter", nullptr, nullptr, nullptr,
         "Utility::parseNumberSequence(): unrecognized character L in LOLNEIN\n"},
     {"can't load converter plugin", {InPlaceInit, {
+            "-I", "ObjImporter",
             "-C", "NonexistentSceneConverter",
             Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterTestFiles/point.obj"),
             Utility::Path::join(SCENETOOLS_TEST_OUTPUT_DIR, "SceneConverterTestFiles/whatever.ply")
@@ -1167,6 +1210,7 @@ const struct {
         "ObjImporter", nullptr, "StanfordSceneConverter", nullptr,
         "StanfordSceneConverter doesn't support importer conversion, only ConvertMeshToData\n"},
     {"can't load mesh converter plugin", {InPlaceInit, {
+            "-I", "ObjImporter",
             "-M", "NonexistentSceneConverter",
             Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterTestFiles/point.obj"),
             Utility::Path::join(SCENETOOLS_TEST_OUTPUT_DIR, "SceneConverterTestFiles/whatever.ply")
@@ -1323,7 +1367,44 @@ const struct {
         "UfbxImporter", "PngImporter", "GltfSceneConverter",
         nullptr,
         "Trade::GltfSceneConverter::add(): unsupported R/R packing of a metallic/roughness texture\n"
-        "Cannot add material 1\n"}
+        "Cannot add material 1\n"},
+    {"can't load a scene for material deduplication", {InPlaceInit, {
+            "-I", "GltfImporter", "--remove-duplicate-materials",
+            Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterTestFiles/broken-scene.gltf"),
+            Utility::Path::join(SCENETOOLS_TEST_OUTPUT_DIR, "SceneConverterTestFiles/whatever.gltf")
+        }},
+        "GltfImporter", nullptr, nullptr,
+        nullptr,
+        "Trade::GltfImporter::scene(): mesh index 1 in node 0 out of range for 1 meshes\n"
+        "Cannot import scene 0\n"},
+    {"can't add scene dependencies", {InPlaceInit, {
+            /* --remove-duplicate-materials is a no-op because the input has no
+               materials, we just need something that causes the scenes to be
+               added directly */
+            "-I", "GltfImporter", "--remove-duplicate-materials",
+            "-C", "GltfSceneConverter",
+            Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterTestFiles/broken-mesh-with-scene.gltf"),
+            Utility::Path::join(SCENETOOLS_TEST_OUTPUT_DIR, "SceneConverterTestFiles/whatever.gltf")
+        }},
+        "GltfImporter", nullptr, "GltfSceneConverter",
+        nullptr,
+        "Trade::GltfImporter::mesh(): accessor index 0 out of range for 0 accessors\n"
+        "Cannot add scene dependencies\n"},
+    {"can't add processed scene", {InPlaceInit, {
+            /* --remove-duplicate-materials is a no-op because the input has no
+               materials, we just need something that causes the scenes to be
+               added directly */
+            "-I", "GltfImporter", "--remove-duplicate-materials",
+            "-C", "GltfSceneConverter",
+            Utility::Path::join(SCENETOOLS_TEST_DIR, "SceneConverterTestFiles/two-scenes.gltf"),
+            Utility::Path::join(SCENETOOLS_TEST_OUTPUT_DIR, "SceneConverterTestFiles/whatever.gltf")
+        }},
+        "GltfImporter", nullptr, "GltfSceneConverter",
+        nullptr,
+        /** @todo find some better case for this, this will pass once
+            GltfSceneConverter has multi-scene support */
+        "Trade::GltfSceneConverter::add(): only one scene is supported at the moment\n"
+        "Cannot add scene 1\n"},
 };
 
 SceneConverterTest::SceneConverterTest() {
@@ -1382,6 +1463,9 @@ void SceneConverterTest::info() {
         CORRADE_SKIP(data.requiresConverter << "plugin can't be loaded.");
     if(data.requiresImageConverter && !(imageConverterManager.load(data.requiresImageConverter) & PluginManager::LoadState::Loaded))
         CORRADE_SKIP(data.requiresImageConverter << "plugin can't be loaded.");
+    /* AnySceneImporter is required implicitly for simplicity */
+    if(!(importerManager.load("AnySceneImporter") & PluginManager::LoadState::Loaded))
+        CORRADE_SKIP("AnySceneImporter plugin can't be loaded.");
 
     CORRADE_VERIFY(true); /* capture correct function name */
 
@@ -1429,7 +1513,9 @@ void SceneConverterTest::convert() {
     CORRADE_VERIFY(true); /* capture correct function name */
 
     Containers::Pair<bool, Containers::String> output = call(data.args);
-    CORRADE_COMPARE(output.second(), data.message);
+    CORRADE_COMPARE_AS(output.second(),
+        data.message,
+        TestSuite::Compare::String);
     CORRADE_VERIFY(output.first());
 
     /* In some cases the test verifies only the printed output and doesn't
@@ -1478,7 +1564,9 @@ void SceneConverterTest::error() {
             TestSuite::Compare::StringHasSuffix);
     /* If it ends with a \n, assume it's the whole message */
     else if(data.message.hasSuffix('\n'))
-        CORRADE_COMPARE(output.second(), data.message);
+        CORRADE_COMPARE_AS(output.second(),
+            data.message,
+            TestSuite::Compare::String);
     /* Otherwise it's just a prefix */
     else
         CORRADE_COMPARE_AS(output.second(),

@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -38,6 +39,16 @@ namespace Magnum { namespace Implementation {
 
 /* Used in *Image and Compressed*Image constructors */
 #ifndef CORRADE_NO_ASSERT
+inline void checkPixelSize(const char*
+    #ifndef CORRADE_STANDARD_ASSERT
+    const prefix
+    #endif
+    , const UnsignedInt pixelSize)
+{
+    CORRADE_ASSERT(pixelSize && pixelSize < 256,
+        prefix << "expected pixel size to be non-zero and less than 256 but got" << pixelSize, );
+}
+
 inline void checkImageFlagsForSize(const char*, const ImageFlags1D, const Math::Vector<1, Int>&) {}
 inline void checkImageFlagsForSize(const char*, const ImageFlags2D, const Vector2i&) {}
 inline void checkImageFlagsForSize(const char*
@@ -65,6 +76,58 @@ template<std::size_t dimensions, class T> std::pair<Math::Vector<dimensions, std
 template<std::size_t dimensions, class T> std::pair<Math::Vector<dimensions, std::size_t>, Math::Vector<dimensions, std::size_t>> compressedImageDataProperties(const T& image) {
     std::pair<Math::Vector3<std::size_t>, Math::Vector3<std::size_t>> dataProperties = image.storage().dataProperties(Vector3i::pad(image.size(), 1));
     return std::make_pair(Math::Vector<dimensions, std::size_t>::pad(dataProperties.first), Math::Vector<dimensions, std::size_t>::pad(dataProperties.second));
+}
+
+/* Used in image query functions */
+template<std::size_t dimensions, class T> std::size_t imageDataSizeFor(const T& image, const Math::Vector<dimensions, Int>& size) {
+    std::pair<Math::Vector3<std::size_t>, Math::Vector3<std::size_t>> dataProperties = image.storage().dataProperties(image.pixelSize(), Vector3i::pad(size, 1));
+
+    /* Smallest line/rectangle/cube that covers the area */
+    std::size_t dataOffset = 0;
+    if(dataProperties.first.z())
+        dataOffset += dataProperties.first.z();
+    else if(dataProperties.first.y()) {
+        if(!image.storage().imageHeight())
+            dataOffset += dataProperties.first.y();
+    } else if(dataProperties.first.x()) {
+        if(!image.storage().rowLength())
+            dataOffset += dataProperties.first.x();
+    }
+    return dataOffset + dataProperties.second.product();
+}
+
+/* Used in data size assertions */
+template<class T> inline std::size_t imageDataSize(const T& image) {
+    return imageDataSizeFor(image, image.size());
+}
+
+template<std::size_t dimensions, class T> std::pair<std::size_t, std::size_t> compressedImageDataOffsetSizeFor(const T& image, const Math::Vector<dimensions, Int>& size) {
+    CORRADE_INTERNAL_ASSERT(image.storage().compressedBlockSize().product() && image.storage().compressedBlockDataSize());
+
+    std::pair<Math::Vector3<std::size_t>, Math::Vector3<std::size_t>> dataProperties = image.storage().dataProperties(Vector3i::pad(size, 1));
+
+    const auto realBlockCount = Math::Vector3<std::size_t>{(Vector3i::pad(size, 1) + image.storage().compressedBlockSize() - Vector3i{1})/image.storage().compressedBlockSize()};
+
+    return {dataProperties.first.sum(), (dataProperties.second.product() - (dataProperties.second.x() - realBlockCount.x()) - (dataProperties.second.y() - realBlockCount.y())*dataProperties.second.x())*image.storage().compressedBlockDataSize()};
+}
+
+/* Used in image query functions */
+template<std::size_t dimensions, class T> std::size_t compressedImageDataSizeFor(const T& image, const Math::Vector<dimensions, Int>& size) {
+    auto r = compressedImageDataOffsetSizeFor(image, size);
+    return r.first + r.second;
+}
+
+/* Use in compressed image upload functions */
+template<class T> std::size_t occupiedCompressedImageDataSize(const T& image, std::size_t dataSize) {
+    return image.storage().compressedBlockSize().product() && image.storage().compressedBlockDataSize()
+        ? compressedImageDataOffsetSizeFor(image, image.size()).second : dataSize;
+}
+
+template<std::size_t dimensions, class T> std::ptrdiff_t pixelStorageSkipOffsetFor(const T& image, const Math::Vector<dimensions, Int>& size) {
+    return image.storage().dataProperties(image.pixelSize(), Vector3i::pad(size, 1)).first.sum();
+}
+template<class T> std::ptrdiff_t pixelStorageSkipOffset(const T& image) {
+    return pixelStorageSkipOffsetFor(image, image.size());
 }
 
 template<UnsignedInt dimensions, class T, class Image, class Data> Containers::StridedArrayView<dimensions + 1, T> imagePixelView(Image& image, const Data data) {

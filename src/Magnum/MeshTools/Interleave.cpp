@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -54,7 +55,8 @@ Containers::Optional<Containers::StridedArrayView2D<const char>> interleavedData
        problems especially when used within interleavedLayout() etc. May
        tackle properly later. */
     const Int stride = mesh.attributeStride(0);
-    if(stride <= 0) return Containers::NullOpt;
+    if(stride <= 0)
+        return Containers::NullOpt;
 
     std::size_t minOffset = ~std::size_t{};
     std::size_t maxOffset = 0;
@@ -85,10 +87,28 @@ Containers::Optional<Containers::StridedArrayView2D<const char>> interleavedData
         maxOffset = Math::max(maxOffset, minOffset + stride);
 
     /* The offsets can't fit into the stride, report failure */
-    if(maxOffset - minOffset > UnsignedInt(stride)) return Containers::NullOpt;
+    if(maxOffset - minOffset > UnsignedInt(stride))
+        return Containers::NullOpt;
 
     return Containers::StridedArrayView2D<const char>{
-        mesh.vertexData(), mesh.vertexData().data() + minOffset,
+        /* MeshData only requires the vertex data to be large enough to fit the
+           actual data, not to have the size large enough to fit `count*stride`
+           elements. The StridedArrayView expects the latter, so this extends
+           the size to satisfy the assert. For simplicity it overextends by the
+           whole stride instead of just max end offset, relying on the input
+           MeshData having checked the bounds already. To be clear, the output
+           is *never* out of bounds of the vertex data, the second dimension is
+           always sized to fit within. This is verified in the
+           interleavedDataGapsTrailingOmitted() test.
+
+           Additionally, the max() is here because some algorithms such as
+           combineFaceAttributes() pass `{nullptr, ~std::size_t{}}` as
+           vertexData and without the max() it would overflow. That case is
+           tested in interleavedDataVertexDataWholeMemory(). */
+        /** @todo maybe just fix StridedArrayView to require only what's really
+            needed? */
+        {mesh.vertexData().data(), Math::max(mesh.vertexData().size(), mesh.vertexData().size() + stride)},
+        mesh.vertexData().data() + minOffset,
         {mesh.vertexCount(), maxOffset - minOffset},
         {std::ptrdiff_t(stride), 1}};
 }
@@ -141,7 +161,7 @@ Containers::Array<Trade::MeshAttributeData> interleavedLayout(Trade::MeshData&& 
         minOffset = 0;
         for(UnsignedInt i = 0, max = mesh.attributeCount(); i != max; ++i) {
             CORRADE_ASSERT(!isVertexFormatImplementationSpecific(mesh.attributeFormat(i)),
-                "MeshTools::interleavedLayout(): attribute" << i << "has an implementation-specific format" << reinterpret_cast<void*>(vertexFormatUnwrap(mesh.attributeFormat(i))), {});
+                "MeshTools::interleavedLayout(): attribute" << i << "has an implementation-specific format" << Debug::hex << vertexFormatUnwrap(mesh.attributeFormat(i)), {});
             stride += attributeSize(mesh, i);
         }
     }
@@ -156,7 +176,7 @@ Containers::Array<Trade::MeshAttributeData> interleavedLayout(Trade::MeshData&& 
             stride += extra[i].stride();
         } else {
             CORRADE_ASSERT(!isVertexFormatImplementationSpecific(format),
-                "MeshTools::interleavedLayout(): extra attribute" << i << "has an implementation-specific format" << reinterpret_cast<void*>(vertexFormatUnwrap(format)), {});
+                "MeshTools::interleavedLayout(): extra attribute" << i << "has an implementation-specific format" << Debug::hex << vertexFormatUnwrap(format), {});
             stride += attributeSize(extra[i]);
             ++extraAttributeCount;
         }
@@ -292,7 +312,7 @@ Trade::MeshData interleave(Trade::MeshData&& mesh, const Containers::ArrayView<c
            an implementation-specific index type */
         } else {
             CORRADE_ASSERT(!isMeshIndexTypeImplementationSpecific(indexType),
-                "MeshTools::interleave(): mesh has an implementation-specific index type" << reinterpret_cast<void*>(meshIndexTypeUnwrap(indexType)) << Debug::nospace << ", enable MeshTools::InterleaveFlag::PreserveStridedIndices to pass the array through unchanged",
+                "MeshTools::interleave(): mesh has an implementation-specific index type" << Debug::hex << meshIndexTypeUnwrap(indexType) << Debug::nospace << ", enable MeshTools::InterleaveFlag::PreserveStridedIndices to pass the array through unchanged",
                 (Trade::MeshData{MeshPrimitive{}, 0}));
 
             const std::size_t indexTypeSize = meshIndexTypeSize(indexType);
@@ -349,7 +369,7 @@ Trade::MeshData interleave(Trade::MeshData&& mesh, const Containers::ArrayView<c
                 "MeshTools::interleave(): extra attribute" << i << "is offset-only",
                 (Trade::MeshData{MeshPrimitive::Triangles, 0}));
 
-            /* Copy the attribute in, if it is non-empty, otherwise keep the
+            /* Copy the attribute in, if it is non-null, otherwise keep the
                memory uninitialized */
             if(extra[i].data()) {
                 CORRADE_ASSERT(extra[i].data().size() == vertexCount,
@@ -384,6 +404,54 @@ Trade::MeshData interleave(const Trade::MeshData& mesh, const Containers::ArrayV
 
 Trade::MeshData interleave(const Trade::MeshData& mesh, const std::initializer_list<Trade::MeshAttributeData> extra, const InterleaveFlags flags) {
     return interleave(Utility::move(mesh), Containers::arrayView(extra), flags);
+}
+
+Trade::MeshData interleave(const MeshPrimitive primitive, const Trade::MeshIndexData& indices, const Containers::ArrayView<const Trade::MeshAttributeData> attributes) {
+    /* Get vertex count from the first non-padding attribute. Checking that all
+       arrays have the same size etc is done in the delegated-to function. */
+    UnsignedInt vertexCount = ~UnsignedInt{};
+    for(const Trade::MeshAttributeData& attribute: attributes) {
+        if(attribute.format() != VertexFormat{}) {
+            vertexCount = attribute.data().size();
+            break;
+        }
+    }
+    CORRADE_ASSERT(vertexCount != ~UnsignedInt{},
+        "MeshTools::interleave(): only padding found among" << attributes.size() << "attributes, can't infer vertex count",
+        (Trade::MeshData{MeshPrimitive::Triangles, 0}));
+
+    /* Check that indices aren't implementation-specific. The assert inside the
+       delegated-to interleave() suggests PreserveStridedIndices, which would
+       be confusing as here it's no such argument */
+    CORRADE_ASSERT(indices.type() == MeshIndexType{} || !isMeshIndexTypeImplementationSpecific(indices.type()),
+        "MeshTools::interleave(): implementation-specific index type" << Debug::hex << meshIndexTypeUnwrap(indices.type()),
+        (Trade::MeshData{MeshPrimitive{}, 0}));
+
+    return interleave(Trade::MeshData{primitive,
+        /* Pass indices as non-owned so they get copied. We can say the index
+           data is the whole memory as it's not going to get used because the
+           indices get tightly packed. */
+        {},
+        indices.type() == MeshIndexType{} ?
+            nullptr : Containers::ArrayView<char>{nullptr, ~std::size_t{}},
+        indices,
+        vertexCount},
+        attributes,
+        /* Explicitly *not* PreserveStridedIndices to ensure the indices get
+           tightly packed */
+        InterleaveFlags{});
+}
+
+Trade::MeshData interleave(const MeshPrimitive primitive, const Trade::MeshIndexData& indices, const std::initializer_list<Trade::MeshAttributeData> attributes) {
+    return interleave(primitive, indices, Containers::arrayView(attributes));
+}
+
+Trade::MeshData interleave(const MeshPrimitive primitive, const Containers::ArrayView<const Trade::MeshAttributeData> attributes) {
+    return interleave(primitive, Trade::MeshIndexData{}, attributes);
+}
+
+Trade::MeshData interleave(const MeshPrimitive primitive, const std::initializer_list<Trade::MeshAttributeData> attributes) {
+    return interleave(primitive, Containers::arrayView(attributes));
 }
 
 }}

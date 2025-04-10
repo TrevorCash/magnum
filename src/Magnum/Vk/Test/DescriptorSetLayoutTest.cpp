@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -112,14 +113,14 @@ void DescriptorSetLayoutTest::bindingConstructFlags() {
 void DescriptorSetLayoutTest::bindingConstructImmutableSamplers() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
-    DescriptorSetLayoutBinding binding{15, DescriptorType::SampledImage, {reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xdead)), reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xbeef)), reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xcafe))}, ShaderStage::Fragment, DescriptorSetLayoutBinding::Flag::UpdateAfterBind};
+    DescriptorSetLayoutBinding binding{15, DescriptorType::SampledImage, {reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xdead})), reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xbeef})), reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xcafe}))}, ShaderStage::Fragment, DescriptorSetLayoutBinding::Flag::UpdateAfterBind};
     CORRADE_COMPARE(binding->binding, 15);
     CORRADE_COMPARE(binding->descriptorType, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
     CORRADE_COMPARE(binding->descriptorCount, 3);
     CORRADE_VERIFY(binding->pImmutableSamplers);
-    CORRADE_COMPARE(binding->pImmutableSamplers[0], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xdead)));
-    CORRADE_COMPARE(binding->pImmutableSamplers[1], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xbeef)));
-    CORRADE_COMPARE(binding->pImmutableSamplers[2], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xcafe)));
+    CORRADE_COMPARE(binding->pImmutableSamplers[0], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xdead})));
+    CORRADE_COMPARE(binding->pImmutableSamplers[1], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xbeef})));
+    CORRADE_COMPARE(binding->pImmutableSamplers[2], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xcafe})));
     CORRADE_COMPARE(binding->stageFlags, VK_SHADER_STAGE_FRAGMENT_BIT);
     CORRADE_COMPARE(binding.flags(), VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
 }
@@ -155,16 +156,16 @@ void DescriptorSetLayoutTest::bindingConstructCopy() {
 void DescriptorSetLayoutTest::bindingConstructMove() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
-    DescriptorSetLayoutBinding a{15, DescriptorType::SampledImage, {reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xdead)), reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xbeef)), reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xcafe))}, ShaderStage::Fragment, DescriptorSetLayoutBinding::Flag::UpdateAfterBind};
+    DescriptorSetLayoutBinding a{15, DescriptorType::SampledImage, {reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xdead})), reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xbeef})), reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xcafe}))}, ShaderStage::Fragment, DescriptorSetLayoutBinding::Flag::UpdateAfterBind};
     CORRADE_COMPARE(a->descriptorCount, 3);
     CORRADE_VERIFY(a->pImmutableSamplers);
-    CORRADE_COMPARE(a->pImmutableSamplers[1], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xbeef)));
+    CORRADE_COMPARE(a->pImmutableSamplers[1], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xbeef})));
 
     DescriptorSetLayoutBinding b = Utility::move(a);
     CORRADE_VERIFY(!a->pImmutableSamplers);
     CORRADE_COMPARE(b->descriptorCount, 3);
     CORRADE_VERIFY(b->pImmutableSamplers);
-    CORRADE_COMPARE(b->pImmutableSamplers[1], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xbeef)));
+    CORRADE_COMPARE(b->pImmutableSamplers[1], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xbeef})));
     CORRADE_COMPARE(b.flags(), VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
 
     DescriptorSetLayoutBinding c{3, {}};
@@ -172,7 +173,7 @@ void DescriptorSetLayoutTest::bindingConstructMove() {
     CORRADE_VERIFY(!b->pImmutableSamplers);
     CORRADE_COMPARE(c->descriptorCount, 3);
     CORRADE_VERIFY(c->pImmutableSamplers);
-    CORRADE_COMPARE(c->pImmutableSamplers[1], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xbeef)));
+    CORRADE_COMPARE(c->pImmutableSamplers[1], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xbeef})));
     CORRADE_COMPARE(c.flags(), VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
 }
 
@@ -219,12 +220,12 @@ void DescriptorSetLayoutTest::createInfoConstructBindingFlags() {
 void DescriptorSetLayoutTest::createInfoConstructBindingImmutableSamplers() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
-    DescriptorSetLayoutBinding binding{3, DescriptorType::Sampler, {reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xdead)), reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xbeef))}};
+    DescriptorSetLayoutBinding binding{3, DescriptorType::Sampler, {reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xdead})), reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xbeef}))}};
 
     DescriptorSetLayoutCreateInfo info{{
         {{7, DescriptorType::UniformBuffer}},
         binding,
-        {{12, DescriptorType::CombinedImageSampler, {reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xcafe))}}},
+        {{12, DescriptorType::CombinedImageSampler, {reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xcafe}))}}},
     }};
     CORRADE_COMPARE(info->bindingCount, 3);
     CORRADE_VERIFY(info->pBindings);
@@ -240,14 +241,14 @@ void DescriptorSetLayoutTest::createInfoConstructBindingImmutableSamplers() {
     CORRADE_VERIFY(info->pBindings[1].pImmutableSamplers);
     /* The samplers should get copied, not referenced */
     CORRADE_VERIFY(info->pBindings[1].pImmutableSamplers != binding->pImmutableSamplers);
-    CORRADE_COMPARE(info->pBindings[1].pImmutableSamplers[0], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xdead)));
-    CORRADE_COMPARE(info->pBindings[1].pImmutableSamplers[1], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xbeef)));
+    CORRADE_COMPARE(info->pBindings[1].pImmutableSamplers[0], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xdead})));
+    CORRADE_COMPARE(info->pBindings[1].pImmutableSamplers[1], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xbeef})));
 
     CORRADE_COMPARE(info->pBindings[2].binding, 12);
     CORRADE_COMPARE(info->pBindings[2].descriptorType, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     CORRADE_COMPARE(info->pBindings[2].descriptorCount, 1);
     CORRADE_VERIFY(info->pBindings[2].pImmutableSamplers);
-    CORRADE_COMPARE(info->pBindings[2].pImmutableSamplers[0], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(0xcafe)));
+    CORRADE_COMPARE(info->pBindings[2].pImmutableSamplers[0], reinterpret_cast<VkSampler>(reinterpret_cast<void*>(std::size_t{0xcafe})));
 
     CORRADE_VERIFY(!info->pNext);
 }

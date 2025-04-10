@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -1720,6 +1721,10 @@ typedef void (APIENTRY *GLDEBUGPROC)(GLenum source,GLenum type,GLuint id,GLenum 
 
 #define GL_SRG8_EXT 0x8FBE
 
+/* GL_INTEL_blackhole_render */
+
+#define GL_BLACKHOLE_RENDER_INTEL 0x83FC
+
 /* GL_KHR_texture_compression_astc_ldr */
 
 #define GL_COMPRESSED_RGBA_ASTC_4x4_KHR 0x93B0
@@ -1906,6 +1911,7 @@ struct FlextGL {
     /* GL_OVR_multiview */
 
     void(APIENTRY *FramebufferTextureMultiviewOVR)(GLenum, GLenum, GLuint, GLint, GLint, GLsizei);
+    void(APIENTRY *NamedFramebufferTextureMultiviewOVR)(GLuint, GLenum, GLuint, GLint, GLint, GLsizei);
 
     /* GL_VERSION_1_0 */
 
@@ -2719,6 +2725,7 @@ extern FLEXTGL_EXPORT FlextGL flextGL;
 /* GL_OVR_multiview */
 
 #define glFramebufferTextureMultiviewOVR flextGL.FramebufferTextureMultiviewOVR
+#define glNamedFramebufferTextureMultiviewOVR flextGL.NamedFramebufferTextureMultiviewOVR
 
 /* GL_VERSION_1_0 */
 

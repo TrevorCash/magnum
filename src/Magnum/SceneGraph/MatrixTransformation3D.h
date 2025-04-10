@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -282,6 +283,8 @@ template<class T> class BasicMatrixTransformation3D: public AbstractBasicTransla
     protected:
         /* Allow construction only from Object */
         explicit BasicMatrixTransformation3D() = default;
+        /* To silence -Wnon-virtual-dtor */
+        ~BasicMatrixTransformation3D() = default;
 
     private:
         void doResetTransformation() override final { resetTransformation(); }

@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -271,8 +272,10 @@ enum class Script: UnsignedInt {
      */
     Ethiopic = Utility::Endianness::fourCC('E', 't', 'h', 'i'),
 
-    /* Gara not in Unicode yet;
-       Geok treated as a variant of Geor(?) in Unicode */
+    /** [Garay](https://en.wikipedia.org/wiki/Garay_alphabet), Unicode 16.0 */
+    Garay = Utility::Endianness::fourCC('G', 'a', 'r', 'a'),
+
+    /* Geok treated as a variant of Geor(?) in Unicode */
 
     /**
      * [Georgian](https://en.wikipedia.org/wiki/Georgian_scripts), Unicode 1.0
@@ -311,7 +314,10 @@ enum class Script: UnsignedInt {
      */
     Gujarati = Utility::Endianness::fourCC('G', 'u', 'j', 'r'),
 
-    /* Gukh not in Unicode yet */
+    /**
+     * [Gurung Khema](https://en.wikipedia.org/wiki/Khema_script), Unicode 16.0
+     */
+    GurungKhema = Utility::Endianness::fourCC('G', 'u', 'k', 'h'),
 
     /** [Gurmukhi](https://en.wikipedia.org/wiki/Gurmukhi), Unicode 1.0 */
     Gurmukhi = Utility::Endianness::fourCC('G', 'u', 'r', 'u'),
@@ -416,7 +422,10 @@ enum class Script: UnsignedInt {
     Kannada = Utility::Endianness::fourCC('K', 'n', 'd', 'a'),
 
     /* Kore treated as a mixture of Hani and Hang in Unicode;
-       Kpel, Krai not in Unicode yet */
+       Kpel not in Unicode yet */
+
+    /** [Kirat Rai](https://en.wikipedia.org/wiki/Kirat_Rai), Unicode 16.0 */
+    KiratRai = Utility::Endianness::fourCC('K', 'r', 'a', 'i'),
 
     /** [Kaithi](https://en.wikipedia.org/wiki/Kaithi), Unicode 5.2 */
     Kaithi = Utility::Endianness::fourCC('K', 't', 'h', 'i'),
@@ -582,7 +591,8 @@ enum class Script: UnsignedInt {
      */
     OlChiki = Utility::Endianness::fourCC('O', 'l', 'c', 'k'),
 
-    /* Onao not in Unicode yet */
+    /** [Ol Onal](https://en.wikipedia.org/wiki/Ol_Onal), Unicode 16.0 */
+    OlOnal = Utility::Endianness::fourCC('O', 'n', 'a', 'o'),
 
     /**
      * [Old Turkic](https://en.wikipedia.org/wiki/Old_Turkic_script), Unicode
@@ -755,7 +765,10 @@ enum class Script: UnsignedInt {
      */
     Sundanese = Utility::Endianness::fourCC('S', 'u', 'n', 'd'),
 
-    /* Sunu not in Unicode yet */
+    /**
+     * [Sunuwar](https://en.wikipedia.org/wiki/Sunuwar_script), Unicode 16.0
+     */
+    Sunuwar = Utility::Endianness::fourCC('S', 'u', 'n', 'u'),
 
     /**
      * [Syloti Nagri](https://en.wikipedia.org/wiki/Sylheti_Nagri), Unicode 4.1
@@ -826,7 +839,12 @@ enum class Script: UnsignedInt {
      */
     Tangsa = Utility::Endianness::fourCC('T', 'n', 's', 'a'),
 
-    /* Todr, Tols not in Unicode yet */
+    /**
+     * [Todhri](https://en.wikipedia.org/wiki/Todhri_alphabet), Unicode 16.0
+     */
+    Todhri = Utility::Endianness::fourCC('T', 'o', 'd', 'r'),
+
+    /* Tols not in Unicode yet */
 
     /**
      * [Toto](https://en.wikipedia.org/wiki/Toto_language#Writing_system),
@@ -834,7 +852,11 @@ enum class Script: UnsignedInt {
      */
     Toto = Utility::Endianness::fourCC('T', 'o', 't', 'o'),
 
-    /* Tutg not in Unicode yet */
+    /**
+     * [Tulu Tigalari](https://en.wikipedia.org/wiki/Tigalari_script), Unicode
+     * 16.0
+     */
+    TuluTigalari = Utility::Endianness::fourCC('T', 'u', 't', 'g'),
 
     /**
      * [Ugaritic](https://en.wikipedia.org/wiki/Ugaritic_alphabet), Unicode 4.0
@@ -893,10 +915,10 @@ MAGNUM_TEXT_EXPORT Debug& operator<<(Debug& debug, Script value);
 @brief Create a @ref Script value from a four-character code
 @m_since_latest
 
-Delegates to @ref Utility::Endianness::fourCC(). Doesn't perform any validity
-check on the input, i.e. it's possible to create a code that isn't listed in
-[ISO 15924](https://en.wikipedia.org/wiki/ISO_15924) or even a code with
-non-ASCII characters.
+Delegates to @relativeref{Corrade,Utility::Endianness::fourCC()}. Doesn't
+perform any validity check on the input, i.e. it's possible to create a code
+that isn't listed in [ISO 15924](https://en.wikipedia.org/wiki/ISO_15924) or
+even a code with non-ASCII characters.
 @see @ref script(Containers::StringView)
 */
 constexpr Script script(char a, char b, char c, char d) {

@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -116,7 +117,7 @@ template<class T> class Complex {
         }
 
         /**
-         * @brief Create complex number from rotation matrix
+         * @brief Create a complex number from a rotation matrix
          *
          * Expects that the matrix is a pure rotation, i.e. orthogonal and
          * without any reflection. See @ref Matrix3::rotation() const for an
@@ -177,10 +178,10 @@ template<class T> class Complex {
         template<class U> constexpr explicit Complex(const Complex<U>& other) noexcept: _real{T(other._real)}, _imaginary{T(other._imaginary)} {}
 
         /** @brief Construct a complex number from external representation */
-        template<class U, class V = decltype(Implementation::ComplexConverter<T, U>::from(std::declval<U>()))> constexpr explicit Complex(const U& other): Complex{Implementation::ComplexConverter<T, U>::from(other)} {}
+        template<class U, class = decltype(Implementation::ComplexConverter<T, U>::from(std::declval<U>()))> constexpr explicit Complex(const U& other): Complex{Implementation::ComplexConverter<T, U>::from(other)} {}
 
-        /** @brief Convert a complex number to external representation */
-        template<class U, class V = decltype(Implementation::ComplexConverter<T, U>::to(std::declval<Complex<T>>()))> constexpr explicit operator U() const {
+        /** @brief Convert the complex number to external representation */
+        template<class U, class = decltype(Implementation::ComplexConverter<T, U>::to(std::declval<Complex<T>>()))> constexpr explicit operator U() const {
             return Implementation::ComplexConverter<T, U>::to(*this);
         }
 
@@ -211,13 +212,21 @@ template<class T> class Complex {
         }
         #endif
 
-        /** @brief Equality comparison */
+        /**
+         * @brief Equality comparison
+         *
+         * Done using @ref TypeTraits::equals(), i.e. with fuzzy compare.
+         */
         bool operator==(const Complex<T>& other) const {
             return TypeTraits<T>::equals(_real, other._real) &&
                    TypeTraits<T>::equals(_imaginary, other._imaginary);
         }
 
-        /** @brief Non-equality comparison */
+        /**
+         * @brief Non-equality comparison
+         *
+         * Done using @ref TypeTraits::equals(), i.e. with fuzzy compare.
+         */
         bool operator!=(const Complex<T>& other) const {
             return !operator==(other);
         }
@@ -256,7 +265,8 @@ template<class T> class Complex {
          * @f[
          *      \boldsymbol v = \begin{pmatrix} a \\ b \end{pmatrix}
          * @f]
-         * @see @ref Complex(const Vector2<T>&)
+         * @see @ref Complex(const Vector2<T>&), @ref Quaternion::xyzw(),
+         *      @ref Quaternion::wxyz()
          */
         constexpr explicit operator Vector2<T>() const {
             return {_real, _imaginary};

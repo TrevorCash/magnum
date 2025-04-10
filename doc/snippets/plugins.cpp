@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -45,8 +46,11 @@
 
 using namespace Magnum;
 
-int main() {
-
+/* Make sure the name doesn't conflict with any other snippets to avoid linker
+   warnings, unlike with `int main()` there now has to be a declaration to
+   avoid -Wmisssing-prototypes */
+void mainPlugins();
+void mainPlugins() {
 /* [loading] */
 {
     PluginManager::Manager<Trade::AbstractImporter> manager;

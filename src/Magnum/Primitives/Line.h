@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -53,7 +54,7 @@ MAGNUM_PRIMITIVES_EXPORT Trade::MeshData line2D(const Vector2& a, const Vector2&
 
 Equivalent to calling @ref line2D(const Vector2&, const Vector2&) as
 
-@snippet MagnumPrimitives.cpp line2D-identity
+@snippet Primitives.cpp line2D-identity
 */
 MAGNUM_PRIMITIVES_EXPORT Trade::MeshData line2D();
 
@@ -76,7 +77,7 @@ MAGNUM_PRIMITIVES_EXPORT Trade::MeshData line3D(const Vector3& a, const Vector3&
 Unit-size line in direction of positive X axis. Equivalent to calling
 @ref line3D(const Vector3&, const Vector3&) as
 
-@snippet MagnumPrimitives.cpp line3D-identity
+@snippet Primitives.cpp line3D-identity
 */
 MAGNUM_PRIMITIVES_EXPORT Trade::MeshData line3D();
 

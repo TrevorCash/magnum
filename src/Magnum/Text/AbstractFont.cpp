@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -27,8 +28,11 @@
 
 #include <string> /** @todo remove once file callbacks are <string>-free */
 #include <Corrade/Containers/Array.h>
+#include <Corrade/Containers/BitArray.h>
 #include <Corrade/Containers/EnumSet.hpp>
+#include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/String.h>
 #include <Corrade/Containers/StringStl.h> /** @todo remove once file callbacks are <string>-free */
 #include <Corrade/PluginManager/Manager.hpp>
@@ -43,7 +47,6 @@
 #ifdef MAGNUM_BUILD_DEPRECATED
 #include <Corrade/Containers/Pair.h>
 #include <Corrade/Containers/Triple.h>
-#include <Corrade/Containers/StridedArrayView.h>
 
 #include "Magnum/Math/Functions.h"
 #include "Magnum/Math/Range.h"
@@ -253,10 +256,46 @@ UnsignedInt AbstractFont::glyphCount() const {
 }
 
 UnsignedInt AbstractFont::glyphId(const char32_t character) {
-    CORRADE_ASSERT(isOpened(), "Text::AbstractFont::glyphId(): no font opened", 0);
-
-    return doGlyphId(character);
+    const char32_t characters[]{character};
+    UnsignedInt glyphs[1];
+    glyphIdsInto(characters, glyphs);
+    return *glyphs;
 }
+
+void AbstractFont::glyphIdsInto(const Containers::StridedArrayView1D<const char32_t>& characters, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) {
+    CORRADE_ASSERT(isOpened(),
+        "Text::AbstractFont::glyphIdsInto(): no font opened", );
+    CORRADE_ASSERT(glyphs.size() == characters.size(),
+        "Text::AbstractFont::glyphIdsInto(): expected the characters and glyphs views to have the same size but got" << characters.size() << "and" << glyphs.size(), );
+
+    doGlyphIdsInto(characters, glyphs);
+    #ifndef CORRADE_NO_DEBUG_ASSERT
+    for(std::size_t i = 0; i != characters.size(); ++i) {
+        CORRADE_DEBUG_ASSERT(glyphs[i] < _glyphCount,
+            "Text::AbstractFont::glyphIdsInto(): implementation-returned index" << glyphs[i] << "for character" << characters[i] << "out of range for" << _glyphCount << "glyphs", );
+    }
+    #endif
+}
+
+Containers::String AbstractFont::glyphName(const UnsignedInt glyph) {
+    CORRADE_ASSERT(isOpened(), "Text::AbstractFont::glyphName(): no font opened", {});
+    CORRADE_ASSERT(glyph < _glyphCount, "Text::AbstractFont::glyphName(): index" << glyph << "out of range for" << _glyphCount << "glyphs", {});
+
+    return doGlyphName(glyph);
+}
+
+Containers::String AbstractFont::doGlyphName(UnsignedInt) { return {}; }
+
+UnsignedInt AbstractFont::glyphForName(const Containers::StringView name) {
+    CORRADE_ASSERT(isOpened(), "Text::AbstractFont::glyphForName(): no font opened", {});
+
+    const UnsignedInt glyph = doGlyphForName(name);
+    CORRADE_ASSERT(glyph < _glyphCount, "Text::AbstractFont::glyphForName(): implementation-returned index" << glyph << "out of range for" << _glyphCount << "glyphs", {});
+
+    return glyph;
+}
+
+UnsignedInt AbstractFont::doGlyphForName(Containers::StringView) { return 0; }
 
 Vector2 AbstractFont::glyphSize(const UnsignedInt glyph) {
     CORRADE_ASSERT(isOpened(), "Text::AbstractFont::glyphSize(): no font opened", {});
@@ -272,21 +311,83 @@ Vector2 AbstractFont::glyphAdvance(const UnsignedInt glyph) {
     return doGlyphAdvance(glyph);
 }
 
-void AbstractFont::fillGlyphCache(AbstractGlyphCache& cache, const Containers::StringView characters) {
+bool AbstractFont::fillGlyphCache(AbstractGlyphCache& cache, const Containers::StringView characters) {
     CORRADE_ASSERT(isOpened(),
-        "Text::AbstractFont::fillGlyphCache(): no font opened", );
+        "Text::AbstractFont::fillGlyphCache(): no font opened", {});
     CORRADE_ASSERT(!(features() & FontFeature::PreparedGlyphCache),
-        "Text::AbstractFont::fillGlyphCache(): feature not supported", );
+        "Text::AbstractFont::fillGlyphCache(): feature not supported", {});
 
-    const Containers::Optional<Containers::Array<char32_t>> utf32 = Utility::Unicode::utf32(characters);
-    CORRADE_ASSERT(utf32,
-        "Text::AbstractFont::fillGlyphCache(): not a valid UTF-8 string:" << characters, );
+    struct Glyph {
+        char32_t character;
+        UnsignedInt glyph;
+    };
 
-    doFillGlyphCache(cache, *utf32);
+    /* Convert UTF-8 to Unicode codepoints */
+    Containers::Array<Glyph> glyphs;
+    arrayReserve(glyphs, characters.size());
+    for(std::size_t i = 0; i != characters.size(); ) {
+        const Containers::Pair<char32_t, std::size_t> next = Utility::Unicode::nextChar(characters, i);
+        CORRADE_ASSERT(next.first() != U'\xffffffff',
+            "Text::AbstractFont::fillGlyphCache(): not a valid UTF-8 string:" << characters, {});
+        arrayAppend(glyphs, InPlaceInit, next.first(), 0u);
+        i = next.second();
+    }
+
+    /* Convert the codepoints to glyph IDs */
+    glyphIdsInto(stridedArrayView(glyphs).slice(&Glyph::character),
+                 stridedArrayView(glyphs).slice(&Glyph::glyph));
+
+    /* If this font isn't in the cache yet, include also the invalid glyph */
+    if(!cache.findFont(*this))
+        arrayAppend(glyphs, InPlaceInit, U'\0', 0u);
+
+    /* Create a unique (ordered) set */
+    /** @todo reuse the memory from `glyphs` for this somehow? tho there could
+        be thousands of glyphs and the `glyphs` might be just a few entries */
+    Containers::BitArray uniqueGlyphs{ValueInit, _glyphCount};
+    for(const Glyph& glyph: glyphs)
+        uniqueGlyphs.set(glyph.glyph);
+
+    /* Convert the unique set back to a list of glyph IDs, reusing the original
+       glyph memory */
+    const std::size_t uniqueCount = uniqueGlyphs.count();
+    CORRADE_INTERNAL_ASSERT(uniqueCount <= glyphs.size());
+    std::size_t offset = 0;
+    for(UnsignedInt i = 0; i != uniqueGlyphs.size(); ++i)
+        if(uniqueGlyphs[i]) glyphs[offset++].glyph = i;
+    CORRADE_INTERNAL_ASSERT(offset == uniqueCount);
+
+    /* Pass the unique set to the implementation */
+    return doFillGlyphCache(cache, stridedArrayView(glyphs).slice(&Glyph::glyph).prefix(uniqueCount));
 }
 
-void AbstractFont::doFillGlyphCache(AbstractGlyphCache&, Containers::ArrayView<const char32_t>) {
-    CORRADE_ASSERT_UNREACHABLE("Text::AbstractFont::fillGlyphCache(): feature advertised but not implemented", );
+bool AbstractFont::fillGlyphCache(AbstractGlyphCache& cache, const Containers::StridedArrayView1D<const UnsignedInt>& glyphs) {
+    CORRADE_ASSERT(isOpened(),
+        "Text::AbstractFont::fillGlyphCache(): no font opened", {});
+    CORRADE_ASSERT(!(features() & FontFeature::PreparedGlyphCache),
+        "Text::AbstractFont::fillGlyphCache(): feature not supported", {});
+
+    #ifndef CORRADE_NO_DEBUG_ASSERT
+    Containers::BitArray uniqueGlyphs{ValueInit, _glyphCount};
+    for(const UnsignedInt& glyph: glyphs) {
+        CORRADE_DEBUG_ASSERT(glyph < _glyphCount,
+            "Text::AbstractFont::fillGlyphCache(): index" << glyph << "out of range for" << _glyphCount << "glyphs", {});
+        CORRADE_DEBUG_ASSERT(!uniqueGlyphs[glyph],
+            "Text::AbstractFont::fillGlyphCache(): duplicate glyph" << glyph, {});
+        uniqueGlyphs.set(glyph);
+    }
+    #endif
+
+    return doFillGlyphCache(cache, glyphs);
+}
+
+bool AbstractFont::fillGlyphCache(AbstractGlyphCache& cache, const std::initializer_list<UnsignedInt> glyphs) {
+    return fillGlyphCache(cache, Containers::stridedArrayView(glyphs));
+}
+
+bool AbstractFont::doFillGlyphCache(AbstractGlyphCache&, const Containers::StridedArrayView1D<const UnsignedInt>&) {
+    CORRADE_ASSERT_UNREACHABLE("Text::AbstractFont::fillGlyphCache(): feature advertised but not implemented", {});
+    return {};
 }
 
 Containers::Pointer<AbstractGlyphCache> AbstractFont::createGlyphCache() {
@@ -400,7 +501,7 @@ Debug& operator<<(Debug& debug, const FontFeature value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << (packed ? "" : "(") << Debug::nospace << reinterpret_cast<void*>(UnsignedByte(value)) << Debug::nospace << (packed ? "" : ")");
+    return debug << (packed ? "" : "(") << Debug::nospace << Debug::hex << UnsignedByte(value) << Debug::nospace << (packed ? "" : ")");
 }
 
 Debug& operator<<(Debug& debug, const FontFeatures value) {

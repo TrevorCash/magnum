@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -113,8 +114,6 @@ MeshState::MeshState(Context& context, ContextState& contextState, Containers::S
             bindIndexBufferImplementation = &Mesh::bindIndexBufferImplementationVAO;
         }
 
-        moveConstructImplementation = &Mesh::moveConstructImplementationVAO;
-        moveAssignImplementation = &Mesh::moveAssignImplementationVAO;
         destroyImplementation = &Mesh::destroyImplementationVAO;
         acquireVertexBufferImplementation = &Mesh::acquireVertexBufferImplementationVAO;
         bindVAOImplementation = &Mesh::bindVAOImplementationVAO;
@@ -124,8 +123,6 @@ MeshState::MeshState(Context& context, ContextState& contextState, Containers::S
     #if !defined(MAGNUM_TARGET_GLES) || defined(MAGNUM_TARGET_GLES2)
     else {
         createImplementation = &Mesh::createImplementationDefault;
-        moveConstructImplementation = &Mesh::moveConstructImplementationDefault;
-        moveAssignImplementation = &Mesh::moveAssignImplementationDefault;
         destroyImplementation = &Mesh::destroyImplementationDefault;
 
         /* ANGLE is ... also special! Equivalently above for the VAO case. */

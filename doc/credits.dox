@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -81,6 +82,7 @@ Big thanks to everyone involved!
 Are the below lists missing your name or something's wrong?
 [Let us know!](https://magnum.graphics/contact/)
 
+-   **[\@1b00](https://github.com/1b00)** --- RPM package
 -   **Aaron Gokaslan** ([\@Skylion007](https://github.com/Skylion007)) ---
     Emscripten LTO support, various minor code modernization, typo fixes
 -   **[\@abgita](https://github.com/abgita)** --- minor typo fixes
@@ -95,10 +97,12 @@ Are the below lists missing your name or something's wrong?
     --- Multi-channel support in the @ref Audio library, standard conformance;
     float, double, A-Law and μ-Law format support in the
     @ref Audio::WavImporter "WavAudioImporter" plugin
+-   **Andréas Leroux** ([\@AndreasLrx](https://github.com/AndreasLrx))** ---
+    tick event implementation in @ref Platform::GlfwApplication
 -   **Andrew ([\@sheerluck](https://github.com/sheerluck))** --- Gentoo package
     fixes
 -   **Andy Maloney** ([\@asmaloney](https://github.com/asmaloney)) --- CMake
-    fixes
+    and GDB printer fixes
 -   **Andy Somogyi** ([\@andysomogyi](https://github.com/andysomogyi)) ---
     bugreports, API design improvement suggestions
 -   **[\@ArEnSc](https://github.com/ArEnSc)** --- initial implementation of
@@ -147,10 +151,12 @@ Are the below lists missing your name or something's wrong?
     improvements to Debian package building experience
 -   **Hilario Pérez Corona** ([\@hpcorona](https://github.com/hpcorona)) ---
     improvements to @cb{.cmake} android_create_apk() @ce
--   **[\@hsdk123](https://github.com/hsdk123)** --- CMake improvements
+-   **[\@hsdk123](https://github.com/hsdk123)** --- CMake improvements, Android
+    platform updates
 -   **Hugo Amnov** ([\@hugoam](https://github.com/hugoam)) --- Additions,
     usability improvements and performance optimization in the @ref GL library,
     buildsystem improvements and STL usage cleanup
+-   **Igal Alkon** ([\@alkavan](https://github.com/alkavan)) --- RPM packages
 -   **Ivan P.** ([\@uzername](https://github.com/uzername)) --- documentation
     improvements
 -   **Ivan Sanz Carasa** ([\@isc30](https://github.com/isc30)) --- buildsystem
@@ -165,6 +171,8 @@ Are the below lists missing your name or something's wrong?
 -   **Joel Clay** ([\@jclay](https://github.com/jclay)) --- Vcpkg packages
 -   **John Laxson** ([\@jlaxson](https://github.com/jlaxson)) --- Homebrew
     package improvements
+-   **John Turner** ([\@jturner65](https://github.com/jturner65)) ---
+    documentation improvements
 -   **Jonathan Hale** ([\@Squareys](https://github.com/Squareys)) ---
     @ref Audio and @ref Trade library enhancements,
     @ref Platform::GlfwApplication and @ref Platform::EmscriptenApplication
@@ -198,8 +206,10 @@ Are the below lists missing your name or something's wrong?
     library additions
 -   **Nick Skelsey** ([\@NSkelsey](https://github.com/NSkelsey)) ---
     documentation copy-editing
--   **Nicholas "LB" Branden** ([\@LB--](https://github.com/LB--)) --- warning
-    fixes, Windows buildsystem improvements
+-   **[\@nodoteve](https://github.com/nodoteve)** --- initial multi-touch
+    support in @ref Platform::AndroidApplication
+-   **[\@LB--](https://github.com/LB--)** --- warning fixes, Windows
+    buildsystem improvements
 -   **Olga Turanksaya** ([\@olga-python](https://github.com/olga-python)) ---
     Gentoo ebuild)
 -   **Pablo Escobar** ([\@pezcode](https://github.com/pezcode)) --- @ref GL,
@@ -240,6 +250,8 @@ Are the below lists missing your name or something's wrong?
     Android buildsystem fixes and improvements
 -   **Vladislav** ([\@dranikpg](https://github.com/dranikpg)) --- Async @ref GL
     shader compilation
+-   **Will Usher** ([\@Twinklebear](https://github.com/Twinklebear)) ---
+    @ref Platform::EmscriptenApplication build fixes
 */
 
 }

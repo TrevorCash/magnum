@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -95,7 +96,7 @@ recommended usage is by creating elementary transformation matrices with
 transformation --- the rightmost transformation is applied first, leftmost
 last:
 
-@snippet MagnumMath.cpp Matrix4-usage
+@snippet Math.cpp Matrix4-usage
 
 Conversely, the transformation parts can be extracted back using the member
 @ref rotation() const "rotation()", @ref scaling() const "scaling()" and their
@@ -178,7 +179,7 @@ template<class T> class Matrix4: public Matrix4x4<T> {
          *      \end{pmatrix}
          * @f]
          * @see @ref rotation() const, @ref Quaternion::rotation(),
-         *      @ref DualQuaternion::rotation(), @ref Matrix3::rotation(Rad),
+         *      @ref DualQuaternion::rotation(), @ref Matrix3::rotation(Rad<T>),
          *      @ref Vector3::xAxis(), @ref Vector3::yAxis(),
          *      @ref Vector3::zAxis(), @ref Vector::isNormalized()
          */
@@ -196,9 +197,9 @@ template<class T> class Matrix4: public Matrix4x4<T> {
          *          0 &          0 &           0 & 1
          *      \end{pmatrix}
          * @f]
-         * @see @ref rotation(Rad, const Vector3<T>&), @ref rotationY(),
+         * @see @ref rotation(Rad<T>, const Vector3<T>&), @ref rotationY(),
          *      @ref rotationZ(), @ref rotation() const,
-         *      @ref Quaternion::rotation(), @ref Matrix3::rotation(Rad)
+         *      @ref Quaternion::rotation(), @ref Matrix3::rotation(Rad<T>)
          */
         static Matrix4<T> rotationX(Rad<T> angle);
 
@@ -214,9 +215,9 @@ template<class T> class Matrix4: public Matrix4x4<T> {
          *                    0 & 0 &          0 & 1
          *      \end{pmatrix}
          * @f]
-         * @see @ref rotation(Rad, const Vector3<T>&), @ref rotationX(),
+         * @see @ref rotation(Rad<T>, const Vector3<T>&), @ref rotationX(),
          *      @ref rotationZ(), @ref rotation() const,
-         *      @ref Quaternion::rotation(), @ref Matrix3::rotation(Rad)
+         *      @ref Quaternion::rotation(), @ref Matrix3::rotation(Rad<T>)
          */
         static Matrix4<T> rotationY(Rad<T> angle);
 
@@ -232,9 +233,9 @@ template<class T> class Matrix4: public Matrix4x4<T> {
          *                   0 &           0 & 0 & 1
          *      \end{pmatrix}
          * @f]
-         * @see @ref rotation(Rad, const Vector3<T>&), @ref rotationX(),
+         * @see @ref rotation(Rad<T>, const Vector3<T>&), @ref rotationX(),
          *      @ref rotationY(), @ref rotation() const,
-         *      @ref Quaternion::rotation(), @ref Matrix3::rotation(Rad)
+         *      @ref Quaternion::rotation(), @ref Matrix3::rotation(Rad<T>)
          */
         static Matrix4<T> rotationZ(Rad<T> angle);
 
@@ -567,11 +568,19 @@ template<class T> class Matrix4: public Matrix4x4<T> {
         /** @brief Construct with one value for all elements */
         constexpr explicit Matrix4(T value) noexcept: Matrix4x4<T>{value} {}
 
+        /** @copydoc Matrix::Matrix(const T(&)[cols_][rows_]) */
+        #if !defined(CORRADE_TARGET_GCC) || defined(CORRADE_TARGET_CLANG) || __GNUC__ >= 5
+        template<std::size_t cols_, std::size_t rows_> constexpr explicit Matrix4(const T(&data)[cols_][rows_]) noexcept: Matrix4x4<T>{data} {}
+        #else
+        /* GCC 4.8 workaround, see the RectangularMatrix base for details */
+        constexpr explicit Matrix4(const T(&data)[4][4]) noexcept: Matrix4x4<T>{data} {}
+        #endif
+
         /** @copydoc Matrix::Matrix(const RectangularMatrix<size, size, U>&) */
         template<class U> constexpr explicit Matrix4(const RectangularMatrix<4, 4, U>& other) noexcept: Matrix4x4<T>(other) {}
 
         /** @brief Construct a matrix from external representation */
-        template<class U, class V = decltype(Implementation::RectangularMatrixConverter<4, 4, T, U>::from(std::declval<U>()))> constexpr explicit Matrix4(const U& other): Matrix4x4<T>(Implementation::RectangularMatrixConverter<4, 4, T, U>::from(other)) {}
+        template<class U, class = decltype(Implementation::RectangularMatrixConverter<4, 4, T, U>::from(std::declval<U>()))> constexpr explicit Matrix4(const U& other): Matrix4x4<T>(Implementation::RectangularMatrixConverter<4, 4, T, U>::from(other)) {}
 
         /** @copydoc RectangularMatrix::RectangularMatrix(IdentityInitT, const RectangularMatrix<otherCols, otherRows, T>&, T) */
         template<std::size_t otherCols, std::size_t otherRows> constexpr explicit Matrix4(IdentityInitT, const RectangularMatrix<otherCols, otherRows, T>& other, T value = T(1)) noexcept: Matrix4x4<T>{IdentityInit, other, value} {}
@@ -719,7 +728,7 @@ template<class T> class Matrix4: public Matrix4x4<T> {
          * @ref determinant() is negative, and apply the sign flip to the
          * corresponding scaling component instead:
          *
-         * @snippet MagnumMath.cpp Matrix4-rotation-extract-reflection
+         * @snippet Math.cpp Matrix4-rotation-extract-reflection
          *
          * @note Extracting rotation part of a matrix with this function may
          *      cause assertions in case you have unsanitized input (for
@@ -1328,21 +1337,17 @@ template<class T> Matrix4<T> Matrix4<T>::lookAt(const Vector3<T>& eye, const Vec
 }
 
 template<class T> Matrix3x3<T> Matrix4<T>::rotation() const {
-    Matrix3x3<T> rotation{(*this)[0].xyz().normalized(),
-                          (*this)[1].xyz().normalized(),
-                          (*this)[2].xyz().normalized()};
-    CORRADE_DEBUG_ASSERT(rotation.isOrthogonal(),
-        "Math::Matrix4::rotation(): the normalized rotation part is not orthogonal:" << Debug::newline << rotation, {});
-    return rotation;
+    Matrix3x3<T> rotationShear = this->rotationShear();
+    CORRADE_DEBUG_ASSERT(rotationShear.isOrthogonal(),
+        "Math::Matrix4::rotation(): the normalized rotation part is not orthogonal:" << Debug::newline << rotationShear, {});
+    return rotationShear;
 }
 
 template<class T> Matrix3x3<T> Matrix4<T>::rotationNormalized() const {
-    Matrix3x3<T> rotation{(*this)[0].xyz(),
-                          (*this)[1].xyz(),
-                          (*this)[2].xyz()};
-    CORRADE_DEBUG_ASSERT(rotation.isOrthogonal(),
-        "Math::Matrix4::rotationNormalized(): the rotation part is not orthogonal:" << Debug::newline << rotation, {});
-    return rotation;
+    Matrix3x3<T> rotationScaling = this->rotationScaling();
+    CORRADE_DEBUG_ASSERT(rotationScaling.isOrthogonal(),
+        "Math::Matrix4::rotationNormalized(): the rotation part is not orthogonal:" << Debug::newline << rotationScaling, {});
+    return rotationScaling;
 }
 
 template<class T> T Matrix4<T>::uniformScalingSquared() const {

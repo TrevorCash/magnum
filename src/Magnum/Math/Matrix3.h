@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -74,7 +75,7 @@ recommended usage is by creating elementary transformation matrices with
 and multiplying them together to form the final transformation --- the
 rightmost transformation is applied first, leftmost last:
 
-@snippet MagnumMath.cpp Matrix3-usage
+@snippet Math.cpp Matrix3-usage
 
 Conversely, the transformation parts can be extracted back using the member
 @ref rotation() const "rotation()", @ref scaling() const "scaling()" and their
@@ -147,7 +148,7 @@ template<class T> class Matrix3: public Matrix3x3<T> {
          * @f]
          * @see @ref rotation() const, @ref Complex::rotation(),
          *      @ref DualComplex::rotation(),
-         *      @ref Matrix4::rotation(Rad, const Vector3<T>&)
+         *      @ref Matrix4::rotation(Rad<T>, const Vector3<T>&)
          */
         static Matrix3<T> rotation(Rad<T> angle);
 
@@ -258,7 +259,7 @@ template<class T> class Matrix3: public Matrix3x3<T> {
         static Matrix3<T> projection(const Vector2<T>& bottomLeft, const Vector2<T>& topRight);
 
         /**
-         * @brief Create matrix from rotation/scaling part and translation part
+         * @brief Create a matrix from a rotation/scaling part and a translation part
          * @param rotationScaling   Rotation/scaling part (upper-left 2x2
          *      matrix)
          * @param translation       Translation part (first two elements of
@@ -301,11 +302,19 @@ template<class T> class Matrix3: public Matrix3x3<T> {
         /** @brief Construct with one value for all elements */
         constexpr explicit Matrix3(T value) noexcept: Matrix3x3<T>{value} {}
 
+        /** @copydoc Matrix::Matrix(const T(&)[cols_][rows_]) */
+        #if !defined(CORRADE_TARGET_GCC) || defined(CORRADE_TARGET_CLANG) || __GNUC__ >= 5
+        template<std::size_t cols_, std::size_t rows_> constexpr explicit Matrix3(const T(&data)[cols_][rows_]) noexcept: Matrix3x3<T>{data} {}
+        #else
+        /* GCC 4.8 workaround, see the RectangularMatrix base for details */
+        constexpr explicit Matrix3(const T(&data)[3][3]) noexcept: Matrix3x3<T>{data} {}
+        #endif
+
         /** @copydoc Matrix::Matrix(const RectangularMatrix<size, size, U>&) */
         template<class U> constexpr explicit Matrix3(const RectangularMatrix<3, 3, U>& other) noexcept: Matrix3x3<T>(other) {}
 
         /** @brief Construct a matrix from external representation */
-        template<class U, class V = decltype(Implementation::RectangularMatrixConverter<3, 3, T, U>::from(std::declval<U>()))> constexpr explicit Matrix3(const U& other) noexcept: Matrix3x3<T>(Implementation::RectangularMatrixConverter<3, 3, T, U>::from(other)) {}
+        template<class U, class = decltype(Implementation::RectangularMatrixConverter<3, 3, T, U>::from(std::declval<U>()))> constexpr explicit Matrix3(const U& other) noexcept: Matrix3x3<T>(Implementation::RectangularMatrixConverter<3, 3, T, U>::from(other)) {}
 
         /** @copydoc RectangularMatrix::RectangularMatrix(IdentityInitT, const RectangularMatrix<otherCols, otherRows, T>&, T) */
         template<std::size_t otherCols, std::size_t otherRows> constexpr explicit Matrix3(IdentityInitT, const RectangularMatrix<otherCols, otherRows, T>& other, T value = T(1)) noexcept: Matrix3x3<T>{IdentityInit, other, value} {}
@@ -440,7 +449,7 @@ template<class T> class Matrix3: public Matrix3x3<T> {
          * @ref determinant() is negative, and apply the sign flip to the
          * corresponding scaling component instead:
          *
-         * @snippet MagnumMath.cpp Matrix3-rotation-extract-reflection
+         * @snippet Math.cpp Matrix3-rotation-extract-reflection
          *
          * @note Extracting rotation part of a matrix with this function may
          *      cause assertions in case you have unsanitized input (for
@@ -766,19 +775,17 @@ template<class T> Matrix3<T> Matrix3<T>::projection(const Vector2<T>& bottomLeft
 }
 
 template<class T> Matrix2x2<T> Matrix3<T>::rotation() const {
-    Matrix2x2<T> rotation{(*this)[0].xy().normalized(),
-                          (*this)[1].xy().normalized()};
-    CORRADE_DEBUG_ASSERT(rotation.isOrthogonal(),
-        "Math::Matrix3::rotation(): the normalized rotation part is not orthogonal:" << Debug::newline << rotation, {});
-    return rotation;
+    Matrix2x2<T> rotationShear = this->rotationShear();
+    CORRADE_DEBUG_ASSERT(rotationShear.isOrthogonal(),
+        "Math::Matrix3::rotation(): the normalized rotation part is not orthogonal:" << Debug::newline << rotationShear, {});
+    return rotationShear;
 }
 
 template<class T> Matrix2x2<T> Matrix3<T>::rotationNormalized() const {
-    Matrix2x2<T> rotation{(*this)[0].xy(),
-                          (*this)[1].xy()};
-    CORRADE_DEBUG_ASSERT(rotation.isOrthogonal(),
-        "Math::Matrix3::rotationNormalized(): the rotation part is not orthogonal:" << Debug::newline << rotation, {});
-    return rotation;
+    Matrix2x2<T> rotationScaling = this->rotationScaling();
+    CORRADE_DEBUG_ASSERT(rotationScaling.isOrthogonal(),
+        "Math::Matrix3::rotationNormalized(): the rotation part is not orthogonal:" << Debug::newline << rotationScaling, {});
+    return rotationScaling;
 }
 
 template<class T> T Matrix3<T>::uniformScalingSquared() const {

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,11 +24,11 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <sstream> /** @todo remove once Configuration is stream-free */
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/String.h>
 #include <Corrade/Utility/Configuration.h>
-#include <Corrade/Utility/DebugStl.h>
+#include <Corrade/Utility/DebugStl.h> /** @todo remove once Configuration is stream-free */
 
 #include "Magnum/Implementation/converterUtilities.h"
 
@@ -263,20 +264,20 @@ void ConverterUtilitiesTest::setOptions() {
     plugin.configuration() = Utility::ConfigurationGroup{*Utility::Configuration{in}.group("configuration")};
 
     {
-        std::ostringstream out;
+        Containers::String out;
         Warning redirectWarning{&out};
         Implementation::setOptions(plugin, data.anyPluginName, data.options);
         if(data.expectedWarning)
-            CORRADE_COMPARE(out.str(), data.expectedWarning);
+            CORRADE_COMPARE(out, data.expectedWarning);
         else
-            CORRADE_COMPARE(out.str(), "");
+            CORRADE_COMPARE(out, "");
     }
 
     Utility::Configuration conf;
     /** @todo ugh, is there no better way to serialize a ConfigurationGroup? */
     conf.addGroup("configuration", new Utility::ConfigurationGroup{plugin.configuration()});
     CORRADE_COMPARE(conf.group("configuration")->configuration(), &conf);
-    std::ostringstream out;
+    std::stringstream out;
     conf.save(out);
     CORRADE_COMPARE_AS(out.str(),
         data.expectedConfig,

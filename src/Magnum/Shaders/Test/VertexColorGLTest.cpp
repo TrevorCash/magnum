@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,21 +25,14 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Pair.h>
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/String.h>
 #include <Corrade/Containers/StringIterable.h>
 #include <Corrade/PluginManager/Manager.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 #include <Corrade/Utility/System.h>
-
-#ifdef CORRADE_TARGET_APPLE
-#include <Corrade/Containers/Pair.h>
-#include <Corrade/Utility/System.h> /* isSandboxed() */
-#endif
 
 #include "Magnum/DebugTools/CompareImage.h"
 #include "Magnum/Image.h"
@@ -185,33 +179,33 @@ constexpr struct {
 } RenderMultiData[] {
     {"bind with offset", "multidraw2D.tga", "multidraw3D.tga",
         {}, 1, true, 16,
-        /* Minor differences on ARM Mali */
-        0.34f, 0.01f},
+        /* Minor differences on ARM Mali, NVidia */
+        0.667f, 0.01f},
     #ifndef MAGNUM_TARGET_WEBGL
     {"bind with offset, shader storage", "multidraw2D.tga", "multidraw3D.tga",
         VertexColorGL2D::Flag::ShaderStorageBuffers, 1, true, 16,
-        /* Minor differences on ARM Mali */
-        0.34f, 0.01f},
+        /* Minor differences on ARM Mali, NVidia */
+        0.667f, 0.01f},
     #endif
     {"draw offset", "multidraw2D.tga", "multidraw3D.tga",
         {}, 3, false, 1,
-        /* Minor differences on ARM Mali */
-        0.34f, 0.01f},
+        /* Minor differences on ARM Mali, NVidia */
+        0.667f, 0.01f},
     #ifndef MAGNUM_TARGET_WEBGL
     {"draw offset, shader storage", "multidraw2D.tga", "multidraw3D.tga",
         VertexColorGL2D::Flag::ShaderStorageBuffers, 3, false, 1,
-        /* Minor differences on ARM Mali */
-        0.34f, 0.01f},
+        /* Minor differences on ARM Mali, NVidia */
+        0.667f, 0.01f},
     #endif
     {"multidraw", "multidraw2D.tga", "multidraw3D.tga",
         VertexColorGL2D::Flag::MultiDraw, 3, false, 1,
-        /* Minor differences on ARM Mali */
-        0.34f, 0.01f},
+        /* Minor differences on ARM Mali, NVidia */
+        0.667f, 0.01f},
     #ifndef MAGNUM_TARGET_WEBGL
     {"multidraw, shader storage", "multidraw2D.tga", "multidraw3D.tga",
         VertexColorGL2D::Flag::ShaderStorageBuffers|VertexColorGL2D::Flag::MultiDraw, 0, false, 1,
-        /* Minor differences on ARM Mali */
-        0.34f, 0.01f}
+        /* Minor differences on ARM Mali, NVidia */
+        0.667f, 0.01f},
     #endif
 };
 #endif
@@ -345,7 +339,7 @@ VertexColorGLTest::VertexColorGLTest() {
         && std::getenv("SIMULATOR_UDID")
         #endif
     ) {
-        _testDir = Utility::Path::split(*Utility::Path::executableLocation()).first();
+        _testDir = Utility::Path::path(*Utility::Path::executableLocation());
     } else
     #endif
     {
@@ -539,12 +533,12 @@ template<UnsignedInt dimensions> void VertexColorGLTest::constructUniformBuffers
     #endif
 
     /* This fails for UBOs but not SSBOs */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     VertexColorGL<dimensions>{typename VertexColorGL<dimensions>::Configuration{}
         .setFlags(VertexColorGL<dimensions>::Flag::UniformBuffers)
         .setDrawCount(0)};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::VertexColorGL: draw count can't be zero\n");
 }
 #endif
@@ -563,10 +557,10 @@ template<UnsignedInt dimensions> void VertexColorGLTest::setUniformUniformBuffer
     VertexColorGL<dimensions> shader{typename VertexColorGL<dimensions>::Configuration{}
         .setFlags(VertexColorGL<dimensions>::Flag::UniformBuffers)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setTransformationProjectionMatrix({});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::VertexColorGL::setTransformationProjectionMatrix(): the shader was created with uniform buffers enabled\n");
 }
 
@@ -578,12 +572,12 @@ template<UnsignedInt dimensions> void VertexColorGLTest::bindBufferUniformBuffer
     GL::Buffer buffer;
     VertexColorGL<dimensions> shader;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindTransformationProjectionBuffer(buffer)
           .bindTransformationProjectionBuffer(buffer, 0, 16)
           .setDrawOffset(0);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::VertexColorGL::bindTransformationProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::VertexColorGL::bindTransformationProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::VertexColorGL::setDrawOffset(): the shader was not created with uniform buffers enabled\n");
@@ -603,10 +597,10 @@ template<UnsignedInt dimensions> void VertexColorGLTest::setWrongDrawOffset() {
         .setFlags(VertexColorGL<dimensions>::Flag::UniformBuffers)
         .setDrawCount(5)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setDrawOffset(5);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::VertexColorGL::setDrawOffset(): draw offset 5 is out of range for 5 draws\n");
 }
 #endif
@@ -718,7 +712,7 @@ template<class T, VertexColorGL2D::Flag flag> void VertexColorGLTest::renderDefa
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/defaults.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -803,7 +797,7 @@ template<class T, VertexColorGL2D::Flag flag> void VertexColorGLTest::renderDefa
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "FlatTestFiles/defaults.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -893,7 +887,7 @@ template<class T, VertexColorGL2D::Flag flag> void VertexColorGLTest::render2D()
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "VertexColorTestFiles/vertexColor2D.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -992,7 +986,7 @@ template<class T, VertexColorGL3D::Flag flag> void VertexColorGLTest::render3D()
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "VertexColorTestFiles/vertexColor3D.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -1139,7 +1133,7 @@ void VertexColorGLTest::renderMulti2D() {
     */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "VertexColorTestFiles", data.expected2D}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 }
@@ -1288,7 +1282,7 @@ void VertexColorGLTest::renderMulti3D() {
     */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "VertexColorTestFiles", data.expected3D}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 }

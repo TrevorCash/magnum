@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -26,7 +27,7 @@
 */
 
 /** @file
- * @brief Tag type @ref Magnum::NoInitT, @ref Magnum::NoCreateT, @ref Magnum::NoAllocateT, tag @ref Magnum::NoInit, @ref Magnum::NoCreate, @ref Magnum::NoAllocate
+ * @brief Tag type @ref Magnum::DefaultInitT, @ref Magnum::NoInitT, @ref Magnum::NoCreateT, @ref Magnum::NoAllocateT, tag @ref Magnum::DefaultInit, @ref Magnum::NoInit, @ref Magnum::NoCreate, @ref Magnum::NoAllocate
  */
 
 #include <Corrade/Tags.h>

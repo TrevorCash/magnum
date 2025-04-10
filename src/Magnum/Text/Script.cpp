@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -83,6 +84,7 @@ Debug& operator<<(Debug& debug, const Script value) {
         _c(Elbasan)
         _c(Elymaic)
         _c(Ethiopic)
+        _c(Garay)
         _c(Georgian)
         _c(Glagolitic)
         _c(GunjalaGondi)
@@ -91,6 +93,7 @@ Debug& operator<<(Debug& debug, const Script value) {
         _c(Grantha)
         _c(Greek)
         _c(Gujarati)
+        _c(GurungKhema)
         _c(Gurmukhi)
         _c(Hangul)
         _c(Han)
@@ -112,6 +115,7 @@ Debug& operator<<(Debug& debug, const Script value) {
         _c(Khojki)
         _c(KhitanSmallScript)
         _c(Kannada)
+        _c(KiratRai)
         _c(Kaithi)
         _c(TaiTham)
         _c(Lao)
@@ -148,6 +152,7 @@ Debug& operator<<(Debug& debug, const Script value) {
         _c(Nushu)
         _c(Ogham)
         _c(OlChiki)
+        _c(OlOnal)
         _c(OldTurkic)
         _c(Oriya)
         _c(Osage)
@@ -179,6 +184,7 @@ Debug& operator<<(Debug& debug, const Script value) {
         _c(SoraSompeng)
         _c(Soyombo)
         _c(Sundanese)
+        _c(Sunuwar)
         _c(SylotiNagri)
         _c(Syriac)
         _c(Tagbanwa)
@@ -196,7 +202,9 @@ Debug& operator<<(Debug& debug, const Script value) {
         _c(Tibetan)
         _c(Tirhuta)
         _c(Tangsa)
+        _c(Todhri)
         _c(Toto)
+        _c(TuluTigalari)
         _c(Ugaritic)
         _c(Vai)
         _c(Vithkuqi)

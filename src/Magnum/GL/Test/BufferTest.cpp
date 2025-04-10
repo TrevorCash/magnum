@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2015 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,9 +25,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/GL/Buffer.h"
 
@@ -71,16 +71,16 @@ void BufferTest::constructCopy() {
 }
 
 void BufferTest::debugTargetHint() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Buffer::TargetHint::Array << Buffer::TargetHint(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Buffer::TargetHint::Array GL::Buffer::TargetHint(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Buffer::TargetHint::Array GL::Buffer::TargetHint(0xdead)\n");
 }
 
 #ifndef MAGNUM_TARGET_GLES2
 void BufferTest::debugTarget() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Buffer::Target::Uniform << Buffer::Target(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Buffer::Target::Uniform GL::Buffer::Target(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Buffer::Target::Uniform GL::Buffer::Target(0xdead)\n");
 }
 #endif
 

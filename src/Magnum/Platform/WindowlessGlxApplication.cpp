@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2021 Konstantinos Chatzilygeroudis <costashatz@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -123,12 +124,10 @@ WindowlessGlxContext::WindowlessGlxContext(const WindowlessGlxContext::Configura
     /* Optimistically choose core context first */
     GLint contextAttributes[11] = {
         #ifdef MAGNUM_TARGET_GLES
-        #ifdef MAGNUM_TARGET_GLES3
-        GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-        #elif defined(MAGNUM_TARGET_GLES2)
+        #ifdef MAGNUM_TARGET_GLES2
         GLX_CONTEXT_MAJOR_VERSION_ARB, 2,
         #else
-        #error unsupported OpenGL ES version
+        GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
         #endif
         GLX_CONTEXT_MINOR_VERSION_ARB, 0,
         GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_ES2_PROFILE_BIT_EXT,
@@ -322,10 +321,6 @@ WindowlessGlxContext::Configuration::Configuration() {
     addFlags(Flag::ForwardCompatible);
     #endif
 }
-
-#ifndef DOXYGEN_GENERATING_OUTPUT
-WindowlessGlxApplication::WindowlessGlxApplication(const Arguments& arguments): WindowlessGlxApplication{arguments, Configuration{}}  {}
-#endif
 
 WindowlessGlxApplication::WindowlessGlxApplication(const Arguments& arguments, const Configuration& configuration): WindowlessGlxApplication{arguments, NoCreate} {
     createContext(configuration);

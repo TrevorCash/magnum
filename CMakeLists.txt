@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #   Copyright © 2023 Vincent Le Garrec <github@le-garrec.fr>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
@@ -25,12 +26,24 @@
 #
 
 # Matches Corrade requirement, see its root CMakeLists for more information.
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.5...3.10)
 
 option(HUNTER_ENABLED "Get dependencies (Corrade, GLFW, SDL2, ...) via Hunter" OFF)
+# This option is meant to be passed on the very first invocation. If not done
+# then, it doesn't really make sense to enable it at a later time. (Plus the
+# Hunter support is long unmaintained here, so it doesn't make sense to show it
+# at all.)
+mark_as_advanced(HUNTER_ENABLED)
 if(HUNTER_ENABLED)
     include(${CMAKE_CURRENT_LIST_DIR}/package/hunter/HunterInit.cmake)
 endif()
+
+# CMake 3.12+ uses the policy max version specified in
+# cmake_minimum_required(), meaning that with ...3.10, everything until CMP0071
+# gets set to NEW implicitly. We however want to keep compatibility with
+# versions before 3.12, so the NEW policies are still being hand-picked. Also
+# don't want to do a blanket cmake_policy(VERSION) because that may break
+# behavior for existing projects that rely on the OLD behavior.
 
 # Don't restrict INTERPROCEDURAL_OPTIMIZATION only for icc on Linux
 if(POLICY CMP0069)
@@ -232,7 +245,7 @@ cmake_dependent_option(MAGNUM_WITH_SHADERTOOLS "Build ShaderTools library" ON "N
 cmake_dependent_option(MAGNUM_WITH_TEXT "Build Text library" ON "NOT MAGNUM_WITH_FONTCONVERTER;NOT MAGNUM_WITH_MAGNUMFONT;NOT MAGNUM_WITH_MAGNUMFONTCONVERTER" ON)
 cmake_dependent_option(MAGNUM_WITH_TEXTURETOOLS "Build TextureTools library" ON "NOT MAGNUM_WITH_TEXT;NOT MAGNUM_WITH_DISTANCEFIELDCONVERTER" ON)
 cmake_dependent_option(MAGNUM_WITH_TRADE "Build Trade library" ON "NOT MAGNUM_WITH_MATERIALTOOLS;NOT MAGNUM_WITH_MESHTOOLS;NOT MAGNUM_WITH_PRIMITIVES;NOT MAGNUM_WITH_SCENETOOLS;NOT MAGNUM_WITH_IMAGECONVERTER;NOT MAGNUM_WITH_ANYIMAGEIMPORTER;NOT MAGNUM_WITH_ANYIMAGECONVERTER;NOT MAGNUM_WITH_ANYSCENEIMPORTER;NOT MAGNUM_WITH_OBJIMPORTER;NOT MAGNUM_WITH_TGAIMAGECONVERTER;NOT MAGNUM_WITH_TGAIMPORTER" ON)
-cmake_dependent_option(MAGNUM_WITH_GL "Build GL library" ON "NOT MAGNUM_WITH_SHADERS;NOT MAGNUM_WITH_GL_INFO;NOT MAGNUM_WITH_ANDROIDAPPLICATION;NOT MAGNUM_WITH_WINDOWLESSIOSAPPLICATION;NOT MAGNUM_WITH_WINDOWLESSCGLAPPLICATION;NOT MAGNUM_WITH_WINDOWLESSGLXAPPLICATION;NOT MAGNUM_WITH_CGLCONTEXT;NOT MAGNUM_WITH_GLXAPPLICATION;NOT MAGNUM_WITH_GLXCONTEXT;NOT MAGNUM_WITH_XEGLAPPLICATION;NOT MAGNUM_WITH_WINDOWLESSWGLAPPLICATION;NOT MAGNUM_WITH_WGLCONTEXT;NOT MAGNUM_WITH_DISTANCEFIELDCONVERTER" ON)
+cmake_dependent_option(MAGNUM_WITH_GL "Build GL library" ON "NOT MAGNUM_WITH_GL_INFO;NOT MAGNUM_WITH_ANDROIDAPPLICATION;NOT MAGNUM_WITH_WINDOWLESSIOSAPPLICATION;NOT MAGNUM_WITH_WINDOWLESSCGLAPPLICATION;NOT MAGNUM_WITH_WINDOWLESSGLXAPPLICATION;NOT MAGNUM_WITH_CGLCONTEXT;NOT MAGNUM_WITH_GLXAPPLICATION;NOT MAGNUM_WITH_GLXCONTEXT;NOT MAGNUM_WITH_XEGLAPPLICATION;NOT MAGNUM_WITH_WINDOWLESSWGLAPPLICATION;NOT MAGNUM_WITH_WGLCONTEXT;NOT MAGNUM_WITH_DISTANCEFIELDCONVERTER" ON)
 
 cmake_dependent_option(MAGNUM_TARGET_GL "Build libraries with OpenGL interoperability" ON "MAGNUM_WITH_GL" OFF)
 
@@ -594,7 +607,7 @@ endif()
 
 # Dependent configuration variables
 if(MAGNUM_TARGET_GLES)
-    if(NOT MAGNUM_TARGET_GLES2)
+    if(MAGNUM_BUILD_DEPRECATED AND NOT MAGNUM_TARGET_GLES2)
         set(MAGNUM_TARGET_GLES3 1)
     endif()
     if(CORRADE_TARGET_EMSCRIPTEN)
@@ -719,21 +732,6 @@ set(MAGNUM_PLUGINS_AUDIOIMPORTER_DEBUG_LIBRARY_INSTALL_DIR ${MAGNUM_PLUGINS_DEBU
 set(MAGNUM_PLUGINS_AUDIOIMPORTER_RELEASE_BINARY_INSTALL_DIR ${MAGNUM_PLUGINS_RELEASE_BINARY_INSTALL_DIR}/audioimporters)
 set(MAGNUM_PLUGINS_AUDIOIMPORTER_RELEASE_LIBRARY_INSTALL_DIR ${MAGNUM_PLUGINS_RELEASE_LIBRARY_INSTALL_DIR}/audioimporters)
 
-# Plugin dirs based on whether we are in debug or release build, needed by some
-# command-line tools
-if(CORRADE_TARGET_WINDOWS)
-    set(MAGNUM_PLUGINS_DEBUG_DIR_INIT ${CMAKE_INSTALL_PREFIX}/${MAGNUM_PLUGINS_DEBUG_BINARY_INSTALL_DIR})
-    set(MAGNUM_PLUGINS_RELEASE_DIR_INIT ${CMAKE_INSTALL_PREFIX}/${MAGNUM_PLUGINS_RELEASE_BINARY_INSTALL_DIR})
-else()
-    set(MAGNUM_PLUGINS_DEBUG_DIR_INIT ${CMAKE_INSTALL_PREFIX}/${MAGNUM_PLUGINS_DEBUG_LIBRARY_INSTALL_DIR})
-    set(MAGNUM_PLUGINS_RELEASE_DIR_INIT ${CMAKE_INSTALL_PREFIX}/${MAGNUM_PLUGINS_RELEASE_LIBRARY_INSTALL_DIR})
-endif()
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(MAGNUM_PLUGINS_DIR_INIT ${MAGNUM_PLUGINS_DEBUG_DIR_INIT})
-else()
-    set(MAGNUM_PLUGINS_DIR_INIT ${MAGNUM_PLUGINS_RELEASE_DIR_INIT})
-endif()
-
 # Make these paths configurable from outside. This is *not* PATH, because CMake
 # always converts the path to an absolute location internally, making it
 # impossible to specify relative paths there. Sorry in advance for not having
@@ -811,6 +809,12 @@ if(NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY AND NOT DEFINED CMAKE_LIBRARY_OUTP
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin CACHE PATH "" FORCE)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib CACHE PATH "" FORCE)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib CACHE PATH "" FORCE)
+    # There should be no need for the "90% use case" user to adjust these, so
+    # don't show them in the default view
+    mark_as_advanced(
+        CMAKE_RUNTIME_OUTPUT_DIRECTORY
+        CMAKE_LIBRARY_OUTPUT_DIRECTORY
+        CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
 endif()
 
 add_subdirectory(modules)

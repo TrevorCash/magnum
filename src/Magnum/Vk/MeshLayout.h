@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -189,7 +190,7 @@ normals in locations @cpp 0 @ce, @cpp 1 @ce and @cpp 5 @ce, respectively. If
 we'd have them stored interleaved in a single buffer, the layout description
 could look like this:
 
-@snippet MagnumVk.cpp MeshLayout-usage
+@snippet Vk.cpp MeshLayout-usage
 
 The `Binding` is then subsequently used as a binding index for a concrete
 vertex buffer when drawing, which is described in the @ref Mesh class

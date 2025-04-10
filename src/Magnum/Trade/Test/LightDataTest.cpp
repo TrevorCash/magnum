@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/ArrayView.h> /* arraySize() */
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 
 #include "Magnum/Trade/LightData.h"
 
@@ -390,10 +391,10 @@ void LightDataTest::constructInvalid() {
     auto&& data = ConstructInvalidData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     LightData{data.type, {}, {}, data.attenuation, data.range, data.innerConeAngle, data.outerConeAngle};
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::LightData: {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Trade::LightData: {}\n", data.message));
 }
 
 void LightDataTest::constructCopy() {
@@ -435,17 +436,17 @@ void LightDataTest::constructMove() {
 }
 
 void LightDataTest::debugType() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << LightType::Spot << LightType(0xbe);
-    CORRADE_COMPARE(out.str(), "Trade::LightType::Spot Trade::LightType(0xbe)\n");
+    CORRADE_COMPARE(out, "Trade::LightType::Spot Trade::LightType(0xbe)\n");
 }
 
 void LightDataTest::debugTypePacked() {
-    std::ostringstream out;
+    Containers::String out;
     /* Last is not packed, ones before should not make any flags persistent */
     Debug(&out) << Debug::packed << LightType::Spot << Debug::packed << LightType(0xbe) << LightType::Ambient;
-    CORRADE_COMPARE(out.str(), "Spot 0xbe Trade::LightType::Ambient\n");
+    CORRADE_COMPARE(out, "Spot 0xbe Trade::LightType::Ambient\n");
 }
 
 }}}}

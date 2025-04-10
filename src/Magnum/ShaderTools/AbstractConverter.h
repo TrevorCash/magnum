@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -30,6 +31,7 @@
  * @m_since_latest
  */
 
+#include <initializer_list>
 #include <Corrade/Containers/EnumSet.h>
 #include <Corrade/PluginManager/AbstractManagingPlugin.h>
 #include <Corrade/Utility/StlForwardString.h> /** @todo remove once file callbacks are std::string-free */
@@ -331,8 +333,8 @@ concrete converter implementation is loaded and instantiated through a
 @relativeref{Corrade,PluginManager::Manager}. See @ref plugins for more
 information about general plugin usage, @ref file-formats to compare
 implementations for common file formats and the list of
-@m_class{m-doc} [derived classes](#derived-classes) for all available shader
-converter plugins.
+@m_class{m-doc} <a href="#derived-classes">derived classes</a> for all
+available shader converter plugins.
 
 As each converter has different requirements on the source, its format and
 options set, you're expected to perform error handling on the application side
@@ -371,7 +373,7 @@ As is common with other plugin interfaces, the
 file extension, load an appropriate validator plugin for given format and
 validate it:
 
-@snippet MagnumShaderTools.cpp AbstractConverter-usage-validation
+@snippet ShaderTools.cpp AbstractConverter-usage-validation
 
 In most cases, the validation result depends on the format version and target
 environment used. Formats and versions set by @ref setInputFormat() /
@@ -390,7 +392,7 @@ directly on data, the plugin would have no chance to know the desired input /
 output format otherwise. Same goes for the shader stage, which has to be
 supplied explicitly:
 
-@snippet MagnumShaderTools.cpp AbstractConverter-usage-compilation
+@snippet ShaderTools.cpp AbstractConverter-usage-compilation
 
 @todoc document linking when SpirvToolsShaderConverter implements that
 
@@ -420,7 +422,7 @@ load the top-level file manually and pass it to @ref validateData() /
 @ref convertDataToData() / @ref linkDataToData(), any converter supporting the
 callback feature handles that correctly.
 
-@snippet MagnumShaderTools.cpp AbstractConverter-usage-callbacks
+@snippet ShaderTools.cpp AbstractConverter-usage-callbacks
 
 For converters that don't support @ref ConverterFeature::InputFileCallback
 directly, the base @ref validateFile() / @ref convertFileToFile() /
@@ -632,7 +634,7 @@ class MAGNUM_SHADERTOOLS_EXPORT AbstractConverter: public PluginManager::Abstrac
          * See the overload below for a more convenient type-safe way to pass
          * the user data pointer.
          *
-         * @snippet MagnumShaderTools.cpp AbstractConverter-setInputFileCallback
+         * @snippet ShaderTools.cpp AbstractConverter-setInputFileCallback
          *
          * @see @ref ShaderTools-AbstractConverter-usage-callbacks
          */
@@ -653,7 +655,7 @@ class MAGNUM_SHADERTOOLS_EXPORT AbstractConverter: public PluginManager::Abstrac
          * @ref Corrade::Utility::Resource instance to avoid a potentially slow
          * resource group lookup every time:
          *
-         * @snippet MagnumShaderTools.cpp AbstractConverter-setInputFileCallback-template
+         * @snippet ShaderTools.cpp AbstractConverter-setInputFileCallback-template
          *
          * @see @ref ShaderTools-AbstractConverter-usage-callbacks
          */
@@ -859,7 +861,7 @@ class MAGNUM_SHADERTOOLS_EXPORT AbstractConverter: public PluginManager::Abstrac
          *
          * Available only if @ref ConverterFeature::ConvertData is supported.
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt.
+         * returns @relativeref{Corrade,Containers::NullOpt}.
          * @see @ref features(), @ref convertFileToFile(),
          *      @ref convertDataToFile(), @ref convertDataToData()
          */
@@ -875,7 +877,7 @@ class MAGNUM_SHADERTOOLS_EXPORT AbstractConverter: public PluginManager::Abstrac
          *
          * Available only if @ref ConverterFeature::LinkData is supported. On
          * failure prints a message to @relativeref{Magnum,Error} and returns
-         * @ref Containers::NullOpt. Can't be called if
+         * @relativeref{Corrade,Containers::NullOpt}. Can't be called if
          * @ref ConverterFlag::PreprocessOnly is set --- in that case
          * @ref convertDataToData() has to be used instead.
          * @see @ref features() @ref linkDataToFile(), @ref linkFilesToFile()
@@ -935,7 +937,7 @@ class MAGNUM_SHADERTOOLS_EXPORT AbstractConverter: public PluginManager::Abstrac
          *
          * Available only if @ref ConverterFeature::LinkData is supported. On
          * failure prints a message to @relativeref{Magnum,Error} and returns
-         * @ref Containers::NullOpt. Can't be called if
+         * @relativeref{Corrade,Containers::NullOpt}. Can't be called if
          * @ref ConverterFlag::PreprocessOnly is set --- in that case
          * @ref convertFileToData() has to be used instead.
          * @see @ref features(), @ref linkFilesToFile(), @ref linkDataToFile(),
@@ -1199,7 +1201,7 @@ Same string as returned by
 to be used inside @ref CORRADE_PLUGIN_REGISTER() to avoid having to update the
 interface string by hand every time the version gets bumped:
 
-@snippet MagnumShaderTools.cpp MAGNUM_SHADERTOOLS_ABSTRACTCONVERTER_PLUGIN_INTERFACE
+@snippet ShaderTools.cpp MAGNUM_SHADERTOOLS_ABSTRACTCONVERTER_PLUGIN_INTERFACE
 
 The interface string version gets increased on every ABI break to prevent
 silent crashes and memory corruption. Plugins built against the previous

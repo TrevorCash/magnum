@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -61,6 +62,7 @@ struct RendererGLTest: OpenGLTester {
 
     void maxLineWidth();
     void pointCoord();
+    void polygonMode();
     #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
     void patchParameters();
     #endif
@@ -69,9 +71,7 @@ struct RendererGLTest: OpenGLTester {
     void drawBuffersBlend();
     #endif
     template<class T> void clearDepthDepthRange();
-    #ifndef MAGNUM_TARGET_WEBGL
     void clipControl();
-    #endif
 
     private:
         PluginManager::Manager<Trade::AbstractImporter> _manager{"nonexistent"};
@@ -86,6 +86,7 @@ using namespace Math::Literals;
 RendererGLTest::RendererGLTest() {
     addTests({&RendererGLTest::maxLineWidth,
               &RendererGLTest::pointCoord,
+              &RendererGLTest::polygonMode,
               #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
               &RendererGLTest::patchParameters,
               #endif
@@ -97,10 +98,7 @@ RendererGLTest::RendererGLTest() {
               &RendererGLTest::clearDepthDepthRange<Double>,
               #endif
               &RendererGLTest::clearDepthDepthRange<Float>,
-              #ifndef MAGNUM_TARGET_WEBGL
-              &RendererGLTest::clipControl
-              #endif
-              });
+              &RendererGLTest::clipControl});
 
     /* Load the plugins directly from the build tree. Otherwise they're either
        static and already loaded or not present in the build tree */
@@ -118,7 +116,7 @@ RendererGLTest::RendererGLTest() {
         && std::getenv("SIMULATOR_UDID")
         #endif
     ) {
-        _testDir = Utility::Path::join(Utility::Path::split(*Utility::Path::executableLocation()).first(), "RendererGLTestFiles");
+        _testDir = Utility::Path::join(Utility::Path::path(*Utility::Path::executableLocation()), "RendererGLTestFiles");
     } else
     #endif
     {
@@ -248,9 +246,26 @@ void RendererGLTest::pointCoord() {
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {Magnum::PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {Magnum::PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "pointcoord.tga"),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
+}
+
+void RendererGLTest::polygonMode() {
+    #ifdef MAGNUM_TARGET_WEBGL
+    if(!Context::current().isExtensionSupported<Extensions::WEBGL::polygon_mode>())
+        CORRADE_SKIP(Extensions::WEBGL::polygon_mode::string() << "is not supported.");
+    #elif defined(MAGNUM_TARGET_GLES)
+    if(!Context::current().isExtensionSupported<Extensions::NV::polygon_mode>() &&
+       !Context::current().isExtensionSupported<Extensions::ANGLE::polygon_mode>())
+        CORRADE_SKIP("Neither" << Extensions::NV::polygon_mode::string() << "nor" << Extensions::ANGLE::polygon_mode::string() << "is supported.");
+    #endif
+
+    /* Just check for crashes and GL errors, revert back to the default mode to
+       not break other tests */
+    Renderer::setPolygonMode(Renderer::PolygonMode::Line);
+    Renderer::setPolygonMode(Renderer::PolygonMode::Fill);
+    MAGNUM_VERIFY_NO_GL_ERROR();
 }
 
 #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
@@ -321,7 +336,6 @@ template<class T> void RendererGLTest::clearDepthDepthRange() {
     MAGNUM_VERIFY_NO_GL_ERROR();
 }
 
-#ifndef MAGNUM_TARGET_WEBGL
 void RendererGLTest::clipControl() {
     #ifndef MAGNUM_TARGET_GLES
     if(!Context::current().isExtensionSupported<Extensions::ARB::clip_control>())
@@ -337,7 +351,6 @@ void RendererGLTest::clipControl() {
 
     MAGNUM_VERIFY_NO_GL_ERROR();
 }
-#endif
 
 }}}}
 

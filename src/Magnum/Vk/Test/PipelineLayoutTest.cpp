@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -66,15 +67,15 @@ void PipelineLayoutTest::createInfoConstruct() {
 void PipelineLayoutTest::createInfoConstructDescriptorSetLayouts() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
-    VkDescriptorSetLayout layouts[]{reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(0xdead)), reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(0xbeef))};
+    VkDescriptorSetLayout layouts[]{reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(std::size_t{0xdead})), reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(std::size_t{0xbeef}))};
 
     PipelineLayoutCreateInfo info{layouts};
     CORRADE_COMPARE(info->setLayoutCount, 2);
     CORRADE_VERIFY(info->pSetLayouts);
     /* The contents should be copied */
     CORRADE_VERIFY(info->pSetLayouts != layouts);
-    CORRADE_COMPARE(info->pSetLayouts[0], reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(0xdead)));
-    CORRADE_COMPARE(info->pSetLayouts[1], reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(0xbeef)));
+    CORRADE_COMPARE(info->pSetLayouts[0], reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(std::size_t{0xdead})));
+    CORRADE_COMPARE(info->pSetLayouts[1], reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(std::size_t{0xbeef})));
 }
 
 void PipelineLayoutTest::createInfoConstructNoInit() {
@@ -105,7 +106,7 @@ void PipelineLayoutTest::createInfoConstructCopy() {
 void PipelineLayoutTest::createInfoConstructMove() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
-    PipelineLayoutCreateInfo a{reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(0xdead)), reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(0xbeef))};
+    PipelineLayoutCreateInfo a{reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(std::size_t{0xdead})), reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(std::size_t{0xbeef}))};
     CORRADE_COMPARE(a->setLayoutCount, 2);
     CORRADE_VERIFY(a->pSetLayouts);
 
@@ -114,7 +115,7 @@ void PipelineLayoutTest::createInfoConstructMove() {
     CORRADE_VERIFY(!a->pSetLayouts);
     CORRADE_COMPARE(b->setLayoutCount, 2);
     CORRADE_VERIFY(b->pSetLayouts);
-    CORRADE_COMPARE(b->pSetLayouts[1], reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(0xbeef)));
+    CORRADE_COMPARE(b->pSetLayouts[1], reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(std::size_t{0xbeef})));
 
     PipelineLayoutCreateInfo c;
     c = Utility::move(b);
@@ -122,7 +123,7 @@ void PipelineLayoutTest::createInfoConstructMove() {
     CORRADE_VERIFY(!b->pSetLayouts);
     CORRADE_COMPARE(c->setLayoutCount, 2);
     CORRADE_VERIFY(c->pSetLayouts);
-    CORRADE_COMPARE(c->pSetLayouts[1], reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(0xbeef)));
+    CORRADE_COMPARE(c->pSetLayouts[1], reinterpret_cast<VkDescriptorSetLayout>(reinterpret_cast<void*>(std::size_t{0xbeef})));
 }
 
 void PipelineLayoutTest::constructNoCreate() {

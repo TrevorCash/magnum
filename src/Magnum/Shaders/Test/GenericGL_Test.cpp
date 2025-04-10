@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -59,6 +60,10 @@ void GenericGL_Test::glslMatch() {
 
     CORRADE_COMPARE(TEXTURECOORDINATES_ATTRIBUTE_LOCATION, GenericGL2D::TextureCoordinates::Location);
     CORRADE_COMPARE(TEXTURECOORDINATES_ATTRIBUTE_LOCATION, GenericGL3D::TextureCoordinates::Location);
+    #ifndef MAGNUM_TARGET_GLES2
+    CORRADE_COMPARE(TEXTURECOORDINATES_ATTRIBUTE_LOCATION, GenericGL2D::TextureArrayCoordinates::Location);
+    CORRADE_COMPARE(TEXTURECOORDINATES_ATTRIBUTE_LOCATION, GenericGL3D::TextureArrayCoordinates::Location);
+    #endif
 
     CORRADE_COMPARE(COLOR_ATTRIBUTE_LOCATION, GenericGL2D::Color3::Location);
     CORRADE_COMPARE(COLOR_ATTRIBUTE_LOCATION, GenericGL3D::Color3::Location);

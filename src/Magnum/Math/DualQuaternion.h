@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -236,7 +237,7 @@ template<class T> class DualQuaternion: public Dual<Quaternion<T>> {
         }
 
         /**
-         * @brief Create dual quaternion from transformation matrix
+         * @brief Create a dual quaternion from a transformation matrix
          *
          * Expects that the matrix represents rigid transformation.
          * @see @ref toMatrix(), @ref Quaternion::fromMatrix(),
@@ -251,7 +252,7 @@ template<class T> class DualQuaternion: public Dual<Quaternion<T>> {
         }
 
         /**
-         * @brief Create dual quaternion from rotation quaternion and translation vector
+         * @brief Create a dual quaternion from a rotation quaternion and a translation vector
          * @m_since_latest
          *
          * @f[
@@ -283,14 +284,14 @@ template<class T> class DualQuaternion: public Dual<Quaternion<T>> {
          */
         constexpr explicit DualQuaternion(IdentityInitT) noexcept: Dual<Quaternion<T>>{{}, {{}, T(0)}} {}
 
-        /** @brief Construct zero-initialized dual quaternion */
+        /** @brief Construct a zero-initialized dual quaternion */
         constexpr explicit DualQuaternion(ZeroInitT) noexcept: Dual<Quaternion<T>>{Quaternion<T>{ZeroInit}, Quaternion<T>{ZeroInit}} {}
 
         /** @brief Construct without initializing the contents */
         explicit DualQuaternion(Magnum::NoInitT) noexcept: Dual<Quaternion<T>>{Magnum::NoInit} {}
 
         /**
-         * @brief Construct dual quaternion from real and dual part
+         * @brief Construct a dual quaternion from a real and a dual part
          *
          * @f[
          *      \hat q = q_0 + \epsilon q_\epsilon
@@ -302,7 +303,7 @@ template<class T> class DualQuaternion: public Dual<Quaternion<T>> {
         constexpr /*implicit*/ DualQuaternion(const Quaternion<T>& real, const Quaternion<T>& dual = Quaternion<T>({}, T(0))) noexcept: Dual<Quaternion<T>>(real, dual) {}
 
         /**
-         * @brief Construct dual quaternion from dual vector and scalar parts
+         * @brief Construct a dual quaternion from dual vector and scalar parts
          *
          * @f[
          *      \hat q = [\hat{\boldsymbol v}, \hat s] = [\boldsymbol v_0, s_0] + \epsilon [\boldsymbol v_\epsilon, s_\epsilon]
@@ -311,7 +312,7 @@ template<class T> class DualQuaternion: public Dual<Quaternion<T>> {
         constexpr /*implicit*/ DualQuaternion(const Dual<Vector3<T>>& vector, const Dual<T>& scalar) noexcept: Dual<Quaternion<T>>{{vector.real(), scalar.real()}, {vector.dual(), scalar.dual()}} {}
 
         /**
-         * @brief Construct dual quaternion from vector
+         * @brief Construct a dual quaternion from a vector
          *
          * To be used in transformations later. @f[
          *      \hat q = [\boldsymbol 0, 1] + \epsilon [\boldsymbol v, 0]
@@ -321,21 +322,21 @@ template<class T> class DualQuaternion: public Dual<Quaternion<T>> {
         constexpr explicit DualQuaternion(const Vector3<T>& vector) noexcept: Dual<Quaternion<T>>({}, {vector, T(0)}) {}
 
         /**
-         * @brief Construct dual quaternion from another of different type
+         * @brief Construct a dual quaternion from another of different type
          *
          * Performs only default casting on the values, no rounding or anything
          * else.
          */
         template<class U> constexpr explicit DualQuaternion(const DualQuaternion<U>& other) noexcept: Dual<Quaternion<T>>(other) {}
 
-        /** @brief Construct dual quaternion from external representation */
-        template<class U, class V = decltype(Implementation::DualQuaternionConverter<T, U>::from(std::declval<U>()))> constexpr explicit DualQuaternion(const U& other): DualQuaternion{Implementation::DualQuaternionConverter<T, U>::from(other)} {}
+        /** @brief Construct a dual quaternion from external representation */
+        template<class U, class = decltype(Implementation::DualQuaternionConverter<T, U>::from(std::declval<U>()))> constexpr explicit DualQuaternion(const U& other): DualQuaternion{Implementation::DualQuaternionConverter<T, U>::from(other)} {}
 
         /** @brief Copy constructor */
         constexpr /*implicit*/ DualQuaternion(const Dual<Quaternion<T>>& other) noexcept: Dual<Quaternion<T>>(other) {}
 
-        /** @brief Convert dual quaternion to external representation */
-        template<class U, class V = decltype(Implementation::DualQuaternionConverter<T, U>::to(std::declval<DualQuaternion<T>>()))> constexpr explicit operator U() const {
+        /** @brief Convert the dual quaternion to external representation */
+        template<class U, class = decltype(Implementation::DualQuaternionConverter<T, U>::to(std::declval<DualQuaternion<T>>()))> constexpr explicit operator U() const {
             return Implementation::DualQuaternionConverter<T, U>::to(*this);
         }
 

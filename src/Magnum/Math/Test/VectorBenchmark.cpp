@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -67,9 +68,9 @@ VectorBenchmark::VectorBenchmark() {
     }, 500);
 }
 
-typedef Math::Constants<Float> Constants;
-typedef Math::Vector2<Float> Vector2;
-typedef Math::Vector3<Float> Vector3;
+using Magnum::Constants;
+using Magnum::Vector2;
+using Magnum::Vector3;
 
 enum: std::size_t { Repeats = 100000 };
 

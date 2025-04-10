@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -48,8 +49,21 @@ for which the corresponding bit in @p fieldsToKeep was set. The size of
 This function only operates on the field metadata --- if you'd like to have
 the data repacked to contain just the remaining fields as well, pass
 the output to @ref combineFields(const Trade::SceneData&).
+@see @ref reference(), @ref filterOnlyFields(), @ref filterExceptFields()
 */
 MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterFields(const Trade::SceneData& scene, Containers::BitArrayView fieldsToKeep);
+
+/**
+@brief Filter a scene to contain only the selected subset of fields
+@m_since_latest
+
+Compared to @ref filterFields(const Trade::SceneData&, Containers::BitArrayView),
+if the @p scene data is owned, this function transfers the data ownership to
+the returned instance instead of returning a non-owning reference. If the data
+is not owned, the two overloads behave the same.
+@see @ref Trade::SceneData::dataFlags()
+*/
+MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterFields(Trade::SceneData&& scene, Containers::BitArrayView fieldsToKeep);
 
 /**
 @brief Filter a scene to contain only the selected subset of named fields
@@ -63,6 +77,7 @@ field was listed just once.
 This function only operates on the field metadata --- if you'd like to have
 the data repacked to contain just the remaining fields as well, pass
 the output to @ref combineFields(const Trade::SceneData&).
+@see @ref reference(), @ref filterFields(), @ref filterExceptFields()
 */
 MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterOnlyFields(const Trade::SceneData& scene, Containers::ArrayView<const Trade::SceneField> fields);
 
@@ -71,6 +86,24 @@ MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterOnlyFields(const Trade::SceneDat
 @m_since_latest
 */
 MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterOnlyFields(const Trade::SceneData& scene, std::initializer_list<Trade::SceneField> fields);
+
+/**
+@brief Filter a scene to contain only the selected subset of named fields
+@m_since_latest
+
+Compared to @ref filterOnlyFields(const Trade::SceneData&, Containers::ArrayView<const Trade::SceneField>),
+if the @p scene data is owned, this function transfers the data ownership to
+the returned instance instead of returning a non-owning reference. If the data
+is not owned, the two overloads behave the same.
+@see @ref Trade::SceneData::dataFlags()
+*/
+MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterOnlyFields(Trade::SceneData&& scene, Containers::ArrayView<const Trade::SceneField> fields);
+
+/**
+@overload
+@m_since_latest
+*/
+MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterOnlyFields(Trade::SceneData&& scene, std::initializer_list<Trade::SceneField> fields);
 
 /**
 @brief Filter a scene to contain everything except the selected subset of named fields
@@ -84,6 +117,7 @@ fields was listed just once.
 This function only operates on the field metadata --- if you'd like to have
 the data repacked to contain just the remaining fields as well, pass
 the output to @ref combineFields(const Trade::SceneData&).
+@see @ref reference(), @ref filterFields(), @ref filterOnlyFields()
 */
 MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterExceptFields(const Trade::SceneData& scene, Containers::ArrayView<const Trade::SceneField> fields);
 
@@ -92,6 +126,24 @@ MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterExceptFields(const Trade::SceneD
 @m_since_latest
 */
 MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterExceptFields(const Trade::SceneData& scene, std::initializer_list<Trade::SceneField> fields);
+
+/**
+@brief Filter a scene to contain everything except the selected subset of named fields
+@m_since_latest
+
+Compared to @ref filterExceptFields(const Trade::SceneData&, Containers::ArrayView<const Trade::SceneField>),
+if the @p scene data is owned, this function transfers the data ownership to
+the returned instance instead of returning a non-owning reference. If the data
+is not owned, the two overloads behave the same.
+@see @ref Trade::SceneData::dataFlags()
+*/
+MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterExceptFields(Trade::SceneData&& scene, Containers::ArrayView<const Trade::SceneField> fields);
+
+/**
+@overload
+@m_since_latest
+*/
+MAGNUM_SCENETOOLS_EXPORT Trade::SceneData filterExceptFields(Trade::SceneData&& scene, std::initializer_list<Trade::SceneField> fields);
 
 /**
 @brief Filter individual entries of fields in a scene
@@ -133,7 +185,7 @@ translations and lights away. Filtering translations means the rotations have
 to be filtered as well, however neither meshes nor materials (which share the
 mapping as well) need to be listed if they're not filtered:
 
-@snippet MagnumSceneTools.cpp filterFieldEntries-shared-mapping
+@snippet SceneTools.cpp filterFieldEntries-shared-mapping
 
 At the moment, @ref Trade::SceneFieldType::Bit and string fields can't be
 filtered, only passed through.

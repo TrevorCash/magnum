@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2019 Marco Melorio <m.melorio@icloud.com>
     Copyright © 2022 Pablo Escobar <mail@rvrs.in>
 
@@ -51,6 +52,9 @@
 #include "Magnum/Math/ConfigurationValue.h"
 #include "Magnum/Math/FunctionsBatch.h"
 #include "Magnum/Math/Range.h"
+#ifndef CORRADE_TARGET_EMSCRIPTEN
+#include "Magnum/Math/Time.h"
+#endif
 #include "Magnum/Platform/ScreenedApplication.hpp"
 #include "Magnum/Platform/Implementation/DpiScaling.h"
 
@@ -77,6 +81,7 @@ extern "C" {
 namespace Magnum { namespace Platform {
 
 using namespace Containers::Literals;
+using namespace Math::Literals;
 
 namespace {
 
@@ -86,12 +91,16 @@ namespace {
  * (modifiers >= Shift) would pass only if both left and right were pressed,
  * which is usually not what the developers wants.
  */
-Sdl2Application::InputEvent::Modifiers fixedModifiers(Uint16 mod) {
-    Sdl2Application::InputEvent::Modifiers modifiers(static_cast<Sdl2Application::InputEvent::Modifier>(mod));
-    if(modifiers & Sdl2Application::InputEvent::Modifier::Shift) modifiers |= Sdl2Application::InputEvent::Modifier::Shift;
-    if(modifiers & Sdl2Application::InputEvent::Modifier::Ctrl) modifiers |= Sdl2Application::InputEvent::Modifier::Ctrl;
-    if(modifiers & Sdl2Application::InputEvent::Modifier::Alt) modifiers |= Sdl2Application::InputEvent::Modifier::Alt;
-    if(modifiers & Sdl2Application::InputEvent::Modifier::Super) modifiers |= Sdl2Application::InputEvent::Modifier::Super;
+Sdl2Application::Modifiers fixedModifiers(Uint16 mod) {
+    Sdl2Application::Modifiers modifiers{mod};
+    if(modifiers & Sdl2Application::Modifier::Shift)
+        modifiers |= Sdl2Application::Modifier::Shift;
+    if(modifiers & Sdl2Application::Modifier::Ctrl)
+        modifiers |= Sdl2Application::Modifier::Ctrl;
+    if(modifiers & Sdl2Application::Modifier::Alt)
+        modifiers |= Sdl2Application::Modifier::Alt;
+    if(modifiers & Sdl2Application::Modifier::Super)
+        modifiers |= Sdl2Application::Modifier::Super;
     return modifiers;
 }
 
@@ -112,6 +121,34 @@ enum class Sdl2Application::Flag: UnsignedByte {
     #endif
 };
 
+Containers::StringView Sdl2Application::keyName(const Key key) {
+    return SDL_GetKeyName(SDL_Keycode(key));
+}
+
+#ifndef CORRADE_TARGET_EMSCRIPTEN
+Containers::StringView Sdl2Application::scanCodeName(const UnsignedInt scanCode) {
+    return SDL_GetScancodeName(SDL_Scancode(scanCode));
+}
+#endif
+
+/* https://github.com/emscripten-core/emscripten/pull/18060 */
+#if !defined(CORRADE_TARGET_EMSCRIPTEN) || __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 30125
+Containers::Optional<UnsignedInt> Sdl2Application::keyToScanCode(const Key key) {
+    static_assert(SDL_SCANCODE_UNKNOWN == 0, "assumed SDL_SCANCODE_UNKNOWN to be 0");
+    if(const SDL_Scancode scanCode = SDL_GetScancodeFromKey(SDL_Keycode(key)))
+        return UnsignedInt(scanCode);
+    return {};
+}
+#endif
+
+#ifndef CORRADE_TARGET_EMSCRIPTEN
+Containers::Optional<Sdl2Application::Key> Sdl2Application::scanCodeToKey(const UnsignedInt scanCode) {
+    if(const SDL_Keycode key = SDL_GetKeyFromScancode(SDL_Scancode(scanCode)))
+        return Key(key);
+    return {};
+}
+#endif
+
 Sdl2Application::Sdl2Application(const Arguments& arguments): Sdl2Application{arguments, Configuration{}} {}
 
 Sdl2Application::Sdl2Application(const Arguments& arguments, const Configuration& configuration): Sdl2Application{arguments, NoCreate} {
@@ -125,9 +162,6 @@ Sdl2Application::Sdl2Application(const Arguments& arguments, const Configuration
 #endif
 
 Sdl2Application::Sdl2Application(const Arguments& arguments, NoCreateT):
-    #ifndef CORRADE_TARGET_EMSCRIPTEN
-    _minimalLoopPeriod{0},
-    #endif
     _flags{Flag::Redraw}
 {
     Utility::Arguments args{Implementation::windowScalingArguments()};
@@ -142,6 +176,39 @@ Sdl2Application::Sdl2Application(const Arguments& arguments, NoCreateT):
         .parse(arguments.argc, arguments.argv);
     #endif
 
+    #ifndef CORRADE_TARGET_EMSCRIPTEN
+    /* Disable translation of touch events to mouse events and vice versa as
+       that's a very poor way of freeing users from having to implement
+       separate event handling for mouse and touch (and, in SDL3, pen). Instead
+       the Sdl2Application is providing a PointerEvent abstracting all of
+       those, so no event translation needs to take place anymore.
+
+       Though, just for historical records, what is quite funny / strange about
+       the SDL's translation, is that when the touch goes out of the window,
+       translated mouse events get clamped to the window size and thus also not
+       even being reported if the clamped value doesn't change. On the other
+       hand, with a regular mouse event, if a drag goes out of the window, it's
+       still reported correctly, with the coordinates being either larger than
+       the window size or negative. No idea why the SDL touch->mouse emulation
+       doesn't do this -- maybe because having a touchscreen device with a
+       window manager is still relatively rare so nobody reported that? Heh.
+
+       These enums are not exposed in the minimal Emscripten SDL implementation
+       which in turn means touch support there isn't implemented, because I
+       don't want to filter duplicate events by hand. Use EmscriptenApplication
+       instead, please. */
+    /* Added in 2.0.6, before it was apparently impossible to turn off the
+       event translation altogether. I could also make the touch available only
+       on 2.0.6+, but 2.0.6 is from 2017 and I don't think it makes sense to
+       bother with support for older versions. Ubuntu 18.04 has 2.0.8.
+        https://github.com/libsdl-org/SDL/commit/56cab6d45280fbb4b645083eceeaa8f474c0aac3 */
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    /* Added in 2.0.10, before mouse events don't generate touch events
+        https://github.com/libsdl-org/SDL/commit/e41576188d17fd09c95777d665f6c4532574f8ac */
+    #ifdef SDL_HINT_MOUSE_TOUCH_EVENTS
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
+    #endif
+    #endif
     /* Available since 2.0.4, disables interception of SIGINT and SIGTERM so
        it's possible to Ctrl-C the application even if exitEvent() doesn't set
        event.setAccepted(). */
@@ -235,17 +302,25 @@ Vector2 Sdl2Application::dpiScalingInternal(const Implementation::Sdl2DpiScaling
     /* Use values from the configuration only if not overridden on command line
        to something non-default. In any case explicit scaling has a precedence
        before the policy. */
+    #ifndef CORRADE_TARGET_APPLE
     Implementation::Sdl2DpiScalingPolicy dpiScalingPolicy{};
+    #endif
     if(!_commandLineDpiScaling.isZero()) {
         Debug{verbose} << "Platform::Sdl2Application: user-defined DPI scaling" << _commandLineDpiScaling;
         return _commandLineDpiScaling;
     } else if(_commandLineDpiScalingPolicy != Implementation::Sdl2DpiScalingPolicy::Default) {
+        #ifndef CORRADE_TARGET_APPLE
         dpiScalingPolicy = _commandLineDpiScalingPolicy;
+        #endif
     } else if(!configurationDpiScaling.isZero()) {
         Debug{verbose} << "Platform::Sdl2Application: app-defined DPI scaling" << configurationDpiScaling;
         return configurationDpiScaling;
     } else {
+        #ifndef CORRADE_TARGET_APPLE
         dpiScalingPolicy = configurationDpiScalingPolicy;
+        #else
+        static_cast<void>(configurationDpiScalingPolicy);
+        #endif
     }
 
     /* There's no choice on Apple, it's all controlled by the plist file. So
@@ -308,9 +383,8 @@ Vector2 Sdl2Application::dpiScalingInternal(const Implementation::Sdl2DpiScaling
     return dpiScaling;
 
     /* Take a physical display DPI. On Linux it gets the (usually very off)
-       physical value from X11. Also only since SDL 2.0.4. */
+       physical value from X11. */
     #elif defined(CORRADE_TARGET_UNIX)
-    #if SDL_VERSION_ATLEAST(2, 0, 4)
     Vector2 dpi;
     if(SDL_GetDisplayDPI(0, nullptr, &dpi.x(), &dpi.y()) == 0) {
         const Vector2 dpiScaling{dpi/96.0f};
@@ -319,9 +393,6 @@ Vector2 Sdl2Application::dpiScalingInternal(const Implementation::Sdl2DpiScaling
     }
 
     Warning{} << "Platform::Sdl2Application: can't get physical display DPI, falling back to no scaling:" << SDL_GetError();
-    #else
-    Debug{verbose} << "Platform::Sdl2Application: sorry, physical DPI scaling only available on SDL 2.0.4+";
-    #endif
     return Vector2{1.0f};
 
     /* HOWEVER, on Windows it gets the virtual DPI scaling, which we don't
@@ -358,7 +429,7 @@ void Sdl2Application::setWindowTitle(const Containers::StringView title) {
     #endif
 }
 
-#if !defined(CORRADE_TARGET_EMSCRIPTEN) && SDL_MAJOR_VERSION*1000 + SDL_MINOR_VERSION*100 + SDL_PATCHLEVEL >= 2005
+#ifndef CORRADE_TARGET_EMSCRIPTEN
 void Sdl2Application::setWindowIcon(const ImageView2D& image) {
     Uint32 format; /** @todo handle sRGB differently? */
     switch(image.format()) {
@@ -470,7 +541,10 @@ bool Sdl2Application::tryCreate(const Configuration& configuration) {
 
 #ifdef MAGNUM_TARGET_GL
 bool Sdl2Application::tryCreate(const Configuration& configuration, const GLConfiguration& glConfiguration) {
-    CORRADE_ASSERT(_context->version() == GL::Version::None, "Platform::Sdl2Application::tryCreate(): context already created", false);
+    CORRADE_ASSERT(!(configuration.windowFlags() & Configuration::WindowFlag::Contextless),
+        "Platform::Sdl2Application::tryCreate(): cannot pass Configuration::WindowFlag::Contextless when creating an OpenGL context", false);
+    CORRADE_ASSERT(_context->version() == GL::Version::None,
+        "Platform::Sdl2Application::tryCreate(): context already created", false);
 
     /* Enable double buffering, set up buffer sizes */
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -505,14 +579,10 @@ bool Sdl2Application::tryCreate(const Configuration& configuration, const GLConf
     GLConfiguration::Flags glFlags = glConfiguration.flags();
     if((glFlags & GLConfiguration::Flag::GpuValidation) || (_context->configurationFlags() & GL::Context::Configuration::Flag::GpuValidation))
         glFlags |= GLConfiguration::Flag::Debug;
-    #if SDL_MAJOR_VERSION*1000 + SDL_MINOR_VERSION*100 + SDL_PATCHLEVEL >= 2006
     else if((glFlags & GLConfiguration::Flag::GpuValidationNoError) || (_context->configurationFlags() & GL::Context::Configuration::Flag::GpuValidationNoError))
         glFlags |= GLConfiguration::Flag::NoError;
-    #endif
 
-    #if SDL_MAJOR_VERSION*1000 + SDL_MINOR_VERSION*100 + SDL_PATCHLEVEL >= 2006
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_NO_ERROR, glFlags >= GLConfiguration::Flag::NoError);
-    #endif
 
     /* Set context version, if user-specified */
     if(glConfiguration.version() != GL::Version::None) {
@@ -549,20 +619,20 @@ bool Sdl2Application::tryCreate(const Configuration& configuration, const GLConf
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, int(UnsignedLong(glFlags) & 0xffffffffu));
         #else
         /* For ES the major context version is compile-time constant */
-        #ifdef MAGNUM_TARGET_GLES3
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-        #elif defined(MAGNUM_TARGET_GLES2)
+        #ifdef MAGNUM_TARGET_GLES2
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
         #else
-        #error unsupported OpenGL ES version
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         #endif
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
         #endif
     }
 
-    /* Create window. Hide it by default so we don't have distracting window
-       blinking in case we have to destroy it again right away */
+    /* Create a window. Hide it by default so we don't have distracting window
+       blinking in case the context creation fails due to unsupported
+       configuration or if it gets destroyed for fallback context creation
+       below. */
     if(!(_window = SDL_CreateWindow(
         #ifndef CORRADE_TARGET_IOS
         configuration.title().data(),
@@ -610,6 +680,15 @@ bool Sdl2Application::tryCreate(const Configuration& configuration, const GLConf
             << SDL_GetError() << "(falling back to compatibility context)";
         else SDL_GL_DeleteContext(_glContext);
 
+        /* Destroy the original window. SDL_GL_SetAttribute() says it should be
+           called before creating a window, which kind of implies the
+           attributes affect how the window is created:
+            https://wiki.libsdl.org/SDL2/SDL_GL_SetAttribute
+           Which means, if I attempt to set them differently after the window
+           is created, it *might* not work correctly. It doesn't seem to matter
+           on Linux at least, but better stay on the safe side as this way
+           worked correctly for 10+ years on all platforms and reusing an
+           existing window might not. */
         SDL_DestroyWindow(_window);
 
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -622,10 +701,11 @@ bool Sdl2Application::tryCreate(const Configuration& configuration, const GLConf
            Also mask out the upper 32bits used for other flags. */
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, int(UnsignedLong(glFlags & ~GLConfiguration::Flag::ForwardCompatible) & 0xffffffffu));
 
+        /* Create a new window using the refreshed GL attributes */
         if(!(_window = SDL_CreateWindow(configuration.title().data(),
             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
             scaledWindowSize.x(), scaledWindowSize.y(),
-            SDL_WINDOW_OPENGL|SDL_WINDOW_HIDDEN|SDL_WINDOW_ALLOW_HIGHDPI|Uint32(configuration.windowFlags()&~Configuration::WindowFlag::Contextless))))
+            SDL_WINDOW_OPENGL|SDL_WINDOW_HIDDEN|SDL_WINDOW_ALLOW_HIGHDPI|Uint32(configuration.windowFlags()))))
         {
             Error() << "Platform::Sdl2Application::tryCreate(): cannot create window:" << SDL_GetError();
             return false;
@@ -816,6 +896,20 @@ bool Sdl2Application::setSwapInterval(const Int interval) {
     return true;
 }
 
+#ifndef CORRADE_TARGET_EMSCRIPTEN
+void Sdl2Application::setMinimalLoopPeriod(const Nanoseconds time) {
+    CORRADE_ASSERT(time >= 0_nsec,
+        "Platform::Sdl2Application::setMinimalLoopPeriod(): expected non-negative time, got" << time, );
+    _minimalLoopPeriodMilliseconds = Long(time)/1000000;
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+void Sdl2Application::setMinimalLoopPeriod(const UnsignedInt milliseconds) {
+    _minimalLoopPeriodMilliseconds = milliseconds;
+}
+#endif
+#endif
+
 void Sdl2Application::redraw() { _flags |= Flag::Redraw; }
 
 Sdl2Application::~Sdl2Application() {
@@ -868,6 +962,42 @@ void Sdl2Application::exit(const int exitCode) {
     _exitCode = exitCode;
 }
 
+namespace {
+
+Sdl2Application::Pointer buttonToPointer(const Uint8 button) {
+    switch(button) {
+        case SDL_BUTTON_LEFT:
+            return Sdl2Application::Pointer::MouseLeft;
+        case SDL_BUTTON_MIDDLE:
+            return Sdl2Application::Pointer::MouseMiddle;
+        case SDL_BUTTON_RIGHT:
+            return Sdl2Application::Pointer::MouseRight;
+        case SDL_BUTTON_X1:
+            return Sdl2Application::Pointer::MouseButton4;
+        case SDL_BUTTON_X2:
+            return Sdl2Application::Pointer::MouseButton5;
+    }
+
+    CORRADE_INTERNAL_ASSERT_UNREACHABLE();
+}
+
+Sdl2Application::Pointers buttonsToPointers(const Uint32 buttons) {
+    Sdl2Application::Pointers pointers;
+    if(buttons & SDL_BUTTON_LMASK)
+        pointers |= Sdl2Application::Pointer::MouseLeft;
+    if(buttons & SDL_BUTTON_MMASK)
+        pointers |= Sdl2Application::Pointer::MouseMiddle;
+    if(buttons & SDL_BUTTON_RMASK)
+        pointers |= Sdl2Application::Pointer::MouseRight;
+    if(buttons & SDL_BUTTON_X1MASK)
+        pointers |= Sdl2Application::Pointer::MouseButton4;
+    if(buttons & SDL_BUTTON_X2MASK)
+        pointers |= Sdl2Application::Pointer::MouseButton5;
+    return pointers;
+}
+
+}
+
 bool Sdl2Application::mainLoopIteration() {
     /* If exit was requested directly in the constructor, exit immediately
        without calling anything else */
@@ -880,7 +1010,7 @@ bool Sdl2Application::mainLoopIteration() {
     #endif
 
     #ifndef CORRADE_TARGET_EMSCRIPTEN
-    const UnsignedInt timeBefore = _minimalLoopPeriod ? SDL_GetTicks() : 0;
+    const Nanoseconds timeBefore = _minimalLoopPeriodMilliseconds ? SDL_GetTicks()*1.0_msec : Nanoseconds{};
     #endif
 
     #ifdef CORRADE_TARGET_EMSCRIPTEN
@@ -951,36 +1081,169 @@ bool Sdl2Application::mainLoopIteration() {
 
             case SDL_KEYDOWN:
             case SDL_KEYUP: {
-                KeyEvent e{event, static_cast<KeyEvent::Key>(event.key.keysym.sym), fixedModifiers(event.key.keysym.mod), event.key.repeat != 0};
+                KeyEvent e{event, Key(event.key.keysym.sym), UnsignedInt(event.key.keysym.scancode), fixedModifiers(event.key.keysym.mod), event.key.repeat != 0};
                 event.type == SDL_KEYDOWN ? keyPressEvent(e) : keyReleaseEvent(e);
             } break;
 
             case SDL_MOUSEBUTTONDOWN:
             case SDL_MOUSEBUTTONUP: {
-                MouseEvent e{event, static_cast<MouseEvent::Button>(event.button.button), {event.button.x, event.button.y}
-                    #ifndef CORRADE_TARGET_EMSCRIPTEN
-                    , event.button.clicks
-                    #endif
+                const Pointer pointer = buttonToPointer(event.button.button);
+                const Vector2 position{Float(event.button.x), Float(event.button.y)};
+
+                /* If an additional mouse button was pressed or some buttons
+                   are still left pressed after a release, call a move event
+                   instead */
+                const Uint32 buttons = SDL_GetMouseState(nullptr, nullptr);
+                if((event.type == SDL_MOUSEBUTTONDOWN && (buttons & ~SDL_BUTTON(event.button.button))) ||
+                   (event.type == SDL_MOUSEBUTTONUP && buttons)) {
+                    Pointers pointers = buttonsToPointers(buttons);
+                    PointerMoveEvent e{event, PointerEventSource::Mouse, pointer, pointers, true,
+                        #ifdef CORRADE_TARGET_EMSCRIPTEN
+                        0,
+                        /* Since 2.0.22, added w/ SDL_HINT_MOUSE_TOUCH_EVENTS */
+                        #elif defined(SDL_MOUSE_TOUCHID)
+                        SDL_MOUSE_TOUCHID,
+                        #else
+                        -1,
+                        #endif
+                        position, {}};
+                    pointerMoveEvent(e);
+                } else {
+                    PointerEvent e{event, PointerEventSource::Mouse, pointer, true,
+                        #ifdef CORRADE_TARGET_EMSCRIPTEN
+                        0,
+                        /* Since 2.0.22, added w/ SDL_HINT_MOUSE_TOUCH_EVENTS */
+                        #elif defined(SDL_MOUSE_TOUCHID)
+                        SDL_MOUSE_TOUCHID,
+                        #else
+                        -1,
+                        #endif
+                        position
+                        #ifndef CORRADE_TARGET_EMSCRIPTEN
+                        , event.button.clicks
+                        #endif
                     };
-                event.type == SDL_MOUSEBUTTONDOWN ? mousePressEvent(e) : mouseReleaseEvent(e);
+                    event.type == SDL_MOUSEBUTTONDOWN ?
+                        pointerPressEvent(e) : pointerReleaseEvent(e);
+                }
             } break;
 
             case SDL_MOUSEWHEEL: {
-                MouseScrollEvent e{event, {Float(event.wheel.x), Float(event.wheel.y)}};
-                mouseScrollEvent(e);
+                ScrollEvent e{event,
+                    #if SDL_VERSION_ATLEAST(2, 0, 18)
+                    {event.wheel.preciseX, event.wheel.preciseY}
+                    #else
+                    {Float(event.wheel.x), Float(event.wheel.y)}
+                    #endif
+                    /* Yeah, it's 2.0.22 and then 2.24.0, they changed the
+                       versioning */
+                    #if SDL_VERSION_ATLEAST(2, 26, 0)
+                    , {Float(event.wheel.mouseX), Float(event.wheel.mouseY)}
+                    #endif
+                };
+                scrollEvent(e);
             } break;
 
             case SDL_MOUSEMOTION: {
-                MouseMoveEvent e{event, {event.motion.x, event.motion.y}, {event.motion.xrel, event.motion.yrel}, static_cast<MouseMoveEvent::Button>(event.motion.state)};
-                mouseMoveEvent(e);
+                PointerMoveEvent e{event, PointerEventSource::Mouse, {}, buttonsToPointers(event.motion.state), true,
+                    #ifdef CORRADE_TARGET_EMSCRIPTEN
+                    0,
+                    /* Since 2.0.22, added w/ SDL_HINT_MOUSE_TOUCH_EVENTS */
+                    #elif defined(SDL_MOUSE_TOUCHID)
+                    SDL_MOUSE_TOUCHID,
+                    #else
+                    -1,
+                    #endif
+                    {Float(event.motion.x), Float(event.motion.y)},
+                    {Float(event.motion.xrel), Float(event.motion.yrel)}};
+                pointerMoveEvent(e);
+            } break;
+
+            #ifndef CORRADE_TARGET_EMSCRIPTEN
+            case SDL_FINGERDOWN:
+            case SDL_FINGERUP: {
+                /* Scale the event from useless [0, 1] to the actual window
+                   size, not sure why is it so weird. Also let's hope the
+                   SDL_GetWindowSize() call isn't too demanding, I don't want
+                   to be caching this value, it's bad enough to have to track
+                   that on Emscripten. */
+                Vector2i windowSize{NoInit};
+                SDL_GetWindowSize(_window, &windowSize.x(), &windowSize.y());
+
+                /* Update primary finger info. If there's no primary finger yet
+                   and this is the first finger pressed, it becomes the primary
+                   finger. If the primary finger is lifted, no other finger
+                   becomes primary until all others are lifted as well. This
+                   was empirically verified by looking at behavior of a mouse
+                   cursor on a multi-touch screen under X11, it's possible that
+                   other systems do it differently. The same logic is used in
+                   EmscriptenApplication and AndroidApplication. Also, right
+                   now there's an assumption that there is just one touch
+                   device, fingers from different touch devices would steal the
+                   primary bit from each other on every press. */
+                bool primary;
+                if(_primaryFingerId == ~Long{} && event.type == SDL_FINGERDOWN && SDL_GetNumTouchFingers(event.tfinger.touchId) == 1) {
+                    primary = true;
+                    _primaryFingerId = event.tfinger.fingerId;
+                /* Otherwise, if this is the primary finger, mark it as such */
+                } else if(_primaryFingerId == event.tfinger.fingerId) {
+                    primary = true;
+                    /* ... but if it's a release, it's no longer primary */
+                    if(event.type == SDL_FINGERUP)
+                        _primaryFingerId = ~Long{};
+                /* Otherwise this is not the primary finger */
+                } else primary = false;
+
+                /* Make it so that value of 0 is reported as 0 and 1 is
+                   reported as the rightmost / bottommost pixel, i.e. 799 / 599
+                   for 800x600. This matches with what SDL itself does for the
+                   touch event translation. */
+                const Vector2 scale = Vector2{windowSize - Vector2i{1}};
+                PointerEvent e{event, PointerEventSource::Touch,
+                    Pointer::Finger, primary, event.tfinger.fingerId,
+                    Vector2{event.tfinger.x, event.tfinger.y}*scale, 1};
+                event.type == SDL_FINGERDOWN ?
+                    pointerPressEvent(e) : pointerReleaseEvent(e);
+            } break;
+
+            case SDL_FINGERMOTION: {
+                /* Scale the event from useless [0, 1] to the actual window
+                   size, not sure why is it so weird. Also let's hope the
+                   SDL_GetWindowSize() call isn't too demanding, I don't want
+                   to be caching this value, it's bad enough to have to track
+                   that on Emscripten. */
+                Vector2i windowSize{NoInit};
+                SDL_GetWindowSize(_window, &windowSize.x(), &windowSize.y());
+
+                /* In this case, it's a primary finger only if it was
+                   registered as such during the last press. If the primary
+                   finger was lifted, no other finger will step into its place
+                   until all others are lifted as well. */
+                const bool primary = _primaryFingerId == event.tfinger.fingerId;
+
+                /* Make it so that value of 0 is reported as 0 and 1 is
+                   reported as the rightmost / bottommost pixel, i.e. 799 / 599
+                   for 800x600. This matches with what SDL itself does for the
+                   touch event translation. */
+                const Vector2 scale = Vector2{windowSize - Vector2i{1}};
+                PointerMoveEvent e{event, PointerEventSource::Touch, {},
+                    Pointer::Finger, primary, event.tfinger.fingerId,
+                    Vector2{event.tfinger.x, event.tfinger.y}*scale,
+                    Vector2{event.tfinger.dx, event.tfinger.dy}*scale};
+                pointerMoveEvent(e);
                 break;
             }
+            #endif
 
+            #ifdef MAGNUM_BUILD_DEPRECATED
             case SDL_MULTIGESTURE: {
+                CORRADE_IGNORE_DEPRECATED_PUSH
                 MultiGestureEvent e{event, {event.mgesture.x, event.mgesture.y}, event.mgesture.dTheta, event.mgesture.dDist, event.mgesture.numFingers};
                 multiGestureEvent(e);
+                CORRADE_IGNORE_DEPRECATED_POP
                 break;
             }
+            #endif
 
             case SDL_TEXTINPUT: {
                 TextInputEvent e{event, event.text.text};
@@ -1022,10 +1285,10 @@ bool Sdl2Application::mainLoopIteration() {
 
         #ifndef CORRADE_TARGET_EMSCRIPTEN
         /* If VSync is not enabled, delay to prevent CPU hogging (if set) */
-        if(!(_flags & Flag::VSyncEnabled) && _minimalLoopPeriod) {
-            const UnsignedInt loopTime = SDL_GetTicks() - timeBefore;
-            if(loopTime < _minimalLoopPeriod)
-                SDL_Delay(_minimalLoopPeriod - loopTime);
+        if(!(_flags & Flag::VSyncEnabled) && _minimalLoopPeriodMilliseconds) {
+            const Nanoseconds loopTime = SDL_GetTicks()*1.0_msec - timeBefore;
+            if(loopTime < _minimalLoopPeriodMilliseconds*1.0_msec)
+                SDL_Delay(_minimalLoopPeriodMilliseconds - loopTime/1.0_msec);
         }
         #endif
 
@@ -1034,10 +1297,10 @@ bool Sdl2Application::mainLoopIteration() {
 
     #ifndef CORRADE_TARGET_EMSCRIPTEN
     /* If not drawing anything, delay to prevent CPU hogging (if set) */
-    if(_minimalLoopPeriod) {
-        const UnsignedInt loopTime = SDL_GetTicks() - timeBefore;
-        if(loopTime < _minimalLoopPeriod)
-            SDL_Delay(_minimalLoopPeriod - loopTime);
+    if(_minimalLoopPeriodMilliseconds) {
+        const Nanoseconds loopTime = SDL_GetTicks()*1.0_msec - timeBefore;
+        if(loopTime < _minimalLoopPeriodMilliseconds*1.0_msec)
+            SDL_Delay(_minimalLoopPeriodMilliseconds - loopTime/1.0_msec);
     }
 
     /* Then, if the tick event doesn't need to be called periodically, wait
@@ -1199,11 +1462,165 @@ void Sdl2Application::anyEvent(SDL_Event&) {
 void Sdl2Application::viewportEvent(ViewportEvent&) {}
 void Sdl2Application::keyPressEvent(KeyEvent&) {}
 void Sdl2Application::keyReleaseEvent(KeyEvent&) {}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+namespace {
+
+CORRADE_IGNORE_DEPRECATED_PUSH
+Sdl2Application::MouseEvent::Button pointerToButton(const Sdl2Application::Pointer pointer) {
+    switch(pointer) {
+        case Sdl2Application::Pointer::MouseLeft:
+        #ifndef CORRADE_TARGET_EMSCRIPTEN
+        case Sdl2Application::Pointer::Finger:
+        #endif
+            return Sdl2Application::MouseEvent::Button::Left;
+        case Sdl2Application::Pointer::MouseMiddle:
+            return Sdl2Application::MouseEvent::Button::Middle;
+        case Sdl2Application::Pointer::MouseRight:
+            return Sdl2Application::MouseEvent::Button::Right;
+        case Sdl2Application::Pointer::MouseButton4:
+            return Sdl2Application::MouseEvent::Button::X1;
+        case Sdl2Application::Pointer::MouseButton5:
+            return Sdl2Application::MouseEvent::Button::X2;
+    }
+
+    CORRADE_INTERNAL_ASSERT_UNREACHABLE();
+}
+CORRADE_IGNORE_DEPRECATED_POP
+
+}
+#endif
+
+void Sdl2Application::pointerPressEvent(PointerEvent& event) {
+    #ifdef MAGNUM_BUILD_DEPRECATED
+    if(!event.isPrimary())
+        return;
+
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    MouseEvent mouseEvent{event.event(), pointerToButton(event.pointer()), Vector2i{Math::round(event.position())}
+        #ifndef CORRADE_TARGET_EMSCRIPTEN
+        , event.clickCount()
+        #endif
+    };
+    mousePressEvent(mouseEvent);
+    CORRADE_IGNORE_DEPRECATED_POP
+    #else
+    static_cast<void>(event);
+    #endif
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
 void Sdl2Application::mousePressEvent(MouseEvent&) {}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
+void Sdl2Application::pointerReleaseEvent(PointerEvent& event) {
+    #ifdef MAGNUM_BUILD_DEPRECATED
+    if(!event.isPrimary())
+        return;
+
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    MouseEvent mouseEvent{event.event(), pointerToButton(event.pointer()), Vector2i{Math::round(event.position())}
+        #ifndef CORRADE_TARGET_EMSCRIPTEN
+        , event.clickCount()
+        #endif
+    };
+    mouseReleaseEvent(mouseEvent);
+    CORRADE_IGNORE_DEPRECATED_POP
+    #else
+    static_cast<void>(event);
+    #endif
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
 void Sdl2Application::mouseReleaseEvent(MouseEvent&) {}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
+void Sdl2Application::pointerMoveEvent(PointerMoveEvent& event) {
+    #ifdef MAGNUM_BUILD_DEPRECATED
+    if(!event.isPrimary())
+        return;
+
+    const Vector2i roundedPosition{Math::round(event.position())};
+
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    /* If the event is due to some button being additionally pressed or one
+       button from a larger set being released, delegate to a press/release
+       event instead */
+    if(event.pointer()) {
+        /* SDL2 reports either a move or a press/release, so there shouldn't be
+           any move in this case */
+        CORRADE_INTERNAL_ASSERT(event.relativePosition() == Vector2{});
+        MouseEvent mouseEvent{event.event(), pointerToButton(*event.pointer()),
+            roundedPosition
+            #ifndef CORRADE_TARGET_EMSCRIPTEN
+            , 1
+            #endif
+        };
+        event.pointers() >= *event.pointer() ?
+            mousePressEvent(mouseEvent) : mouseReleaseEvent(mouseEvent);
+    } else {
+        MouseMoveEvent::Buttons buttons;
+        if(event.pointers() & (Pointer::MouseLeft
+            #ifndef CORRADE_TARGET_EMSCRIPTEN
+            |Pointer::Finger
+            #endif
+        ))
+            buttons |= MouseMoveEvent::Button::Left;
+        if(event.pointers() & Pointer::MouseMiddle)
+            buttons |= MouseMoveEvent::Button::Middle;
+        if(event.pointers() & Pointer::MouseRight)
+            buttons |= MouseMoveEvent::Button::Right;
+        if(event.pointers() & Pointer::MouseButton4)
+            buttons |= MouseMoveEvent::Button::X1;
+        if(event.pointers() & Pointer::MouseButton5)
+            buttons |= MouseMoveEvent::Button::X2;
+
+        /* Can't do just Math::round(event.relativePosition()) because if the
+           previous position was 4.6 and the new 5.3, they both round to 5 but
+           the relativePosition is 0.6 and rounds to 1. Conversely, if it'd be
+           5.3 and 5.6, the positions round to 5 and 6 but relative position
+           stays 0. */
+        const Vector2i previousRoundedPosition{Math::round(event.position() - event.relativePosition())};
+        /* Call the event only if the integer values actually changed */
+        if(roundedPosition != previousRoundedPosition) {
+            MouseMoveEvent mouseEvent{event.event(), roundedPosition, roundedPosition - previousRoundedPosition, buttons};
+            mouseMoveEvent(mouseEvent);
+        }
+    }
+    CORRADE_IGNORE_DEPRECATED_POP
+    #else
+    static_cast<void>(event);
+    #endif
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
 void Sdl2Application::mouseMoveEvent(MouseMoveEvent&) {}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
+void Sdl2Application::scrollEvent(ScrollEvent& event) {
+    #ifdef MAGNUM_BUILD_DEPRECATED
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    MouseScrollEvent mouseEvent{event.event(), event.offset()};
+    mouseScrollEvent(mouseEvent);
+    CORRADE_IGNORE_DEPRECATED_POP
+    #else
+    static_cast<void>(event);
+    #endif
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
 void Sdl2Application::mouseScrollEvent(MouseScrollEvent&) {}
 void Sdl2Application::multiGestureEvent(MultiGestureEvent&) {}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
 void Sdl2Application::textInputEvent(TextInputEvent&) {}
 void Sdl2Application::textEditingEvent(TextEditingEvent&) {}
 
@@ -1236,24 +1653,72 @@ Sdl2Application::Configuration::Configuration():
 
 Sdl2Application::Configuration::~Configuration() = default;
 
-Containers::StringView Sdl2Application::KeyEvent::keyName(const Key key) {
-    return SDL_GetKeyName(SDL_Keycode(key));
+#ifdef MAGNUM_BUILD_DEPRECATED
+Containers::StringView Sdl2Application::KeyEvent::keyName(const Sdl2Application::Key key) {
+    return Sdl2Application::keyName(key);
 }
+#endif
 
 Containers::StringView Sdl2Application::KeyEvent::keyName() const {
-    return keyName(_key);
+    return Sdl2Application::keyName(_key);
 }
 
-Sdl2Application::InputEvent::Modifiers Sdl2Application::MouseEvent::modifiers() {
+#ifndef CORRADE_TARGET_EMSCRIPTEN
+Containers::StringView Sdl2Application::KeyEvent::scanCodeName() const {
+    return Sdl2Application::scanCodeName(_scancode);
+}
+#endif
+
+Sdl2Application::Modifiers Sdl2Application::PointerEvent::modifiers() {
+    if(!_modifiers)
+        _modifiers = fixedModifiers(Uint16(SDL_GetModState()));
+    return *_modifiers;
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
+Sdl2Application::Modifiers Sdl2Application::MouseEvent::modifiers() {
     if(_modifiers) return *_modifiers;
     return *(_modifiers = fixedModifiers(Uint16(SDL_GetModState())));
 }
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
 
-Sdl2Application::InputEvent::Modifiers Sdl2Application::MouseMoveEvent::modifiers() {
+Sdl2Application::Modifiers Sdl2Application::PointerMoveEvent::modifiers() {
+    if(!_modifiers)
+        _modifiers = fixedModifiers(Uint16(SDL_GetModState()));
+    return *_modifiers;
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
+Sdl2Application::Modifiers Sdl2Application::MouseMoveEvent::modifiers() {
     if(_modifiers) return *_modifiers;
     return *(_modifiers = fixedModifiers(Uint16(SDL_GetModState())));
 }
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
 
+/* Yeah, it's 2.0.22 and then 2.24.0, they changed the versioning */
+#if !SDL_VERSION_ATLEAST(2, 26, 0)
+Vector2 Sdl2Application::ScrollEvent::position() {
+    if(!_position) {
+        Vector2i position;
+        SDL_GetMouseState(&position.x(), &position.y());
+        _position = Vector2{position};
+    }
+    return *_position;
+}
+#endif
+
+Sdl2Application::Modifiers Sdl2Application::ScrollEvent::modifiers() {
+    if(!_modifiers)
+        _modifiers = fixedModifiers(Uint16(SDL_GetModState()));
+    return *_modifiers;
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
 Vector2i Sdl2Application::MouseScrollEvent::position() {
     if(_position) return *_position;
     _position = Vector2i{};
@@ -1261,12 +1726,26 @@ Vector2i Sdl2Application::MouseScrollEvent::position() {
     return *_position;
 }
 
-Sdl2Application::InputEvent::Modifiers Sdl2Application::MouseScrollEvent::modifiers() {
+Sdl2Application::Modifiers Sdl2Application::MouseScrollEvent::modifiers() {
     if(_modifiers) return *_modifiers;
     return *(_modifiers = fixedModifiers(Uint16(SDL_GetModState())));
 }
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
 
+/* WinRT builds by default have deprecation warnings as errors. Combined with a
+   MSVC 2017 bug where deprecation warning suppression doesn't work on virtual
+   function overrides this make the build fail on deprecation warnings due to
+   ScreenedApplication overriding mousePressEvent(), mouseReleaseEvent(),
+   mouseMoveEvent() and mouseScrollEvent(). Disable the warnings at a higher
+   level instead. */
+#if defined(MAGNUM_BUILD_DEPRECATED) && defined(CORRADE_TARGET_MSVC) && !defined(CORRADE_TARGET_CLANG) && _MSC_VER < 1920
+CORRADE_IGNORE_DEPRECATED_PUSH
+#endif
 template class BasicScreen<Sdl2Application>;
 template class BasicScreenedApplication<Sdl2Application>;
+#if defined(MAGNUM_BUILD_DEPRECATED) && defined(CORRADE_TARGET_MSVC) && !defined(CORRADE_TARGET_CLANG) && _MSC_VER < 1920
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
 
 }}

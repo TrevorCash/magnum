@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -25,7 +26,7 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#ifdef MAGNUM_BUILD_DEPRECATED
+#if defined(MAGNUM_TARGET_GL) && defined(MAGNUM_BUILD_DEPRECATED)
 /** @file
  * @brief Typedef @ref Magnum::Shaders::VertexColor, alias @ref Magnum::Shaders::VertexColor2D, @ref Magnum::Shaders::VertexColor3D
  * @m_deprecated_since_latest Use @ref Magnum/Shaders/VertexColorGL.h, the
@@ -36,7 +37,7 @@
 
 #include "Magnum/configure.h"
 
-#ifdef MAGNUM_BUILD_DEPRECATED
+#if defined(MAGNUM_TARGET_GL) && defined(MAGNUM_BUILD_DEPRECATED)
 #include <Corrade/Utility/Macros.h>
 
 #include "Magnum/Shaders/VertexColorGL.h"
@@ -63,8 +64,10 @@ typedef CORRADE_DEPRECATED("use VertexColorGL2D instead") VertexColorGL2D Vertex
 typedef CORRADE_DEPRECATED("use VertexColorGL3D instead") VertexColorGL3D VertexColor3D;
 
 }}
-#else
+#elif defined(MAGNUM_TARGET_GL)
 #error use Magnum/Shaders/VertexColorGL.h, the VertexColorGL class and related typedefs instead
+#else
+#error this header is available only in the OpenGL build
 #endif
 
 #endif

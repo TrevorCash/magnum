@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,7 +24,7 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <string> /** @todo remove once AbstractFontConverter is STL-free */
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/String.h>
@@ -31,7 +32,6 @@
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/File.h>
 #include <Corrade/Utility/Algorithms.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/Image.h"
@@ -115,23 +115,31 @@ class MyFont: public Text::AbstractFont {
         FontFeatures doFeatures() const override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return nullptr; }
 
-        UnsignedInt doGlyphId(const char32_t character) override {
-            switch(character) {
-                case U'W': return 2;
-                case U'e': return 1;
-                /* MSVC (but not clang-cl) doesn't support UTF-8 in char32_t
-                   literals but it does it regular strings. Still a problem in
-                   MSVC 2022, what a trash fire, can't you just give up on
-                   those codepage insanities already, ffs?! */
-                #if defined(CORRADE_TARGET_MSVC) && !defined(CORRADE_TARGET_CLANG)
-                case U'\u011B':
-                #else
-                case U'ě':
-                #endif
-                    return 3;
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>& characters, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) override {
+            for(std::size_t i = 0; i != characters.size(); ++i) {
+                switch(characters[i]) {
+                    case U'W':
+                        glyphs[i] = 2;
+                        break;
+                    case U'e':
+                        glyphs[i] = 1;
+                        break;
+                    /* MSVC (but not clang-cl) doesn't support UTF-8 in
+                       char32_t literals but it does it regular strings. Still
+                       a problem in MSVC 2022, what a trash fire, can't you
+                       just give up on those codepage insanities already,
+                       ffs?! */
+                    #if defined(CORRADE_TARGET_MSVC) && !defined(CORRADE_TARGET_CLANG)
+                    case U'\u011B':
+                    #else
+                    case U'ě':
+                    #endif
+                        glyphs[i] = 3;
+                        break;
+                    default:
+                        glyphs[i] = 0;
+                }
             }
-
-            return 0;
         }
 
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
@@ -323,7 +331,8 @@ void MagnumFontConverterTest::exportFontEmptyCache() {
 
         GlyphCacheFeatures doFeatures() const override { return {}; }
         void doSetImage(const Vector2i&, const ImageView2D&) override {}
-    } cache{PixelFormat::R8Unorm, {8, 4}};
+    /* Default padding is 1 to avoid artifacts, set that to 0 to simplify */
+    } cache{PixelFormat::R8Unorm, {8, 4}, {}};
 
     /* Associate the font with the cache. The case where it's not even that is
        tested in exportFontNotFoundInCache() below. */
@@ -422,7 +431,7 @@ void MagnumFontConverterTest::exportFontImageProcessingGlyphCacheNoDownload() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return nullptr; }
@@ -437,10 +446,10 @@ void MagnumFontConverterTest::exportFontImageProcessingGlyphCacheNoDownload() {
 
     Containers::Pointer<AbstractFontConverter> converter = _fontConverterManager.instantiate("MagnumFontConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     converter->exportFontToFile(font, cache, Utility::Path::join(MAGNUMFONTCONVERTER_TEST_WRITE_DIR, "font"), "Wave");
-    CORRADE_COMPARE(out.str(), "Text::MagnumFontConverter::exportFontToData(): glyph cache has image processing but doesn't support image download\n");
+    CORRADE_COMPARE(out, "Text::MagnumFontConverter::exportFontToData(): glyph cache has image processing but doesn't support image download\n");
 }
 
 void MagnumFontConverterTest::exportFontArrayCache() {
@@ -450,7 +459,7 @@ void MagnumFontConverterTest::exportFontArrayCache() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return nullptr; }
@@ -467,10 +476,10 @@ void MagnumFontConverterTest::exportFontArrayCache() {
 
     Containers::Pointer<AbstractFontConverter> converter = _fontConverterManager.instantiate("MagnumFontConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     converter->exportFontToFile(font, cache, Utility::Path::join(MAGNUMFONTCONVERTER_TEST_WRITE_DIR, "font"), "Wave");
-    CORRADE_COMPARE(out.str(), "Text::MagnumFontConverter::exportFontToData(): exporting array glyph caches is not supported\n");
+    CORRADE_COMPARE(out, "Text::MagnumFontConverter::exportFontToData(): exporting array glyph caches is not supported\n");
 }
 
 void MagnumFontConverterTest::exportFontNotFoundInCache() {
@@ -480,7 +489,7 @@ void MagnumFontConverterTest::exportFontNotFoundInCache() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return nullptr; }
@@ -498,10 +507,10 @@ void MagnumFontConverterTest::exportFontNotFoundInCache() {
 
     Containers::Pointer<AbstractFontConverter> converter = _fontConverterManager.instantiate("MagnumFontConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     converter->exportFontToFile(font1, cache, Utility::Path::join(MAGNUMFONTCONVERTER_TEST_WRITE_DIR, "font"), "Wave");
-    CORRADE_COMPARE(out.str(), "Text::MagnumFontConverter::exportFontToData(): font not found among 2 fonts in passed glyph cache\n");
+    CORRADE_COMPARE(out, "Text::MagnumFontConverter::exportFontToData(): font not found among 2 fonts in passed glyph cache\n");
 }
 
 void MagnumFontConverterTest::exportFontImageConversionFailed() {
@@ -514,7 +523,10 @@ void MagnumFontConverterTest::exportFontImageConversionFailed() {
             return {16.0f, 25.0f, -10.0f, 39.7333f, 3};
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) override {
+            for(UnsignedInt& i: glyphs)
+                i = 0;
+        }
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return nullptr; }
@@ -536,10 +548,10 @@ void MagnumFontConverterTest::exportFontImageConversionFailed() {
 
     Containers::Pointer<AbstractFontConverter> converter = _fontConverterManager.instantiate("MagnumFontConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     converter->exportFontToFile(font, cache, Utility::Path::join(MAGNUMFONTCONVERTER_TEST_WRITE_DIR, "font"), "Wave");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::TgaImageConverter::convertToData(): unsupported pixel format PixelFormat::R32F\n"
         "Text::MagnumFontConverter::exportFontToData(): cannot create a TGA image\n");
 }

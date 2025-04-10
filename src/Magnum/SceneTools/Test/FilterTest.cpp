@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,13 +24,13 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/BitArray.h>
+#include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pair.h>
 #include <Corrade/Containers/StridedBitArrayView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Complex.h"
 #include "Magnum/Math/Vector2.h"
@@ -42,13 +43,16 @@ struct FilterTest: TestSuite::Tester {
     explicit FilterTest();
 
     void fields();
+    void fieldsRvalue();
     void fieldsWrongBitCount();
 
     void onlyFields();
     void onlyFieldsNoFieldData();
+    void onlyFieldsRvalue();
 
     void exceptFields();
     void exceptFieldsNoFieldData();
+    void exceptFieldsRvalue();
 
     void fieldEntries();
     void fieldEntriesFieldNotFound();
@@ -71,6 +75,20 @@ using namespace Math::Literals;
 
 const struct {
     const char* name;
+    Trade::DataFlags dataFlags, expectedDataFlags;
+} FieldsRvalueData[]{
+    /* The Global or ExternallyOwned flags are not preserved, because
+       reference() doesn't preserve them either */
+    {"not owned",
+        Trade::DataFlag::Global|Trade::DataFlag::ExternallyOwned,
+        {}},
+    {"owned",
+        Trade::DataFlag::Owned,
+        Trade::DataFlag::Owned|Trade::DataFlag::Mutable}
+};
+
+const struct {
+    const char* name;
     bool byName;
 } FieldEntriesData[]{
     {"by ID", false},
@@ -78,14 +96,20 @@ const struct {
 };
 
 FilterTest::FilterTest() {
-    addTests({&FilterTest::fields,
-              &FilterTest::fieldsWrongBitCount,
+    addTests({&FilterTest::fields});
+
+    addInstancedTests({&FilterTest::fieldsRvalue},
+        Containers::arraySize(FieldsRvalueData));
+
+    addTests({&FilterTest::fieldsWrongBitCount,
 
               &FilterTest::onlyFields,
               &FilterTest::onlyFieldsNoFieldData,
+              &FilterTest::onlyFieldsRvalue,
 
               &FilterTest::exceptFields,
-              &FilterTest::exceptFieldsNoFieldData});
+              &FilterTest::exceptFieldsNoFieldData,
+              &FilterTest::exceptFieldsRvalue});
 
     addInstancedTests({&FilterTest::fieldEntries},
         Containers::arraySize(FieldEntriesData));
@@ -164,6 +188,62 @@ void FilterTest::fields() {
     CORRADE_VERIFY(!fieldData.deleter());
 }
 
+void FilterTest::fieldsRvalue() {
+    auto&& data = FieldsRvalueData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    /* Subset of attributes() verifying data ownership transfer behavior */
+
+    struct Data {
+        UnsignedShort meshMaterialMapping[5];
+        UnsignedByte mesh[5];
+        Byte meshMaterial[5];
+        UnsignedShort lightVisibilityMapping[3];
+        UnsignedInt light[3];
+        bool visible[3];
+    };
+    Containers::Array<char> sceneData{sizeof(Data)};
+    Data& d = *reinterpret_cast<Data*>(sceneData.data());
+    Containers::Array<Trade::SceneFieldData> fields{InPlaceInit, {
+        Trade::SceneFieldData{Trade::SceneField::Mesh,
+            Containers::arrayView(d.meshMaterialMapping),
+            Containers::arrayView(d.mesh)},
+        Trade::SceneFieldData{Trade::SceneField::MeshMaterial,
+            Containers::arrayView(d.meshMaterialMapping),
+            Containers::arrayView(d.meshMaterial)},
+        Trade::SceneFieldData{Trade::SceneField::Light,
+            Containers::arrayView(d.lightVisibilityMapping),
+            Containers::arrayView(d.light)},
+        Trade::SceneFieldData{Trade::sceneFieldCustom(15),
+            Containers::arrayView(d.lightVisibilityMapping),
+            Containers::stridedArrayView(d.visible).sliceBit(0)},
+    }};
+
+    Containers::Optional<Trade::SceneData> scene;
+    if(data.dataFlags >= Trade::DataFlag::Owned)
+        scene = Trade::SceneData{Trade::SceneMappingType::UnsignedShort, 76, Utility::move(sceneData), Utility::move(fields)};
+    else
+        scene = Trade::SceneData{Trade::SceneMappingType::UnsignedShort, 76, data.dataFlags, sceneData, Utility::move(fields)};
+
+    Containers::BitArray attributesToKeep{ValueInit, scene->fieldCount()};
+    attributesToKeep.set(0);
+    attributesToKeep.set(1);
+    attributesToKeep.set(3);
+
+    /* The data ownership should be transferred if possible */
+    Trade::SceneData filtered = filterFields(Utility::move(*scene), attributesToKeep);
+    CORRADE_COMPARE(filtered.mappingType(), Trade::SceneMappingType::UnsignedShort);
+    CORRADE_COMPARE(filtered.mappingBound(), 76);
+    CORRADE_COMPARE(filtered.data().data(), static_cast<const void*>(&d));
+    CORRADE_COMPARE(filtered.dataFlags(), data.expectedDataFlags);
+
+    /* Just checking that the fields get actually filtered instead of being
+       passed through verbatim, the actual verification is done in fields()
+       above */
+    CORRADE_COMPARE(filtered.fieldCount(), 3);
+    CORRADE_COMPARE(filtered.fieldName(0), Trade::SceneField::Mesh);
+}
+
 void FilterTest::fieldsWrongBitCount() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
@@ -178,10 +258,10 @@ void FilterTest::fieldsWrongBitCount() {
             Containers::arrayView(data)},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     filterFields(scene, Containers::BitArray{ValueInit, 3});
-    CORRADE_COMPARE(out.str(), "SceneTools::filterFields(): expected 2 bits but got 3\n");
+    CORRADE_COMPARE(out, "SceneTools::filterFields(): expected 2 bits but got 3\n");
 }
 
 void FilterTest::onlyFields() {
@@ -235,13 +315,55 @@ void FilterTest::onlyFields() {
 void FilterTest::onlyFieldsNoFieldData() {
     /* Just to verify it doesn't crash */
 
-    Trade::SceneData filtered = filterOnlyFields(Trade::SceneData{Trade::SceneMappingType::UnsignedShort, 331, nullptr, {}}, {
-        Trade::SceneField::MeshMaterial,
+    Trade::SceneData scene{Trade::SceneMappingType::UnsignedShort, 331, nullptr, {}};
+    Trade::SceneData filtered = filterOnlyFields(scene, {
+        Trade::SceneField::MeshMaterial
     });
     CORRADE_COMPARE(filtered.mappingType(), Trade::SceneMappingType::UnsignedShort);
     CORRADE_COMPARE(filtered.mappingBound(), 331);
     CORRADE_COMPARE(filtered.data().data(), nullptr);
     CORRADE_COMPARE(filtered.dataFlags(), Trade::DataFlags{});
+}
+
+void FilterTest::onlyFieldsRvalue() {
+    /* Subset of onlyFields() verifying data ownership transfer behavior. All
+       cases of ownership transfer are verified in fieldsRvalue(), this only
+       checks that the r-value gets correctly passed through all overloads to
+       keep the data owned. */
+
+    struct Data {
+        UnsignedByte meshMaterialMapping[5];
+        UnsignedByte mesh[5];
+        Byte meshMaterial[5];
+        UnsignedByte lightMapping[3];
+        UnsignedInt light[3];
+    };
+    Containers::Array<char> data{sizeof(Data)};
+    Data& d = *reinterpret_cast<Data*>(data.data());
+
+    Trade::SceneData scene{Trade::SceneMappingType::UnsignedByte, 133, Utility::move(data), {
+        Trade::SceneFieldData{Trade::SceneField::Mesh,
+            Containers::arrayView(d.meshMaterialMapping),
+            Containers::arrayView(d.mesh)},
+        Trade::SceneFieldData{Trade::SceneField::MeshMaterial,
+            Containers::arrayView(d.meshMaterialMapping),
+            Containers::arrayView(d.meshMaterial)},
+        Trade::SceneFieldData{Trade::SceneField::Light,
+            Containers::arrayView(d.lightMapping),
+            Containers::arrayView(d.light)},
+    }};
+
+    Trade::SceneData filtered = filterOnlyFields(Utility::move(scene), {
+        Trade::SceneField::Light,
+        Trade::SceneField::MeshMaterial
+    });
+    CORRADE_COMPARE(filtered.mappingType(), Trade::SceneMappingType::UnsignedByte);
+    CORRADE_COMPARE(filtered.mappingBound(), 133);
+    CORRADE_COMPARE(filtered.data().data(), static_cast<const void*>(&d));
+    CORRADE_COMPARE(filtered.dataFlags(), Trade::DataFlag::Owned|Trade::DataFlag::Mutable);
+
+    CORRADE_COMPARE(filtered.fieldCount(), 2);
+    CORRADE_COMPARE(filtered.fieldName(0), Trade::SceneField::MeshMaterial);
 }
 
 void FilterTest::exceptFields() {
@@ -301,13 +423,59 @@ void FilterTest::exceptFields() {
 void FilterTest::exceptFieldsNoFieldData() {
     /* Just to verify it doesn't crash */
 
-    Trade::SceneData filtered = filterOnlyFields(Trade::SceneData{Trade::SceneMappingType::UnsignedShort, 331, nullptr, {}}, {
+    Trade::SceneData scene{Trade::SceneMappingType::UnsignedShort, 331, nullptr, {}};
+    Trade::SceneData filtered = filterOnlyFields(scene, {
         Trade::SceneField::MeshMaterial,
     });
     CORRADE_COMPARE(filtered.mappingType(), Trade::SceneMappingType::UnsignedShort);
     CORRADE_COMPARE(filtered.mappingBound(), 331);
     CORRADE_COMPARE(filtered.data().data(), nullptr);
     CORRADE_COMPARE(filtered.dataFlags(), Trade::DataFlags{});
+}
+
+void FilterTest::exceptFieldsRvalue() {
+    /* Subset of exceptFields() verifying data ownership transfer behavior. All
+       cases of ownership transfer are verified in fieldsRvalue(), this only
+       checks that the r-value gets correctly passed through all overloads to
+       keep the data owned. */
+
+    struct Data {
+        UnsignedLong meshMaterialMapping[5];
+        UnsignedByte mesh[5];
+        Byte meshMaterial[5];
+        UnsignedLong lightVisibilityMapping[3];
+        UnsignedInt light[3];
+        bool visible[3];
+    };
+    Containers::Array<char> data{sizeof(Data)};
+    Data& d = *reinterpret_cast<Data*>(data.data());
+
+    Trade::SceneData scene{Trade::SceneMappingType::UnsignedLong, 12, Utility::move(data), {
+        Trade::SceneFieldData{Trade::SceneField::Mesh,
+            Containers::arrayView(d.meshMaterialMapping),
+            Containers::arrayView(d.mesh)},
+        Trade::SceneFieldData{Trade::SceneField::MeshMaterial,
+            Containers::arrayView(d.meshMaterialMapping),
+            Containers::arrayView(d.meshMaterial)},
+        Trade::SceneFieldData{Trade::SceneField::Light,
+            Containers::arrayView(d.lightVisibilityMapping),
+            Containers::arrayView(d.light)},
+        Trade::SceneFieldData{Trade::sceneFieldCustom(15),
+            Containers::arrayView(d.lightVisibilityMapping),
+            Containers::stridedArrayView(d.visible).sliceBit(0)},
+    }};
+
+    Trade::SceneData filtered = filterExceptFields(Utility::move(scene), {
+        Trade::SceneField::Light,
+        Trade::SceneField::MeshMaterial
+    });
+    CORRADE_COMPARE(filtered.mappingType(), Trade::SceneMappingType::UnsignedLong);
+    CORRADE_COMPARE(filtered.mappingBound(), 12);
+    CORRADE_COMPARE(filtered.data().data(), static_cast<const void*>(&d));
+    CORRADE_COMPARE(filtered.dataFlags(), Trade::DataFlag::Owned|Trade::DataFlag::Mutable);
+
+    CORRADE_COMPARE(filtered.fieldCount(), 2);
+    CORRADE_COMPARE(filtered.fieldName(0), Trade::SceneField::Mesh);
 }
 
 void FilterTest::fieldEntries() {
@@ -345,7 +513,7 @@ void FilterTest::fieldEntries() {
            because items are removed. */
         Trade::SceneFieldData{Trade::sceneFieldCustom(333),
             Containers::arrayView(sceneData->arrayMapping),
-            Containers::arrayCast<2, const Float>(Containers::stridedArrayView(sceneData->array)),
+            Containers::StridedArrayView2D<const Float>{Containers::stridedArrayView(sceneData->array)},
             Trade::SceneFieldFlag::ImplicitMapping},
         /* Bit field. Should cause no assert as it's just passed through. */
         Trade::SceneFieldData{Trade::sceneFieldCustom(15),
@@ -463,7 +631,7 @@ void FilterTest::fieldEntriesFieldNotFound() {
             Containers::arrayView(data->light)},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     filterFieldEntries(scene, {
         {Trade::SceneField::Light, Containers::BitArray{ValueInit, 4}},
@@ -473,7 +641,7 @@ void FilterTest::fieldEntriesFieldNotFound() {
         {1, Containers::BitArray{ValueInit, 4}},
         {2, {}}
     });
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "SceneTools::filterFieldEntries(): field Trade::SceneField::Parent not found\n"
         "SceneTools::filterFieldEntries(): index 2 out of range for 2 fields\n");
 }
@@ -497,7 +665,7 @@ void FilterTest::fieldEntriesDuplicated() {
             Containers::arrayView(data->light)},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* The name-based variant just delegates to this one, no need to test it
        as well */
@@ -506,7 +674,7 @@ void FilterTest::fieldEntriesDuplicated() {
         {0, Containers::BitArray{ValueInit, 5}},
         {1, Containers::BitArray{ValueInit, 4}},
     });
-    CORRADE_COMPARE(out.str(), "SceneTools::filterFieldEntries(): field Trade::SceneField::Light listed more than once\n");
+    CORRADE_COMPARE(out, "SceneTools::filterFieldEntries(): field Trade::SceneField::Light listed more than once\n");
 }
 
 void FilterTest::fieldEntriesWrongBitCount() {
@@ -528,7 +696,7 @@ void FilterTest::fieldEntriesWrongBitCount() {
             Containers::arrayView(data->light)},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* The name-based variant just delegates to this one, no need to test it
        as well */
@@ -536,7 +704,7 @@ void FilterTest::fieldEntriesWrongBitCount() {
         {1, Containers::BitArray{ValueInit, 4}},
         {0, Containers::BitArray{ValueInit, 6}}
     });
-    CORRADE_COMPARE(out.str(), "SceneTools::filterFieldEntries(): expected 5 bits for Trade::SceneField::Mesh but got 6\n");
+    CORRADE_COMPARE(out, "SceneTools::filterFieldEntries(): expected 5 bits for Trade::SceneField::Mesh but got 6\n");
 }
 
 void FilterTest::fieldEntriesBitField() {
@@ -558,7 +726,7 @@ void FilterTest::fieldEntriesBitField() {
             Containers::stridedArrayView(data->visible).sliceBit(0)},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* The name-based variant just delegates to this one, no need to test it
        as well */
@@ -566,7 +734,7 @@ void FilterTest::fieldEntriesBitField() {
         {0, Containers::BitArray{ValueInit, 5}},
         {1, Containers::BitArray{ValueInit, 2}}
     });
-    CORRADE_COMPARE(out.str(), "SceneTools::filterFieldEntries(): filtering bit fields is not implemented yet, sorry\n");
+    CORRADE_COMPARE(out, "SceneTools::filterFieldEntries(): filtering bit fields is not implemented yet, sorry\n");
 }
 
 void FilterTest::fieldEntriesStringField() {
@@ -590,7 +758,7 @@ void FilterTest::fieldEntriesStringField() {
             Containers::arrayView(data->nameRangeNullTerminated)},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* The name-based variant just delegates to this one, no need to test it
        as well */
@@ -598,7 +766,7 @@ void FilterTest::fieldEntriesStringField() {
         {0, Containers::BitArray{ValueInit, 5}},
         {1, Containers::BitArray{ValueInit, 2}}
     });
-    CORRADE_COMPARE(out.str(), "SceneTools::filterFieldEntries(): filtering string fields is not implemented yet, sorry\n");
+    CORRADE_COMPARE(out, "SceneTools::filterFieldEntries(): filtering string fields is not implemented yet, sorry\n");
 }
 
 void FilterTest::fieldEntriesSharedMapping() {
@@ -767,7 +935,7 @@ void FilterTest::fieldEntriesSharedMappingInvalid() {
     Containers::BitArray meshesToKeep{ValueInit, 5};
     Containers::BitArray meshesToKeepDifferent{DirectInit, 5, true};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     filterFieldEntries(scene, {
         {Trade::SceneField::MeshMaterial, meshesToKeep},
@@ -782,7 +950,7 @@ void FilterTest::fieldEntriesSharedMappingInvalid() {
         {Trade::sceneFieldCustom(1), meshesToKeep},
         {Trade::SceneField::MeshMaterial, meshesToKeep},
     });
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "SceneTools::filterFieldEntries(): field Trade::SceneField::Custom(1) shares mapping with Trade::SceneField::MeshMaterial but was passed a different mask view\n"
         "SceneTools::filterFieldEntries(): field Trade::SceneField::Mesh shares mapping with 3 fields but only 2 are filtered\n"
         "SceneTools::filterFieldEntries(): field Trade::SceneField::Custom(1) shares mapping with 3 fields but only 2 are filtered\n");
@@ -1089,10 +1257,10 @@ void FilterTest::objectsWrongBitCount() {
 
     Trade::SceneData scene{Trade::SceneMappingType::UnsignedShort, 176, nullptr, {}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     filterObjects(scene, Containers::BitArray{ValueInit, 177});
-    CORRADE_COMPARE(out.str(), "SceneTools::filterObjects(): expected 176 bits but got 177\n");
+    CORRADE_COMPARE(out, "SceneTools::filterObjects(): expected 176 bits but got 177\n");
 }
 
 }}}}

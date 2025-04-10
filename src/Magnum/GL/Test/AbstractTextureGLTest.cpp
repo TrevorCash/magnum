@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,8 +24,7 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
-#include <Corrade/Utility/DebugStl.h>
+#include <Corrade/Containers/String.h>
 
 #include "Magnum/ImageView.h"
 #include "Magnum/GL/Context.h"
@@ -131,10 +131,10 @@ void AbstractTextureGLTest::imageQueryViewNullptr() {
 
     MutableImageView2D image{PixelFormat::RGBA, PixelType::UnsignedByte, Vector2i{2}, {nullptr, 2*2*4}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.image(0, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::image(): image view is nullptr\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::image(): image view is nullptr\n");
 }
 
 void AbstractTextureGLTest::imageQueryViewBadSize() {
@@ -148,10 +148,10 @@ void AbstractTextureGLTest::imageQueryViewBadSize() {
     char data[2*4];
     MutableImageView2D image{PixelFormat::RGBA, PixelType::UnsignedByte, Vector2i{2, 1}, data};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.image(0, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::image(): expected image view size Vector(2, 2) but got Vector(2, 1)\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::image(): expected image view size Vector(2, 2) but got Vector(2, 1)\n");
 }
 
 void AbstractTextureGLTest::subImageQueryViewNullptr() {
@@ -164,10 +164,10 @@ void AbstractTextureGLTest::subImageQueryViewNullptr() {
 
     MutableImageView2D image{PixelFormat::RGBA, PixelType::UnsignedByte, Vector2i{2}, {nullptr, 2*2*4}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.subImage(0, {{}, Vector2i{2}}, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::subImage(): image view is nullptr\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::subImage(): image view is nullptr\n");
 }
 
 void AbstractTextureGLTest::subImageQueryViewBadSize() {
@@ -184,10 +184,10 @@ void AbstractTextureGLTest::subImageQueryViewBadSize() {
     char data[2*4];
     MutableImageView2D image{PixelFormat::RGBA, PixelType::UnsignedByte, Vector2i{2, 1}, data};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.subImage(0, {{}, Vector2i{2}}, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::subImage(): expected image view size Vector(2, 2) but got Vector(2, 1)\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::subImage(): expected image view size Vector(2, 2) but got Vector(2, 1)\n");
 }
 
 void AbstractTextureGLTest::compressedImageQueryViewNullptr() {
@@ -203,10 +203,10 @@ void AbstractTextureGLTest::compressedImageQueryViewNullptr() {
 
     MutableCompressedImageView2D image{CompressedPixelFormat::RGBAS3tcDxt3, Vector2i{4}, {nullptr, 16}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.compressedImage(0, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::compressedImage(): image view is nullptr\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::compressedImage(): image view is nullptr\n");
 }
 
 void AbstractTextureGLTest::compressedImageQueryViewBadSize() {
@@ -223,10 +223,10 @@ void AbstractTextureGLTest::compressedImageQueryViewBadSize() {
     char data[2*16];
     MutableCompressedImageView2D image{CompressedPixelFormat::RGBAS3tcDxt3, Vector2i{4, 8}, data};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.compressedImage(0, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::compressedImage(): expected image view size Vector(4, 4) but got Vector(4, 8)\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::compressedImage(): expected image view size Vector(4, 4) but got Vector(4, 8)\n");
 }
 
 void AbstractTextureGLTest::compressedImageQueryViewBadDataSize() {
@@ -243,10 +243,10 @@ void AbstractTextureGLTest::compressedImageQueryViewBadDataSize() {
     char data[16 - 1];
     MutableCompressedImageView2D image{CompressedPixelFormat::RGBAS3tcDxt3, Vector2i{4}, data};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.compressedImage(0, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::compressedImage(): expected image view data size 16 bytes but got 15\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::compressedImage(): expected image view data size 16 bytes but got 15\n");
 }
 
 void AbstractTextureGLTest::compressedImageQueryViewBadFormat() {
@@ -263,10 +263,10 @@ void AbstractTextureGLTest::compressedImageQueryViewBadFormat() {
     char data[16];
     MutableCompressedImageView2D image{CompressedPixelFormat::RGBAS3tcDxt1, Vector2i{4}, data};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.compressedImage(0, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::compressedImage(): expected image view format GL::CompressedPixelFormat::RGBAS3tcDxt3 but got GL::CompressedPixelFormat::RGBAS3tcDxt1\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::compressedImage(): expected image view format GL::CompressedPixelFormat::RGBAS3tcDxt3 but got GL::CompressedPixelFormat::RGBAS3tcDxt1\n");
 }
 
 void AbstractTextureGLTest::compressedSubImageQueryViewNullptr() {
@@ -286,10 +286,10 @@ void AbstractTextureGLTest::compressedSubImageQueryViewNullptr() {
 
     MutableCompressedImageView2D image{CompressedPixelFormat::RGBAS3tcDxt3, Vector2i{4}, {nullptr, 16}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.compressedSubImage(0, {{}, Vector2i{4}}, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::compressedSubImage(): image view is nullptr\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::compressedSubImage(): image view is nullptr\n");
 }
 
 void AbstractTextureGLTest::compressedSubImageQueryViewBadSize() {
@@ -310,10 +310,10 @@ void AbstractTextureGLTest::compressedSubImageQueryViewBadSize() {
     char data[2*16];
     MutableCompressedImageView2D image{CompressedPixelFormat::RGBAS3tcDxt3, Vector2i{4, 8}, data};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.compressedSubImage(0, {{}, Vector2i{4}}, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::compressedSubImage(): expected image view size Vector(4, 4) but got Vector(4, 8)\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::compressedSubImage(): expected image view size Vector(4, 4) but got Vector(4, 8)\n");
 }
 
 void AbstractTextureGLTest::compressedSubImageQueryViewBadDataSize() {
@@ -334,10 +334,10 @@ void AbstractTextureGLTest::compressedSubImageQueryViewBadDataSize() {
     char data[16 - 1];
     MutableCompressedImageView2D image{CompressedPixelFormat::RGBAS3tcDxt3, Vector2i{4}, data};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.compressedSubImage(0, {{}, Vector2i{4}}, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::compressedSubImage(): expected image view data size 16 bytes but got 15\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::compressedSubImage(): expected image view data size 16 bytes but got 15\n");
 }
 
 void AbstractTextureGLTest::compressedSubImageQueryViewBadFormat() {
@@ -358,10 +358,10 @@ void AbstractTextureGLTest::compressedSubImageQueryViewBadFormat() {
     char data[16];
     MutableCompressedImageView2D image{CompressedPixelFormat::RGBAS3tcDxt1, Vector2i{4}, data};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     texture.compressedSubImage(0, {{}, Vector2i{4}}, image);
-    CORRADE_COMPARE(out.str(), "GL::AbstractTexture::compressedSubImage(): expected image view format GL::CompressedPixelFormat::RGBAS3tcDxt3 but got GL::CompressedPixelFormat::RGBAS3tcDxt1\n");
+    CORRADE_COMPARE(out, "GL::AbstractTexture::compressedSubImage(): expected image view format GL::CompressedPixelFormat::RGBAS3tcDxt3 but got GL::CompressedPixelFormat::RGBAS3tcDxt1\n");
 }
 #endif
 

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -56,9 +57,13 @@ struct BufferGLTest: OpenGLTester {
     #ifndef MAGNUM_TARGET_GLES2
     void bindBase();
     void bindRange();
+    void bindBaseRangeUpdateRegularBinding();
+    #ifndef MAGNUM_TARGET_WEBGL
+    void bindBaseRangeCreatesObject();
+    #endif
     #endif
 
-    #ifndef MAGNUM_TARGET_GLES
+    #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
     void storage();
     void storagePreinitialized();
     #endif
@@ -75,6 +80,29 @@ struct BufferGLTest: OpenGLTester {
     void invalidate();
 };
 
+#ifndef MAGNUM_TARGET_GLES2
+const struct {
+    const char* name;
+    bool bindRange;
+    bool multi;
+} BindBaseRangeUpdateRegularBindingData[]{
+    {"bind base", false, false},
+    {"bind bases", false, true},
+    {"bind range", true, false},
+    {"bind ranges", true, true},
+};
+
+#ifndef MAGNUM_TARGET_WEBGL
+const struct {
+    const char* name;
+    bool multi;
+} BindBaseRangeCreatesObjectData[]{
+    {"bind base", false},
+    {"bind bases", true},
+};
+#endif
+#endif
+
 BufferGLTest::BufferGLTest() {
     addTests({&BufferGLTest::construct,
               &BufferGLTest::constructFromData,
@@ -89,8 +117,20 @@ BufferGLTest::BufferGLTest() {
               &BufferGLTest::bindBase,
               &BufferGLTest::bindRange,
               #endif
+              });
 
-              #ifndef MAGNUM_TARGET_GLES
+    #ifndef MAGNUM_TARGET_GLES2
+    addInstancedTests({&BufferGLTest::bindBaseRangeUpdateRegularBinding},
+        Containers::arraySize(BindBaseRangeUpdateRegularBindingData));
+
+    #ifndef MAGNUM_TARGET_WEBGL
+    addInstancedTests({&BufferGLTest::bindBaseRangeCreatesObject},
+        Containers::arraySize(BindBaseRangeCreatesObjectData));
+    #endif
+    #endif
+
+    addTests({
+              #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
               &BufferGLTest::storage,
               &BufferGLTest::storagePreinitialized,
               #endif
@@ -262,12 +302,134 @@ void BufferGLTest::bindRange() {
 
     MAGNUM_VERIFY_NO_GL_ERROR();
 }
+
+void BufferGLTest::bindBaseRangeUpdateRegularBinding() {
+    auto&& data = BindBaseRangeUpdateRegularBindingData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    #ifndef MAGNUM_TARGET_GLES
+    if(!Context::current().isExtensionSupported<Extensions::ARB::uniform_buffer_object>())
+        CORRADE_SKIP(Extensions::ARB::uniform_buffer_object::string() << "is not supported.");
+    if(Context::current().isExtensionSupported<Extensions::ARB::direct_state_access>())
+        CORRADE_SKIP(Extensions::ARB::direct_state_access::string() << "is supported, can't test.");
+    #endif
+
+    /* glBindBufferRange() / glBindBufferBase() binds the buffer to the regular
+       binding point as a side effect. Verify that the state tracker accounts
+       for that when uploading data to another (larger) buffer via classic
+       glBindBuffer() + glBufferSubData() -- if it wouldn't, the data upload
+       would fail due to the range being too large.
+
+       In comparison, the multi-bind APIs don't have this side effect. GL is
+       "fun". */
+
+    Buffer small{Buffer::TargetHint::Uniform};
+    small.setData({nullptr, 16});
+
+    Buffer large{Buffer::TargetHint::Uniform};
+    /* Without DSA, this makes the current Uniform buffer binding set to
+       `large`. */
+    large.setData({nullptr, 128});
+
+    /* And this makes the current Uniform buffer binding set to `small` again,
+       but only as a side effect. Testing also the multi variants, they
+       shouldn't do that though. */
+    if(data.multi) {
+        if(data.bindRange)
+            Buffer::bind(Buffer::Target::Uniform, 0, {{&small, 0, 16}});
+        else
+            Buffer::bind(Buffer::Target::Uniform, 0, {&small});
+    } else {
+        if(data.bindRange)
+            small.bind(Buffer::Target::Uniform, 0, 0, 16);
+        else
+            small.bind(Buffer::Target::Uniform, 0);
+    }
+
+    /* So this has to explicitly rebind `large` again as the binding was
+       overwritten by the above, even though glBindBuffer() wasn't directly
+       called */
+    char zeros[128]{};
+    large.setSubData(0, zeros);
+
+    MAGNUM_VERIFY_NO_GL_ERROR();
+
+    /* Conversely, unbinding the indexed target then resets the regular binding
+       point as a side effect. Again verify that the state tracker accounts for
+       that by trying to upload data to the same buffer again -- it should
+       rebind it instead of assuming it's still there. */
+    if(data.multi)
+        Buffer::unbind(Buffer::Target::Uniform, 0, 1);
+    else
+        Buffer::unbind(Buffer::Target::Uniform, 0);
+
+    large.setSubData(0, zeros);
+
+    MAGNUM_VERIFY_NO_GL_ERROR();
+}
+
+#ifndef MAGNUM_TARGET_WEBGL
+void BufferGLTest::bindBaseRangeCreatesObject() {
+    auto&& data = BindBaseRangeCreatesObjectData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    #ifndef MAGNUM_TARGET_GLES
+    if(!Context::current().isExtensionSupported<Extensions::ARB::uniform_buffer_object>())
+        CORRADE_SKIP(Extensions::ARB::uniform_buffer_object::string() << "is not supported.");
+    if(Context::current().isExtensionSupported<Extensions::ARB::direct_state_access>())
+        CORRADE_SKIP(Extensions::ARB::direct_state_access::string() << "is supported, can't test.");
+    #endif
+    if(!Context::current().isExtensionSupported<Extensions::KHR::debug>())
+        CORRADE_SKIP(Extensions::KHR::debug::string() << "is not supported.");
+
+    Buffer buffer;
+
+    /* The glGenBuffers() API doesn't actually create a buffer object, creation
+       only happens on the first glBindBuffer(). The DSA glCreateBuffer() API
+       combines the two, and then some DSA APIs that take just an object ID
+       such as glObjectLabel() require the object to be created.
+
+       As the glBindBufferBase() / glBindBufferRange() binds the buffer to the
+       regular binding point as a side effect, the implementation assumes it
+       also performs the creation, and so sets the ObjectFlag::Created flag. To
+       verify that, the glObjectLabel() call should then work without a GL
+       error.
+
+       On the other hand, the multi-bind APIs *don't* bind the buffer to the
+       regular binding point, but conversely require the objects to be created.
+       So for these, the multi-bind is actually internally preceded by an
+       explicit glBindBuffer() that creates the buffer if not already. Calling
+       the multi-bind variant here just to be sure it all works as intended.
+
+       Also, only the "base" binding APIs are tested here, the range APIs fail
+       on an error because size of 0 is not an allowed value. The
+       implementation and ObjectFlag::Created flag setting however behaves the
+       same for both for consistency, even though it's impossible to test. */
+
+    if(data.multi)
+        Buffer::bind(Buffer::Target::Uniform, 0, {&buffer});
+    else
+        buffer.bind(Buffer::Target::Uniform, 0);
+
+    MAGNUM_VERIFY_NO_GL_ERROR();
+
+    buffer.setLabel("hello");
+
+    MAGNUM_VERIFY_NO_GL_ERROR();
+    CORRADE_COMPARE(buffer.label(), "hello");
+}
+#endif
 #endif
 
-#ifndef MAGNUM_TARGET_GLES
+#if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
 void BufferGLTest::storage() {
+    #ifndef MAGNUM_TARGET_GLES
     if(!Context::current().isExtensionSupported<Extensions::ARB::buffer_storage>())
         CORRADE_SKIP(Extensions::ARB::buffer_storage::string() << "is not supported.");
+    #else
+    if(!Context::current().isExtensionSupported<Extensions::EXT::buffer_storage>())
+        CORRADE_SKIP(Extensions::EXT::buffer_storage::string() << "is not supported.");
+    #endif
 
     Buffer buffer;
 
@@ -277,14 +439,22 @@ void BufferGLTest::storage() {
         .setSubData(0, data);
     MAGNUM_VERIFY_NO_GL_ERROR();
 
+    /** @todo How to verify the contents in ES? */
+    #ifndef MAGNUM_TARGET_GLES
     CORRADE_COMPARE_AS(Containers::arrayCast<Int>(buffer.data()),
         Containers::arrayView(data),
         TestSuite::Compare::Container);
+    #endif
 }
 
 void BufferGLTest::storagePreinitialized() {
+    #ifndef MAGNUM_TARGET_GLES
     if(!Context::current().isExtensionSupported<Extensions::ARB::buffer_storage>())
         CORRADE_SKIP(Extensions::ARB::buffer_storage::string() << "is not supported.");
+    #else
+    if(!Context::current().isExtensionSupported<Extensions::EXT::buffer_storage>())
+        CORRADE_SKIP(Extensions::EXT::buffer_storage::string() << "is not supported.");
+    #endif
 
     Buffer buffer;
 
@@ -293,9 +463,12 @@ void BufferGLTest::storagePreinitialized() {
     buffer.setStorage(data, Buffer::StorageFlag::MapRead|Buffer::StorageFlag::ClientStorage);
     MAGNUM_VERIFY_NO_GL_ERROR();
 
+    /** @todo How to verify the contents in ES? */
+    #ifndef MAGNUM_TARGET_GLES
     CORRADE_COMPARE_AS(Containers::arrayCast<Int>(buffer.data()),
         Containers::arrayView(data),
         TestSuite::Compare::Container);
+    #endif
 }
 #endif
 

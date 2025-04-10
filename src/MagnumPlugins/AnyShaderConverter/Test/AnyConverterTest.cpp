@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,7 +24,6 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Pair.h>
@@ -31,8 +31,7 @@
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/ShaderTools/AbstractConverter.h"
@@ -289,16 +288,16 @@ void AnyConverterTest::validateFile() {
 void AnyConverterTest::validateFilePluginLoadFailed() {
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateFile({}, "file.glsl"),
         Containers::pair(false, Containers::String{}));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin GlslShaderConverter is not static and was not found in nonexistent\n"
         "ShaderTools::AnyConverter::validateFile(): cannot load the GlslShaderConverter plugin\n");
     #else
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin GlslShaderConverter was not found\n"
         "ShaderTools::AnyConverter::validateFile(): cannot load the GlslShaderConverter plugin\n");
     #endif
@@ -307,11 +306,11 @@ void AnyConverterTest::validateFilePluginLoadFailed() {
 void AnyConverterTest::validateFileUnknown() {
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateFile({}, "dead.cg"),
         Containers::pair(false, Containers::String{}));
-    CORRADE_COMPARE(out.str(), "ShaderTools::AnyConverter::validateFile(): cannot determine the format of dead.cg\n");
+    CORRADE_COMPARE(out, "ShaderTools::AnyConverter::validateFile(): cannot determine the format of dead.cg\n");
 }
 
 void AnyConverterTest::validateFileNotSupported() {
@@ -333,11 +332,11 @@ void AnyConverterTest::validateFilePreprocessNotSupported() {
         {"DEFINE", "hahahahah"}
     });
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateFile({}, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv")),
         Containers::pair(false, Containers::String{}));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::validateFile(): SpirvToolsShaderConverter does not support preprocessing\n");
 }
 
@@ -358,11 +357,11 @@ void AnyConverterTest::validateFilePropagateFlags() {
        also print the verbose info. */
     converter->setFlags(ConverterFlag::Verbose|ConverterFlag::WarningAsError);
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectDebug{&out};
     CORRADE_COMPARE(converter->validateFile(Stage::Fragment, filename),
         Containers::pair(false, Utility::format("WARNING: {}:10: 'reserved__identifier' : identifiers containing consecutive underscores (\"__\") are reserved", filename)));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::validateFile(): using GlslShaderConverter (provided by GlslangShaderConverter)\n");
 }
 
@@ -382,11 +381,11 @@ void AnyConverterTest::validateFilePropagateInputVersion() {
        AbstractConverter::doValidateFile() with the file contents. */
     converter->setInputFormat(Format::Glsl, "100");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateFile(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl")),
         Containers::pair(false, Containers::String{}));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::validateData(): input format version should be one of supported GLSL #version strings but got 100\n");
 }
 
@@ -406,11 +405,11 @@ void AnyConverterTest::validateFilePropagateOutputVersion() {
        AbstractConverter::doValidateFile() with the file contents. */
     converter->setOutputFormat(Format::Glsl, "opengl4.0");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateFile(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl")),
         Containers::pair(false, Containers::String{}));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::validateData(): output format should be Spirv or Unspecified but got ShaderTools::Format::Glsl\n");
 }
 
@@ -482,14 +481,14 @@ void AnyConverterTest::validateFilePropagateConfigurationUnknown() {
     converter->setDefinitions({{"reserved__identifier", "sorry"}});
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_COMPARE(converter->validateFile(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl")),
         Containers::pair(true, Containers::String{}));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::validateFile(): option noSuchOption not recognized by GlslangShaderConverter\n");
 }
 
@@ -518,16 +517,16 @@ void AnyConverterTest::validateDataPluginLoadFailed() {
 
     converter->setInputFormat(Format::Glsl);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateData({}, {}),
         Containers::pair(false, Containers::String{}));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin GlslShaderConverter is not static and was not found in nonexistent\n"
         "ShaderTools::AnyConverter::validateData(): cannot load the GlslShaderConverter plugin\n");
     #else
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin GlslShaderConverter was not found\n"
         "ShaderTools::AnyConverter::validateData(): cannot load the GlslShaderConverter plugin\n");
     #endif
@@ -536,11 +535,11 @@ void AnyConverterTest::validateDataPluginLoadFailed() {
 void AnyConverterTest::validateDataNoFormatSet() {
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateData({}, "dead.cg"),
         Containers::pair(false, Containers::String{}));
-    CORRADE_COMPARE(out.str(), "ShaderTools::AnyConverter::validateData(): no input format specified\n");
+    CORRADE_COMPARE(out, "ShaderTools::AnyConverter::validateData(): no input format specified\n");
 }
 
 void AnyConverterTest::validateDataNotSupported() {
@@ -567,11 +566,11 @@ void AnyConverterTest::validateDataPreprocessNotSupported() {
     Containers::Optional<Containers::Array<char>> data = Utility::Path::read(Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv"));
     CORRADE_VERIFY(data);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateData({}, *data),
         Containers::pair(false, Containers::String{}));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::validateData(): SpirvToolsShaderConverter does not support preprocessing\n");
 }
 
@@ -595,11 +594,11 @@ void AnyConverterTest::validateDataPropagateFlags() {
     Containers::Optional<Containers::Array<char>> data = Utility::Path::read(Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"));
     CORRADE_VERIFY(data);
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectDebug{&out};
     CORRADE_COMPARE(converter->validateData(Stage::Fragment, *data),
         Containers::pair(false, Containers::String{"WARNING: 0:10: 'reserved__identifier' : identifiers containing consecutive underscores (\"__\") are reserved"}));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::validateData(): using GlslShaderConverter (provided by GlslangShaderConverter)\n");
 }
 
@@ -624,11 +623,11 @@ void AnyConverterTest::validateDataPropagateInputVersion() {
     Containers::Optional<Containers::Array<char>> data = Utility::Path::read(Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"));
     CORRADE_VERIFY(data);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateData(Stage::Fragment, *data),
         Containers::pair(false, Containers::String{}));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::validateData(): input format version should be one of supported GLSL #version strings but got 100\n");
 }
 
@@ -653,11 +652,11 @@ void AnyConverterTest::validateDataPropagateOutputVersion() {
     Containers::Optional<Containers::Array<char>> data = Utility::Path::read(Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"));
     CORRADE_VERIFY(data);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateData(Stage::Fragment, *data),
         Containers::pair(false, Containers::String{}));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::validateData(): output format should be Spirv or Unspecified but got ShaderTools::Format::Glsl\n");
 }
 
@@ -738,14 +737,14 @@ void AnyConverterTest::validateDataPropagateConfigurationUnknown() {
     Containers::Optional<Containers::Array<char>> shaderData = Utility::Path::read(Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"));
     CORRADE_VERIFY(shaderData);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_COMPARE(converter->validateData(Stage::Fragment, *shaderData),
         Containers::pair(true, Containers::String{}));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::validateData(): option noSuchOption not recognized by GlslangShaderConverter\n");
 }
 
@@ -766,11 +765,11 @@ void AnyConverterTest::convertFileToFile() {
         CORRADE_VERIFY(Utility::Path::remove(outputFilename));
 
     /* Make it print a warning so we know it's doing something */
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertFileToFile(Stage::Fragment, inputFilename, outputFilename));
     CORRADE_VERIFY(Utility::Path::exists(outputFilename));
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "ShaderTools::GlslangConverter::convertDataToData(): compilation succeeded with the following message:\n"
         "WARNING: {}:10: 'reserved__identifier' : identifiers containing consecutive underscores (\"__\") are reserved\n", inputFilename));
 }
@@ -778,15 +777,15 @@ void AnyConverterTest::convertFileToFile() {
 void AnyConverterTest::convertFileToFilePluginLoadFailed() {
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile({}, "file.spv", "file.glsl"));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin SpirvToGlslShaderConverter is not static and was not found in nonexistent\n"
         "ShaderTools::AnyConverter::convertFileToFile(): cannot load the SpirvToGlslShaderConverter plugin\n");
     #else
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin SpirvToGlslShaderConverter was not found\n"
         "ShaderTools::AnyConverter::convertFileToFile(): cannot load the SpirvToGlslShaderConverter plugin\n");
     #endif
@@ -795,19 +794,19 @@ void AnyConverterTest::convertFileToFilePluginLoadFailed() {
 void AnyConverterTest::convertFileToFileUnknownInput() {
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile({}, "dead.cg", "whatever.osl"));
-    CORRADE_COMPARE(out.str(), "ShaderTools::AnyConverter::convertFileToFile(): cannot determine the format of dead.cg\n");
+    CORRADE_COMPARE(out, "ShaderTools::AnyConverter::convertFileToFile(): cannot determine the format of dead.cg\n");
 }
 
 void AnyConverterTest::convertFileToFileUnknownOutput() {
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile({}, "file.spv", "whatever.osl"));
-    CORRADE_COMPARE(out.str(), "ShaderTools::AnyConverter::convertFileToFile(): cannot determine the format of whatever.osl\n");
+    CORRADE_COMPARE(out, "ShaderTools::AnyConverter::convertFileToFile(): cannot determine the format of whatever.osl\n");
 }
 
 void AnyConverterTest::convertFileToFileNotSupported() {
@@ -829,20 +828,20 @@ void AnyConverterTest::convertFileToFilePreprocessNotSupported() {
         {"DEFINE", "hahahahah"}
     });
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile({}, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv"),
     Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.spvasm")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertFileToFile(): SpirvToolsShaderConverter does not support preprocessing\n");
 
     /* It should fail for the flag as well */
-    out.str({});
+    out = {};
     converter->setDefinitions({});
     converter->setFlags(ConverterFlag::PreprocessOnly);
     CORRADE_VERIFY(!converter->convertFileToFile({}, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv"),
     Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.spvasm")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertFileToFile(): SpirvToolsShaderConverter does not support preprocessing\n");
 }
 
@@ -859,13 +858,13 @@ void AnyConverterTest::convertFileToFileDebugInfoNotSupported() {
 
     converter->setDebugInfoLevel("1");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile({}, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv"),
     Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.spvasm")));
     /** @todo it once may support that, in which case we need to find another
         victim */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertFileToFile(): SpirvToolsShaderConverter does not support controlling debug info output\n");
 }
 
@@ -882,13 +881,13 @@ void AnyConverterTest::convertFileToFileOptimizationNotSupported() {
 
     converter->setOptimizationLevel("1");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile({}, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"),
     Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.spv")));
     /** @todo it once may support that, in which case we need to find another
         victim */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertFileToFile(): GlslangShaderConverter does not support optimization\n");
 }
 
@@ -912,11 +911,11 @@ void AnyConverterTest::convertFileToFilePropagateFlags() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectDebug{&out};
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile(Stage::Fragment, filename, Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.spv")));
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "ShaderTools::AnyConverter::convertFileToFile(): using GlslToSpirvShaderConverter (provided by GlslangShaderConverter)\n"
         "ShaderTools::GlslangConverter::convertDataToData(): compilation failed:\n"
         "WARNING: {}:10: 'reserved__identifier' : identifiers containing consecutive underscores (\"__\") are reserved\n", filename));
@@ -939,10 +938,10 @@ void AnyConverterTest::convertFileToFilePropagateInputVersion() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"), Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.spv")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): input format version should be one of supported GLSL #version strings but got 100\n");
 }
 
@@ -963,10 +962,10 @@ void AnyConverterTest::convertFileToFilePropagateOutputVersion() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"), Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.spv")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): output format version target should be opengl4.5 or vulkanX.Y but got opengl4.0\n");
 }
 
@@ -995,11 +994,11 @@ void AnyConverterTest::convertFileToFilePropagatePreprocess() {
         CORRADE_VERIFY(Utility::Path::remove(outputFilename));
 
     /* Make it print a warning so we know it's doing something */
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertFileToFile(Stage::Fragment, inputFilename, outputFilename));
     CORRADE_VERIFY(Utility::Path::exists(outputFilename));
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "ShaderTools::GlslangConverter::convertDataToData(): compilation succeeded with the following message:\n"
         "WARNING: {}:10: 'different__but_also_wrong' : identifiers containing consecutive underscores (\"__\") are reserved\n", inputFilename));
 }
@@ -1021,10 +1020,10 @@ void AnyConverterTest::convertFileToFilePropagateDebugInfo() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"), Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.spv")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): debug info level should be 0, 1 or empty but got 2\n");
 }
 
@@ -1045,10 +1044,10 @@ void AnyConverterTest::convertFileToFilePropagateOptimization() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv"), Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.spv")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::SpirvToolsConverter::convertDataToData(): optimization level should be 0, 1, s, legalizeHlsl or empty but got 2\n");
 }
 
@@ -1067,19 +1066,19 @@ void AnyConverterTest::convertFileToFilePropagateConfiguration() {
     Containers::String output = Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.spv");
 
     {
-        std::ostringstream out;
+        Containers::String out;
         Error redirectError{&out};
         CORRADE_VERIFY(!converter->convertFileToFile(Stage::Fragment, input, output));
-        CORRADE_COMPARE(out.str(),
-            Utility::formatString("ShaderTools::GlslangConverter::convertDataToData(): compilation failed:\nERROR: {}:2: '#version' : must occur first in shader \nERROR: 1 compilation errors.  No code generated.\n", input));
+        CORRADE_COMPARE(out,
+            Utility::format("ShaderTools::GlslangConverter::convertDataToData(): compilation failed:\nERROR: {}:2: '#version' : must occur first in shader \nERROR: 1 compilation errors.  No code generated.\n", input));
     } {
         converter->configuration().setValue("permissive", true);
         /* Lol stupid thing, apparently it has two differently worded messages
            for the same thing? Dumpster fire. */
-        std::ostringstream out;
+        Containers::String out;
         Warning redirectWarning{&out};
         CORRADE_VERIFY(converter->convertFileToFile(Stage::Fragment, input, output));
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
             "ShaderTools::GlslangConverter::convertDataToData(): compilation succeeded with the following message:\nWARNING: 0:0: '#version' : Illegal to have non-comment, non-whitespace tokens before #version\n");
     }
 }
@@ -1102,13 +1101,13 @@ void AnyConverterTest::convertFileToFilePropagateConfigurationUnknown() {
     converter->setDefinitions({{"reserved__identifier", "sorry"}});
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertFileToFile(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"), Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.glsl")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertFileToFile(): option noSuchOption not recognized by GlslangShaderConverter\n");
 }
 
@@ -1128,10 +1127,10 @@ void AnyConverterTest::convertFileToData() {
     Containers::String inputFilename = Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl");
 
     /* Make it print a warning so we know it's doing something */
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertFileToData(Stage::Fragment, inputFilename));
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "ShaderTools::GlslangConverter::convertDataToData(): compilation succeeded with the following message:\n"
         "WARNING: {}:10: 'reserved__identifier' : identifiers containing consecutive underscores (\"__\") are reserved\n", inputFilename));
 }
@@ -1141,15 +1140,15 @@ void AnyConverterTest::convertFileToDataPluginLoadFailed() {
 
     converter->setOutputFormat(Format::Wgsl);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData({}, "file.spv"));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin SpirvToWgslShaderConverter is not static and was not found in nonexistent\n"
         "ShaderTools::AnyConverter::convertFileToData(): cannot load the SpirvToWgslShaderConverter plugin\n");
     #else
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin SpirvToWgslShaderConverter was not found\n"
         "ShaderTools::AnyConverter::convertFileToData(): cannot load the SpirvToWgslShaderConverter plugin\n");
     #endif
@@ -1158,19 +1157,19 @@ void AnyConverterTest::convertFileToDataPluginLoadFailed() {
 void AnyConverterTest::convertFileToDataUnknown() {
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData({}, "dead.cg"));
-    CORRADE_COMPARE(out.str(), "ShaderTools::AnyConverter::convertFileToData(): cannot determine the format of dead.cg\n");
+    CORRADE_COMPARE(out, "ShaderTools::AnyConverter::convertFileToData(): cannot determine the format of dead.cg\n");
 }
 
 void AnyConverterTest::convertFileToDataNoFormatSet() {
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData({}, "file.spv"));
-    CORRADE_COMPARE(out.str(), "ShaderTools::AnyConverter::convertFileToData(): no output format specified\n");
+    CORRADE_COMPARE(out, "ShaderTools::AnyConverter::convertFileToData(): no output format specified\n");
 }
 
 void AnyConverterTest::convertFileToDataNotSupported() {
@@ -1194,18 +1193,18 @@ void AnyConverterTest::convertFileToDataPreprocessNotSupported() {
         {"DEFINE", "hahahahah"}
     });
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData({}, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertFileToData(): SpirvToolsShaderConverter does not support preprocessing\n");
 
     /* It should fail for the flag as well */
-    out.str({});
+    out = {};
     converter->setDefinitions({});
     converter->setFlags(ConverterFlag::PreprocessOnly);
     CORRADE_VERIFY(!converter->convertFileToData({}, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertFileToData(): SpirvToolsShaderConverter does not support preprocessing\n");
 }
 
@@ -1224,12 +1223,12 @@ void AnyConverterTest::convertFileToDataDebugInfoNotSupported() {
 
     converter->setDebugInfoLevel("1");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData({}, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv")));
     /** @todo it once may support that, in which case we need to find another
         victim */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertFileToData(): SpirvToolsShaderConverter does not support controlling debug info output\n");
 }
 
@@ -1248,12 +1247,12 @@ void AnyConverterTest::convertFileToDataOptimizationNotSupported() {
 
     converter->setOptimizationLevel("1");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData({}, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl")));
     /** @todo it once may support that, in which case we need to find another
         victim */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertFileToData(): GlslangShaderConverter does not support optimization\n");
 }
 
@@ -1279,11 +1278,11 @@ void AnyConverterTest::convertFileToDataPropagateFlags() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectDebug{&out};
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData(Stage::Fragment, filename));
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "ShaderTools::AnyConverter::convertFileToData(): using GlslToSpirvShaderConverter (provided by GlslangShaderConverter)\n"
         "ShaderTools::GlslangConverter::convertDataToData(): compilation failed:\n"
         "WARNING: {}:10: 'reserved__identifier' : identifiers containing consecutive underscores (\"__\") are reserved\n", filename));
@@ -1308,10 +1307,10 @@ void AnyConverterTest::convertFileToDataPropagateInputVersion() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): input format version should be one of supported GLSL #version strings but got 100\n");
 }
 
@@ -1332,10 +1331,10 @@ void AnyConverterTest::convertFileToDataPropagateOutputVersion() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): output format version target should be opengl4.5 or vulkanX.Y but got opengl4.0\n");
 }
 
@@ -1363,10 +1362,10 @@ void AnyConverterTest::convertFileToDataPropagatePreprocess() {
     Containers::String inputFilename = Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl");
 
     /* Make it print a warning so we know it's doing something */
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertFileToData(Stage::Fragment, inputFilename));
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "ShaderTools::GlslangConverter::convertDataToData(): compilation succeeded with the following message:\n"
         "WARNING: {}:10: 'different__but_also_wrong' : identifiers containing consecutive underscores (\"__\") are reserved\n", inputFilename));
 }
@@ -1390,10 +1389,10 @@ void AnyConverterTest::convertFileToDataPropagateDebugInfo() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): debug info level should be 0, 1 or empty but got 2\n");
 }
 
@@ -1416,10 +1415,10 @@ void AnyConverterTest::convertFileToDataPropagateOptimization() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToData(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::SpirvToolsConverter::convertDataToData(): optimization level should be 0, 1, s, legalizeHlsl or empty but got 2\n");
 }
 
@@ -1439,19 +1438,19 @@ void AnyConverterTest::convertFileToDataPropagateConfiguration() {
     Containers::String input = Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "version-not-first.glsl");
 
     {
-        std::ostringstream out;
+        Containers::String out;
         Error redirectError{&out};
         CORRADE_VERIFY(!converter->convertFileToData(Stage::Fragment, input));
-        CORRADE_COMPARE(out.str(),
-            Utility::formatString("ShaderTools::GlslangConverter::convertDataToData(): compilation failed:\nERROR: {}:2: '#version' : must occur first in shader \nERROR: 1 compilation errors.  No code generated.\n", input));
+        CORRADE_COMPARE(out,
+            Utility::format("ShaderTools::GlslangConverter::convertDataToData(): compilation failed:\nERROR: {}:2: '#version' : must occur first in shader \nERROR: 1 compilation errors.  No code generated.\n", input));
     } {
         converter->configuration().setValue("permissive", true);
         /* Lol stupid thing, apparently it has two differently worded messages
            for the same thing? Dumpster fire. */
-        std::ostringstream out;
+        Containers::String out;
         Warning redirectWarning{&out};
         CORRADE_VERIFY(converter->convertFileToData(Stage::Fragment, input));
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
             "ShaderTools::GlslangConverter::convertDataToData(): compilation succeeded with the following message:\nWARNING: 0:0: '#version' : Illegal to have non-comment, non-whitespace tokens before #version\n");
     }
 }
@@ -1475,13 +1474,13 @@ void AnyConverterTest::convertFileToDataPropagateConfigurationUnknown() {
     converter->setDefinitions({{"reserved__identifier", "sorry"}});
     converter->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertFileToData(Stage::Fragment, Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertFileToData(): option noSuchOption not recognized by GlslangShaderConverter\n");
 }
 
@@ -1503,10 +1502,10 @@ void AnyConverterTest::convertDataToData() {
     CORRADE_VERIFY(data);
 
     /* Make it print a warning so we know it's doing something */
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertDataToData(Stage::Fragment, *data));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): compilation succeeded with the following message:\n"
         "WARNING: 0:10: 'reserved__identifier' : identifiers containing consecutive underscores (\"__\") are reserved\n");
 }
@@ -1517,15 +1516,15 @@ void AnyConverterTest::convertDataToDataPluginLoadFailed() {
     converter->setInputFormat(Format::Hlsl);
     converter->setOutputFormat(Format::Wgsl);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData({}, {}));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin HlslToWgslShaderConverter is not static and was not found in nonexistent\n"
         "ShaderTools::AnyConverter::convertDataToData(): cannot load the HlslToWgslShaderConverter plugin\n");
     #else
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin HlslToWgslShaderConverter was not found\n"
         "ShaderTools::AnyConverter::convertDataToData(): cannot load the HlslToWgslShaderConverter plugin\n");
     #endif
@@ -1534,10 +1533,10 @@ void AnyConverterTest::convertDataToDataPluginLoadFailed() {
 void AnyConverterTest::convertDataToDataNoInputFormatSet() {
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData({}, {}));
-    CORRADE_COMPARE(out.str(), "ShaderTools::AnyConverter::convertDataToData(): no input format specified\n");
+    CORRADE_COMPARE(out, "ShaderTools::AnyConverter::convertDataToData(): no input format specified\n");
 }
 
 void AnyConverterTest::convertDataToDataNoOutputFormatSet() {
@@ -1545,10 +1544,10 @@ void AnyConverterTest::convertDataToDataNoOutputFormatSet() {
 
     converter->setInputFormat(Format::Spirv);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData({}, {}));
-    CORRADE_COMPARE(out.str(), "ShaderTools::AnyConverter::convertDataToData(): no output format specified\n");
+    CORRADE_COMPARE(out, "ShaderTools::AnyConverter::convertDataToData(): no output format specified\n");
 }
 
 void AnyConverterTest::convertDataToDataNotSupported() {
@@ -1576,18 +1575,18 @@ void AnyConverterTest::convertDataToDataPreprocessNotSupported() {
     Containers::Optional<Containers::Array<char>> data = Utility::Path::read(Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv"));
     CORRADE_VERIFY(data);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData({}, *data));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertDataToData(): SpirvToolsShaderConverter does not support preprocessing\n");
 
     /* It should fail for the flag as well */
-    out.str({});
+    out = {};
     converter->setDefinitions({});
     converter->setFlags(ConverterFlag::PreprocessOnly);
     CORRADE_VERIFY(!converter->convertDataToData({}, *data));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertDataToData(): SpirvToolsShaderConverter does not support preprocessing\n");
 }
 
@@ -1610,12 +1609,12 @@ void AnyConverterTest::convertDataToDataDebugInfoNotSupported() {
     Containers::Optional<Containers::Array<char>> data = Utility::Path::read(Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.spv"));
     CORRADE_VERIFY(data);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData({}, *data));
     /** @todo it once may support that, in which case we need to find another
         victim */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertDataToData(): SpirvToolsShaderConverter does not support controlling debug info output\n");
 }
 
@@ -1638,12 +1637,12 @@ void AnyConverterTest::convertDataToDataOptimizationNotSupported() {
     Containers::Optional<Containers::Array<char>> data = Utility::Path::read(Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"));
     CORRADE_VERIFY(data);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData({}, *data));
     /** @todo it once may support that, in which case we need to find another
         victim */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertDataToData(): GlslangShaderConverter does not support optimization\n");
 }
 
@@ -1671,11 +1670,11 @@ void AnyConverterTest::convertDataToDataPropagateFlags() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectDebug{&out};
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData(Stage::Fragment, *data));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertDataToData(): using GlslToSpirvShaderConverter (provided by GlslangShaderConverter)\n"
         "ShaderTools::GlslangConverter::convertDataToData(): compilation failed:\n"
         "WARNING: 0:10: 'reserved__identifier' : identifiers containing consecutive underscores (\"__\") are reserved\n");
@@ -1703,10 +1702,10 @@ void AnyConverterTest::convertDataToDataPropagateInputVersion() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData(Stage::Fragment, *data));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): input format version should be one of supported GLSL #version strings but got 100\n");
 }
 
@@ -1732,10 +1731,10 @@ void AnyConverterTest::convertDataToDataPropagateOutputVersion() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData(Stage::Fragment, *data));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): output format version target should be opengl4.5 or vulkanX.Y but got opengl4.0\n");
 }
 
@@ -1765,10 +1764,10 @@ void AnyConverterTest::convertDataToDataPropagatePreprocess() {
     CORRADE_VERIFY(data);
 
     /* Make it print a warning so we know it's doing something */
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertDataToData(Stage::Fragment, *data));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): compilation succeeded with the following message:\n"
         "WARNING: 0:10: 'different__but_also_wrong' : identifiers containing consecutive underscores (\"__\") are reserved\n");
 }
@@ -1796,10 +1795,10 @@ void AnyConverterTest::convertDataToDataPropagateDebugInfo() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData(Stage::Fragment, *data));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::GlslangConverter::convertDataToData(): debug info level should be 0, 1 or empty but got 2\n");
 }
 
@@ -1826,10 +1825,10 @@ void AnyConverterTest::convertDataToDataPropagateOptimization() {
     /* We have to supply a valid file path because the version gets checked in
        doConvertDataToData(), called from AbstractConverter::doConvertFileToFile()
        with the file contents. */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertDataToData(Stage::Fragment, *data));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "ShaderTools::SpirvToolsConverter::convertDataToData(): optimization level should be 0, 1, s, legalizeHlsl or empty but got 2\n");
 }
 
@@ -1851,19 +1850,19 @@ void AnyConverterTest::convertDataToDataPropagateConfiguration() {
     CORRADE_VERIFY(data);
 
     {
-        std::ostringstream out;
+        Containers::String out;
         Error redirectError{&out};
         CORRADE_VERIFY(!converter->convertDataToData(Stage::Fragment, *data));
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
             "ShaderTools::GlslangConverter::convertDataToData(): compilation failed:\nERROR: 0:2: '#version' : must occur first in shader \nERROR: 1 compilation errors.  No code generated.\n");
     } {
         converter->configuration().setValue("permissive", true);
         /* Lol stupid thing, apparently it has two differently worded messages
            for the same thing? Dumpster fire. */
-        std::ostringstream out;
+        Containers::String out;
         Warning redirectWarning{&out};
         CORRADE_VERIFY(converter->convertDataToData(Stage::Fragment, *data));
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
             "ShaderTools::GlslangConverter::convertDataToData(): compilation succeeded with the following message:\nWARNING: 0:0: '#version' : Illegal to have non-comment, non-whitespace tokens before #version\n");
     }
 }
@@ -1891,13 +1890,13 @@ void AnyConverterTest::convertDataToDataPropagateConfigurationUnknown() {
     Containers::Optional<Containers::Array<char>> shaderData = Utility::Path::read(Utility::Path::join(ANYSHADERCONVERTER_TEST_DIR, "file.glsl"));
     CORRADE_VERIFY(shaderData);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(converter->convertDataToData(Stage::Fragment, *shaderData));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
         "ShaderTools::AnyConverter::convertDataToData(): option noSuchOption not recognized by GlslangShaderConverter\n");
 }
 
@@ -1907,16 +1906,16 @@ void AnyConverterTest::detectValidate() {
 
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateFile({}, data.filename),
         Containers::pair(false, Containers::String{}));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "ShaderTools::AnyConverter::validateFile(): cannot load the {0} plugin\n", data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "ShaderTools::AnyConverter::validateFile(): cannot load the {0} plugin\n", data.plugin));
     #endif
@@ -1928,16 +1927,16 @@ void AnyConverterTest::detectValidateExplicitFormat() {
     /* It should pick up this format and not bother with the extension */
     converter->setInputFormat(Format::Hlsl);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_COMPARE(converter->validateFile({}, "file.spv"),
         Containers::pair(false, Containers::String{}));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin HlslShaderConverter is not static and was not found in nonexistent\n"
         "ShaderTools::AnyConverter::validateFile(): cannot load the HlslShaderConverter plugin\n");
     #else
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin HlslShaderConverter was not found\n"
         "ShaderTools::AnyConverter::validateFile(): cannot load the HlslShaderConverter plugin\n");
     #endif
@@ -1949,15 +1948,15 @@ void AnyConverterTest::detectConvert() {
 
     Containers::Pointer<AbstractConverter> converter = _manager.instantiate("AnyShaderConverter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile({}, data.from, Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, data.to)));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "ShaderTools::AnyConverter::convertFileToFile(): cannot load the {0} plugin\n", data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "ShaderTools::AnyConverter::convertFileToFile(): cannot load the {0} plugin\n", data.plugin));
     #endif
@@ -1970,15 +1969,15 @@ void AnyConverterTest::detectConvertExplicitFormat() {
     converter->setInputFormat(Format::Hlsl);
     converter->setOutputFormat(Format::Wgsl);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!converter->convertFileToFile({}, "file.spv", Utility::Path::join(ANYSHADERCONVERTER_TEST_OUTPUT_DIR, "file.glsl")));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin HlslToWgslShaderConverter is not static and was not found in nonexistent\n"
         "ShaderTools::AnyConverter::convertFileToFile(): cannot load the HlslToWgslShaderConverter plugin\n");
     #else
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "PluginManager::Manager::load(): plugin HlslToWgslShaderConverter was not found\n"
         "ShaderTools::AnyConverter::convertFileToFile(): cannot load the HlslToWgslShaderConverter plugin\n");
     #endif

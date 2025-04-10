@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -44,6 +45,7 @@ struct SwizzleTest: TestSuite::Tester {
     void scatterFarComponents();
 };
 
+/* These differ from the typedefs in root Magnum namespace */
 typedef Vector<2, Int> Vector2i;
 typedef Vector<3, Int> Vector3i;
 typedef Vector<4, Int> Vector4i;

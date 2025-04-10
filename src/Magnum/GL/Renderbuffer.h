@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -92,6 +93,9 @@ class MAGNUM_GL_EXPORT Renderbuffer: public AbstractObject {
          *      @def_gl_keyword{MAX_SAMPLES}
          * @requires_webgl20 Multisample framebuffers are not available in
          *      WebGL 1.0.
+         * @see @ref AbstractTexture::maxColorSamples(),
+         *      @ref AbstractTexture::maxDepthSamples(),
+         *      @ref AbstractTexture::maxIntegerSamples()
          */
         static Int maxSamples();
         #endif

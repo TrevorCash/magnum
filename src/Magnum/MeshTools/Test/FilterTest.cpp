@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,11 +24,11 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/BitArray.h>
 #include <Corrade/Containers/BitArrayView.h>
+#include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Vector4.h"
 #include "Magnum/MeshTools/Filter.h"
@@ -45,11 +46,13 @@ struct FilterTest: TestSuite::Tester {
 
     void attributes();
     void attributesNoIndexData();
+    void attributesRvalue();
     void attributesWrongBitCount();
 
     void onlyAttributes();
     void onlyAttributesNoIndexData();
     void onlyAttributesNoAttributeData();
+    void onlyAttributesRvalue();
 
     #ifdef MAGNUM_BUILD_DEPRECATED
     void onlyAttributeIds();
@@ -61,6 +64,7 @@ struct FilterTest: TestSuite::Tester {
     void exceptAttributes();
     void exceptAttributesNoIndexData();
     void exceptAttributesNoAttributeData();
+    void exceptAttributesRvalue();
 
     #ifdef MAGNUM_BUILD_DEPRECATED
     void exceptAttributeIds();
@@ -78,18 +82,44 @@ const struct {
     {"implementation-specific index type", meshIndexTypeWrap(0xcaca)}
 };
 
+const struct {
+    const char* name;
+    Trade::DataFlags indexDataFlags, vertexDataFlags;
+    Trade::DataFlags expectedIndexDataFlags, expectedVertexDataFlags;
+} AttributesRvalueData[]{
+    /* The Global or ExternallyOwned flags are not preserved, because
+       reference() doesn't preserve them either */
+    {"neither owned",
+        {}, Trade::DataFlag::Global,
+        {}, {}},
+    {"index data owned",
+        Trade::DataFlag::Owned, {},
+        Trade::DataFlag::Owned|Trade::DataFlag::Mutable, {}},
+    {"vertex data owned",
+        Trade::DataFlag::ExternallyOwned, Trade::DataFlag::Owned|Trade::DataFlag::Mutable,
+        {}, Trade::DataFlag::Owned|Trade::DataFlag::Mutable},
+    {"both owned",
+        Trade::DataFlag::Owned, Trade::DataFlag::Owned,
+        Trade::DataFlag::Owned|Trade::DataFlag::Mutable, Trade::DataFlag::Owned|Trade::DataFlag::Mutable},
+};
+
 FilterTest::FilterTest() {
     addInstancedTests({&FilterTest::attributes},
         Containers::arraySize(ImplementationSpecificIndexTypeData));
 
-    addTests({&FilterTest::attributesNoIndexData,
-              &FilterTest::attributesWrongBitCount});
+    addTests({&FilterTest::attributesNoIndexData});
+
+    addInstancedTests({&FilterTest::attributesRvalue},
+        Containers::arraySize(AttributesRvalueData));
+
+    addTests({&FilterTest::attributesWrongBitCount});
 
     addInstancedTests({&FilterTest::onlyAttributes},
         Containers::arraySize(ImplementationSpecificIndexTypeData));
 
     addTests({&FilterTest::onlyAttributesNoIndexData,
-              &FilterTest::onlyAttributesNoAttributeData});
+              &FilterTest::onlyAttributesNoAttributeData,
+              &FilterTest::onlyAttributesRvalue});
 
     #ifdef MAGNUM_BUILD_DEPRECATED
     addInstancedTests({&FilterTest::onlyAttributeIds},
@@ -104,7 +134,8 @@ FilterTest::FilterTest() {
         Containers::arraySize(ImplementationSpecificIndexTypeData));
 
     addTests({&FilterTest::exceptAttributesNoIndexData,
-              &FilterTest::exceptAttributesNoAttributeData});
+              &FilterTest::exceptAttributesNoAttributeData,
+              &FilterTest::exceptAttributesRvalue});
 
     #ifdef MAGNUM_BUILD_DEPRECATED
     addInstancedTests({&FilterTest::exceptAttributeIds},
@@ -201,6 +232,66 @@ void FilterTest::attributesNoIndexData() {
     CORRADE_COMPARE(filtered.attributeOffset(0), offsetof(Vertex, textureCoordinates1));
 }
 
+void FilterTest::attributesRvalue() {
+    auto&& data = AttributesRvalueData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    /* Subset of attributes() verifying data ownership transfer behavior */
+
+    Containers::Array<char> indexData{5*sizeof(UnsignedShort)};
+    Containers::StridedArrayView1D<UnsignedShort> indices = Containers::arrayCast<UnsignedShort>(indexData);
+    Containers::Array<char> vertexData{3*sizeof(Vertex)};
+    Containers::StridedArrayView1D<Vertex> vertices = Containers::arrayCast<Vertex>(vertexData);
+
+    Containers::Array<Trade::MeshAttributeData> attributes{InPlaceInit, {
+        Trade::MeshAttributeData{Trade::MeshAttribute::Position, vertices.slice(&Vertex::position)},
+        Trade::MeshAttributeData{Trade::MeshAttribute::Tangent, vertices.slice(&Vertex::tangent)},
+        Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, vertices.slice(&Vertex::textureCoordinates1)},
+        Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, vertices.slice(&Vertex::textureCoordinates2)},
+    }};
+
+    Containers::Optional<Trade::MeshData> mesh;
+    if(data.indexDataFlags >= Trade::DataFlag::Owned &&
+       data.vertexDataFlags >= Trade::DataFlag::Owned)
+        mesh = Trade::MeshData{MeshPrimitive::Triangles,
+            Utility::move(indexData), Trade::MeshIndexData{indices},
+            Utility::move(vertexData), Utility::move(attributes)};
+    else if(data.indexDataFlags >= Trade::DataFlag::Owned)
+        mesh = Trade::MeshData{MeshPrimitive::Triangles,
+            Utility::move(indexData), Trade::MeshIndexData{indices},
+            data.vertexDataFlags, vertexData, Utility::move(attributes)};
+    else if(data.vertexDataFlags >= Trade::DataFlag::Owned)
+        mesh = Trade::MeshData{MeshPrimitive::Triangles,
+            data.indexDataFlags, indexData, Trade::MeshIndexData{indices},
+            Utility::move(vertexData), Utility::move(attributes)};
+    else
+        mesh = Trade::MeshData{MeshPrimitive::Triangles,
+            data.indexDataFlags, indexData, Trade::MeshIndexData{indices},
+            data.vertexDataFlags, vertexData, Utility::move(attributes)};
+
+    Containers::BitArray attributesToKeep{ValueInit, mesh->attributeCount()};
+    attributesToKeep.set(1);
+    attributesToKeep.set(3);
+
+    Trade::MeshData filtered = filterAttributes(Utility::move(*mesh), attributesToKeep);
+
+    /* The data ownership should be transferred if possible */
+    CORRADE_VERIFY(filtered.isIndexed());
+    CORRADE_COMPARE(filtered.indexCount(), 5);
+    CORRADE_COMPARE(filtered.indexData().data(), indices.data());
+    CORRADE_COMPARE(filtered.indexDataFlags(), data.expectedIndexDataFlags);
+
+    CORRADE_COMPARE(filtered.vertexCount(), 3);
+    CORRADE_COMPARE(filtered.vertexData().data(), vertices.data());
+    CORRADE_COMPARE(filtered.vertexDataFlags(), data.expectedVertexDataFlags);
+
+    /* Just checking that the attributes get actually filtered instead of being
+       passed through verbatim, the actual verification is done in attributes()
+       above */
+    CORRADE_COMPARE(filtered.attributeCount(), 2);
+    CORRADE_COMPARE(filtered.attributeName(0), Trade::MeshAttribute::Tangent);
+}
+
 void FilterTest::attributesWrongBitCount() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
@@ -213,10 +304,10 @@ void FilterTest::attributesWrongBitCount() {
             Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, Containers::stridedArrayView(vertices).slice(&Vertex::textureCoordinates1)}
         }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     filterAttributes(mesh, Containers::BitArray{ValueInit, 3});
-    CORRADE_COMPARE(out.str(), "MeshTools::filterAttributes(): expected 2 bits but got 3\n");
+    CORRADE_COMPARE(out, "MeshTools::filterAttributes(): expected 2 bits but got 3\n");
 }
 
 void FilterTest::onlyAttributes() {
@@ -331,6 +422,45 @@ void FilterTest::onlyAttributesNoAttributeData() {
     CORRADE_COMPARE(filtered.attributeCount(), 0);
 }
 
+void FilterTest::onlyAttributesRvalue() {
+    /* Subset of onlyAttributes() verifying data ownership transfer behavior.
+       All cases of ownership transfer are verified in attributesRvalue(), this
+       only checks that the r-value gets correctly passed through all overloads
+       to keep the index data owned and vertex data not. */
+
+    Containers::Array<char> indexData{5*sizeof(UnsignedShort)};
+    Containers::StridedArrayView1D<UnsignedShort> indices = Containers::arrayCast<UnsignedShort>(indexData);
+    Vertex vertexData[3];
+    Containers::StridedArrayView1D<Vertex> vertices = vertexData;
+
+    Trade::MeshData mesh{MeshPrimitive::TriangleStrip,
+        Utility::move(indexData), Trade::MeshIndexData{indices},
+        {}, vertexData, {
+            Trade::MeshAttributeData{Trade::MeshAttribute::Position, vertices.slice(&Vertex::position)},
+            Trade::MeshAttributeData{Trade::MeshAttribute::Tangent, vertices.slice(&Vertex::tangent)},
+            Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, vertices.slice(&Vertex::textureCoordinates1)},
+            Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, vertices.slice(&Vertex::textureCoordinates2)},
+        }};
+
+    Trade::MeshData filtered = filterOnlyAttributes(Utility::move(mesh), {
+        Trade::MeshAttribute::TextureCoordinates,
+        Trade::MeshAttribute::Position
+    });
+    CORRADE_COMPARE(filtered.primitive(), MeshPrimitive::TriangleStrip);
+
+    CORRADE_VERIFY(filtered.isIndexed());
+    CORRADE_COMPARE(filtered.indexCount(), 5);
+    CORRADE_COMPARE(filtered.indexData().data(), indices.data());
+    CORRADE_COMPARE(filtered.indexDataFlags(), Trade::DataFlag::Owned|Trade::DataFlag::Mutable);
+
+    CORRADE_COMPARE(filtered.vertexCount(), 3);
+    CORRADE_COMPARE(filtered.vertexData().data(), vertices.data());
+    CORRADE_COMPARE(filtered.vertexDataFlags(), Trade::DataFlags{});
+
+    CORRADE_COMPARE(filtered.attributeCount(), 3);
+    CORRADE_COMPARE(filtered.attributeName(0), Trade::MeshAttribute::Position);
+}
+
 #ifdef MAGNUM_BUILD_DEPRECATED
 void FilterTest::onlyAttributeIds() {
     auto&& data = ImplementationSpecificIndexTypeData[testCaseInstanceId()];
@@ -395,12 +525,12 @@ void FilterTest::onlyAttributeIdsOutOfRange() {
             Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, Containers::stridedArrayView(vertices).slice(&Vertex::textureCoordinates1)}
         }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_IGNORE_DEPRECATED_PUSH
     filterOnlyAttributes(mesh, {0, 0, 2});
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "MeshTools::filterOnlyAttributes(): index 2 out of range for 2 attributes\n");
+    CORRADE_COMPARE(out, "MeshTools::filterOnlyAttributes(): index 2 out of range for 2 attributes\n");
 }
 
 void FilterTest::onlyAttributeIdsNoIndexData() {
@@ -575,6 +705,46 @@ void FilterTest::exceptAttributesNoAttributeData() {
     CORRADE_COMPARE(filtered.attributeCount(), 0);
 }
 
+void FilterTest::exceptAttributesRvalue() {
+    /* Subset of onlyAttributes() verifying data ownership transfer behavior.
+       All cases of ownership transfer are verified in attributesRvalue(), this
+       only checks that the r-value gets correctly passed through all overloads
+       to keep the vertex data owned and index data not. */
+
+    UnsignedShort indices[5];
+    Containers::Array<char> vertexData{3*sizeof(Vertex)};
+    Containers::StridedArrayView1D<Vertex> vertices = Containers::arrayCast<Vertex>(vertexData);
+
+    Trade::MeshData mesh{MeshPrimitive::TriangleStrip,
+        {}, indices, Trade::MeshIndexData{indices},
+        Utility::move(vertexData), {
+            Trade::MeshAttributeData{Trade::MeshAttribute::Position, vertices.slice(&Vertex::position)},
+            Trade::MeshAttributeData{Trade::MeshAttribute::Tangent, vertices.slice(&Vertex::tangent)},
+            Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, vertices.slice(&Vertex::textureCoordinates1)},
+            Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, vertices.slice(&Vertex::textureCoordinates2)},
+            /* Positions again, just under a different name. Should be kept. */
+            Trade::MeshAttributeData{Trade::meshAttributeCustom(0xbaf), vertices.slice(&Vertex::position)},
+        }};
+
+    Trade::MeshData filtered = filterExceptAttributes(Utility::move(mesh), {
+        Trade::MeshAttribute::Position,
+        Trade::MeshAttribute::TextureCoordinates
+    });
+    CORRADE_COMPARE(filtered.primitive(), MeshPrimitive::TriangleStrip);
+
+    CORRADE_VERIFY(filtered.isIndexed());
+    CORRADE_COMPARE(filtered.indexCount(), 5);
+    CORRADE_COMPARE(filtered.indexData().data(), static_cast<void*>(indices));
+    CORRADE_COMPARE(filtered.indexDataFlags(), Trade::DataFlags{});
+
+    CORRADE_COMPARE(filtered.vertexCount(), 3);
+    CORRADE_COMPARE(filtered.vertexData().data(), vertices.data());
+    CORRADE_COMPARE(filtered.vertexDataFlags(), Trade::DataFlag::Owned|Trade::DataFlag::Mutable);
+
+    CORRADE_COMPARE(filtered.attributeCount(), 2);
+    CORRADE_COMPARE(filtered.attributeName(0), Trade::MeshAttribute::Tangent);
+}
+
 #ifdef MAGNUM_BUILD_DEPRECATED
 void FilterTest::exceptAttributeIds() {
     auto&& data = ImplementationSpecificIndexTypeData[testCaseInstanceId()];
@@ -639,12 +809,12 @@ void FilterTest::exceptAttributeIdsOutOfRange() {
             Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, Containers::stridedArrayView(vertices).slice(&Vertex::textureCoordinates1)}
         }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_IGNORE_DEPRECATED_PUSH
     filterExceptAttributes(mesh, {0, 0, 2});
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "MeshTools::filterExceptAttributes(): index 2 out of range for 2 attributes\n");
+    CORRADE_COMPARE(out, "MeshTools::filterExceptAttributes(): index 2 out of range for 2 attributes\n");
 }
 
 void FilterTest::exceptAttributeIdsNoIndexData() {

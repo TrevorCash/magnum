@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020, 2021 Erik Wijmans <etw@gatech.edu>
     Copyright © 2021 Konstantinos Chatzilygeroudis <costashatz@gmail.com>
 
@@ -258,7 +259,7 @@ class WindowlessEglContext::Configuration: public GL::Context::Configuration {
         /**
          * @brief Context flags
          *
-         * @see @ref setFlags(), @ref Context::Flags
+         * @see @ref setFlags(), @ref GL::Context::Flags
          */
         typedef Containers::EnumSet<Flag> Flags;
 
@@ -496,10 +497,8 @@ together with a troubleshooting guide is available in @ref platforms-html5.
 @section Platform-WindowlessEglApplication-usage General usage
 
 This application library is built if `MAGNUM_WITH_WINDOWLESSEGLAPPLICATION` is
-enabled when building Magnum. To use this library from CMake, put
-[FindEGL.cmake](https://github.com/mosra/magnum/blob/master/modules/FindEGL.cmake)
-into your `modules/` directory, request the `WindowlessEglApplication`
-component of the `Magnum` package and link to the
+enabled when building Magnum. To use this library from CMake, request the
+`WindowlessEglApplication` component of the `Magnum` package and link to the
 `Magnum::WindowlessEglApplication` target:
 
 @code{.cmake}
@@ -637,13 +636,7 @@ class WindowlessEglApplication {
          * alternative.
          * @see @ref WindowlessEglContext
          */
-        #ifdef DOXYGEN_GENERATING_OUTPUT
-        explicit WindowlessEglApplication(const Arguments& arguments, const Configuration& configuration = Configuration());
-        #else
-        /* To avoid "invalid use of incomplete type" */
-        explicit WindowlessEglApplication(const Arguments& arguments, const Configuration& configuration);
-        explicit WindowlessEglApplication(const Arguments& arguments);
-        #endif
+        explicit WindowlessEglApplication(const Arguments& arguments, const Configuration& configuration = Configuration{});
 
         /**
          * @brief Constructor

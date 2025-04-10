@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -54,7 +55,7 @@ namespace Magnum { namespace Trade {
 @brief Any image converter plugin
 
 Detects file type based on file extension, loads corresponding plugin and then
-tries to convert the file with it. Supported formats for uncompressed data:
+tries to convert the file with it. Supported formats:
 
 -   Basis Universal (`*.basis`), converted with @ref BasisImageConverter or any
     other plugin that provides it. Only uncompressed 2D/3D and multi-level
@@ -78,6 +79,8 @@ tries to convert the file with it. Supported formats for uncompressed data:
     uncompressed 2D images.
 -   OpenVDB (`*.vdb`), converted with any plugin that provides
     `OpenVdbImageConverter`. Only uncompressed 3D images.
+-   WebP (`*.webp`), converted with @ref WebPImageConverter or any other plugin
+    that provides it. Only uncompressed 2D images.
 
 As the converter plugin is picked based on file extension, only saving to files
 is supported.

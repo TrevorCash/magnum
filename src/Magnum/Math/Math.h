@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -37,11 +38,11 @@
 #include <Corrade/Utility/Macros.h>
 #endif
 
+#ifndef DOXYGEN_GENERATING_OUTPUT
 namespace Magnum { namespace Math {
 
 /** @todo Denormals to zero */
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 template<std::size_t> class BitVector;
 #ifdef MAGNUM_BUILD_DEPRECATED
 template<std::size_t size> using BoolVector CORRADE_DEPRECATED_ALIAS("use BitVector instead") = BitVector<size>;
@@ -67,16 +68,21 @@ template<class> class Matrix4;
 template<class> class Quaternion;
 
 template<std::size_t, std::size_t, class> class RectangularMatrix;
+template<class T> using Matrix2x1 = RectangularMatrix<2, 1, T>;
 template<class T> using Matrix2x3 = RectangularMatrix<2, 3, T>;
-template<class T> using Matrix3x2 = RectangularMatrix<3, 2, T>;
 template<class T> using Matrix2x4 = RectangularMatrix<2, 4, T>;
-template<class T> using Matrix4x2 = RectangularMatrix<4, 2, T>;
+template<class T> using Matrix3x1 = RectangularMatrix<3, 1, T>;
+template<class T> using Matrix3x2 = RectangularMatrix<3, 2, T>;
 template<class T> using Matrix3x4 = RectangularMatrix<3, 4, T>;
+template<class T> using Matrix4x1 = RectangularMatrix<4, 1, T>;
+template<class T> using Matrix4x2 = RectangularMatrix<4, 2, T>;
 template<class T> using Matrix4x3 = RectangularMatrix<4, 3, T>;
 
 template<template<class> class, class> class Unit;
 template<class> class Deg;
 template<class> class Rad;
+template<class> class Nanoseconds;
+template<class> class Seconds;
 
 class Half;
 
@@ -114,8 +120,8 @@ namespace Implementation {
     template<class> struct StrictWeakOrdering;
 }
 #endif
-#endif
 
 }}
+#endif
 
 #endif

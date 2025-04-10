@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -53,8 +54,7 @@ template<> struct Renderer<3> {
 
 }
 
-/* Doxygen gets confused when using {} to initialize parent object */
-template<UnsignedInt dimensions> ObjectRenderer<dimensions>::ObjectRenderer(ResourceManager& manager, SceneGraph::AbstractObject<dimensions, Float>& object, ResourceKey options, SceneGraph::DrawableGroup<dimensions, Float>* drawables): SceneGraph::Drawable<dimensions, Float>(object, drawables), _options{manager.get<ObjectRendererOptions>(options)} {
+template<UnsignedInt dimensions> ObjectRenderer<dimensions>::ObjectRenderer(ResourceManager& manager, SceneGraph::AbstractObject<dimensions, Float>& object, ResourceKey options, SceneGraph::DrawableGroup<dimensions, Float>* drawables): SceneGraph::Drawable<dimensions, Float>{object, drawables}, _options{manager.get<ObjectRendererOptions>(options)} {
     /* Shader */
     _shader = manager.get<GL::AbstractShaderProgram, Shaders::VertexColorGL<dimensions>>(Renderer<dimensions>::shader());
     if(!_shader) manager.set<GL::AbstractShaderProgram>(_shader.key(), new Shaders::VertexColorGL<dimensions>);

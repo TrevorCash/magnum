@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -51,6 +52,12 @@ See also:
 -   Minimal supported Emscripten version is now 1.39.5 which implicitly sets
     `-s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1`, as the deprecated
     code paths were removed.
+-   Support for Android API versions older than 14 (i.e., before Android 4.0,
+    which is from 2011) has been dropped from @ref Platform::AndroidApplication.
+-   Support for SDL2 older than 2.0.6 (released in 2017) has been dropped from
+    @ref Platform::Sdl2Application.
+-   Support for GLFW older than 3.2 (released in 2016) has been dropped from
+    @ref Platform::GlfwApplication.
 
 @subsection changelog-latest-new New features
 
@@ -70,17 +77,26 @@ See also:
 -   New @ref pixelFormatChannelFormat(), @ref pixelFormatChannelCount(),
     @ref isPixelFormatNormalized(), @ref isPixelFormatIntegral(),
     @ref isPixelFormatFloatingPoint(), @ref isPixelFormatSrgb(),
-    @ref isPixelFormatDepthOrStencil() and
-    @ref pixelFormat(PixelFormat, UnsignedInt, bool) helpers
+    @ref isPixelFormatDepthOrStencil(),
+    @ref pixelFormat(PixelFormat, UnsignedInt, bool),
+    @ref isCompressedPixelFormatNormalized(),
+    @ref isCompressedPixelFormatFloatingPoint() and
+    @ref isCompressedPixelFormatSrgb() helpers
 -   New @ref Degh, @ref Radh, @ref Range1Dh, @ref Range2Dh and @ref Range3Dh
     typedefs for half-float angles and ranges
 -   New @ref Range1Dui, @ref Range2Dui and @ref Range3Dui typedefs for unsigned
     integer ranges
+-   New @ref Nanoseconds and @ref Seconds typedefs for time values
+-   New @ref Matrix2x1, @ref Matrix3x1, @ref Matrix4x1 typedefs for single-row
+    matrices as a counterpart for column vectors, together with corresponding
+    double variants and type aliases in the @ref Math library
 -   Added MSVC Natvis files and pretty-printers for GDB. See @ref debuggers,
     [mosra/magnum#589](https://github.com/mosra/magnum/pull/589),
     [mosra/magnum#595](https://github.com/mosra/magnum/pull/595),
-    [mosra/magnum#620](https://github.com/mosra/magnum/pull/620) and
-    [mosra/magnum#623](https://github.com/mosra/magnum/pull/623) for more
+    [mosra/magnum#620](https://github.com/mosra/magnum/pull/620),
+    [mosra/magnum#623](https://github.com/mosra/magnum/pull/623),
+    [mosra/magnum#653](https://github.com/mosra/magnum/pull/653) and
+    [mosra/corrade#179](https://github.com/mosra/corrade/issues/179) for more
     information.
 
 @subsubsection changelog-latest-new-debugtools DebugTools library
@@ -121,8 +137,9 @@ See also:
     extensions on GLES 3.1+, exposed as @ref GL::Texture::view() and similar
     APIs on other texture types
 -   Implemented the GL 4.5 @gl_extension{ARB,clip_control} extension and
-    matching @gl_extension{EXT,clip_control} extension on GLES, exposed as
-    @ref GL::Renderer::setClipControl(). See also [mosra/magnum#543](https://github.com/mosra/magnum/issues/543).
+    matching @gl_extension{EXT,clip_control} extension on GLES and WebGL,
+    exposed as @ref GL::Renderer::setClipControl(). See also
+    [mosra/magnum#543](https://github.com/mosra/magnum/issues/543).
 -   Implemented @gl_extension{EXT,texture_norm16} and
     @webgl_extension{EXT,texture_norm16} ES and WebGL extensions, making
     normalized 16-bit texture and renderbuffer formats available on all
@@ -142,7 +159,25 @@ See also:
     the capabilities of @ref GL::Context::detectedDriver() on WebGL. It also
     resulted in a new @cpp "firefox-deprecated-debug-renderer-info" @ce
     workaround being added, see @ref opengl-workarounds for more info.
--   Recognizing @webgl_extension{EXT,float_blend} and
+-   Implemented the @webgl_extension{EXT,depth_clamp} WebGL extension, making
+    @ref GL::Renderer::Feature::DepthClamp available on all platforms
+-   Implemented the @gl_extension{EXT,texture_mirror_clamp_to_edge} ES and
+    WebGL extensions, making @ref GL::SamplerWrapping::MirrorClampToEdge
+    available on all platforms
+-   Implemented the @m_class{m-doc-external} [ANGLE_provoking_vertex](https://chromium.googlesource.com/angle/angle/+/main/extensions/ANGLE_provoking_vertex.txt)
+    ES extension. Recognized also on WebGL as
+    @webgl_extension{WEBGL,provoking_vertex} but with no implementation as
+    Emscripten doesn't have the required entrypoints yet.
+-   Implemented the @m_class{m-doc-external} [ANGLE_polygon_mode](https://chromium.googlesource.com/angle/angle/+/HEAD/extensions/ANGLE_polygon_mode.txt)
+    and @webgl_extension{WEBGL,polygon_mode} ES and WebGL extension.
+-   Implemented the @m_class{m-doc-external} [ANGLE_stencil_texturing](https://chromium.googlesource.com/angle/angle/+/HEAD/extensions/ANGLE_stencil_texturing.txt)
+    ES and @webgl_extension{WEBGL,stencil_texturing} WebGL extensions
+-   Implemented the @gl_extension{EXT,blend_func_extended} ES and
+    @webgl_extension{WEBGL,blend_func_extended} WebGL extensions
+-   Implemented the @gl_extension{INTEL,blackhole_render} desktop and ES
+    extension
+-   Recognizing @webgl_extension{EXT,float_blend},
+    @webgl_extension{EXT,polygon_offset_clamp} and
     @webgl_extension{WEBGL,debug_shaders} WebGL extensions, no implementation
     done yet
 -   Implemented @ref GL-AbstractShaderProgram-async "Async shader compilation and linking"
@@ -169,7 +204,8 @@ See also:
 -   Recognizing the @gl_extension{NV,geometry_shader_passthrough} extension
 -   Added a @ref GL::AbstractTexture::target() getter to simplify interaction
     with raw GL code
--   Exposed @gl_extension{ARB,buffer_storage} as
+-   Exposed the @gl_extension{ARB,buffer_storage} desktop and
+    @gl_extension{EXT,buffer_storage} ES extensions as
     @ref GL::Buffer::setStorage() together with additions to
     @ref GL::Buffer::MapFlag
 -   It's now possible to modify index offset via @ref GL::Mesh::setIndexOffset()
@@ -183,6 +219,10 @@ See also:
     @ref GL::Renderer::setDepthRange() if the extension is available. See also
     [mosra/magnum#543](https://github.com/mosra/magnum/issues/543) and
     [mosra/magnum#558](https://github.com/mosra/magnum/issues/558).
+-   Added @ref GL::compressedPixelFormatBlockSize() and
+    @ref GL::compressedPixelFormatBlockDataSize() utilities as OpenGL-specific
+    counterparts to the generic @ref compressedPixelFormatBlockSize() /
+    @ref compressedPixelFormatBlockDataSize() queries
 -   A new @cpp "nv-egl-crashy-query-device-attrib" @ce workaround for a crash
     happening during EGL initialization in recent NVidia drivers.  See
     @ref opengl-workarounds and [mosra/magnum#491](https://github.com/mosra/magnum/pull/491)
@@ -204,6 +244,13 @@ See also:
     rendering or even crash. See @ref opengl-workarounds and
     [mosra/magnum#618](https://github.com/mosra/magnum/issues/618) for more
     information.
+-   A new @cpp "mesa-broken-dsa-framebuffer-clear" @ce workaround for a crash
+    on exit happening with Mesa 24 when the DSA variants of
+    @ref GL::Framebuffer::clearColor() and related APIs are used.  See
+    @ref opengl-workarounds for more information.
+-   A new @cpp "nv-broken-buffer-dsa" @ce workaround for a rendering corruption
+    on NVidia 572.82 drivers happening when DSA codepaths for @ref GL::Buffer
+    are used. See @ref opengl-workarounds for more information.
 
 @subsubsection changelog-latest-new-math Math library
 
@@ -215,6 +262,9 @@ See also:
     @ref Math::Color4::fromLinearRgbaInt() as counterparts to
     @ref Math::Color3::fromSrgbInt(), @ref Math::Color4::fromSrgbInt() and
     @ref Math::Color4::fromSrgbAlphaInt() that don't perform a sRGB conversion
+-   Added @ref Math::Color4::premultiplied() and
+    @relativeref{Math::Color4,unpremultiplied()} for converting colors to and
+    from premultiplied alpha representation
 -   New @ref Math::DualComplex::from(const Complex<T>&, const Vector2<T>&) and
     @ref Math::DualQuaternion::from(const Quaternion<T>&, const Vector3<T>&)
     functions mirroring @ref Math::Matrix3::from(const Matrix2x2<T>&, const Vector2<T>&)
@@ -239,12 +289,21 @@ See also:
     @relativeref{Math::Intersection,pointSphere()}, which are just wrappers
     over trivial code but easier to discover
 -   Added an unary @cpp operator+() @ce to all @ref Math classes
+-   Added @ref Math::Quaternion::rotation(const Vector3<T>&, const Vector3<T>&)
+    for creating a quaternion that rotates from one vector to another
 -   Added @ref Math::Quaternion::reflection() and
     @ref Math::Quaternion::reflectVector(), but mainly just for documentation
     purposes as reflections cannot be combined with rotations and thus are
     mostly useless in practice
+-   Added @ref Math::Quaternion::xyzw() and @ref Math::Quaternion::wxyz()
+    helpers for converting to a @ref Vector4 in chosen component order
 -   New @ref Magnum/Math/ColorBatch.h header with utilities for performing Y
     flip of various block-compressed formats
+-   New @ref Math::Nanoseconds and @ref Math::Seconds classes for strongly
+    typed representation of time values
+-   @ref Math::Vector, @ref Math::RectangularMatrix and all their subclasses
+    can be now constructed from fixed-size arrays without having to use the
+    potentially dangerous and non-constexpr @ref Math::Vector::from() API
 
 @subsubsection changelog-latest-new-materialtools MaterialTools library
 
@@ -256,6 +315,8 @@ See also:
 -   New @ref MeshTools::boundingSphereBouncingBubble() algorithm for
     calculating a tight bounding sphere for a mesh, along with a trivial
     @ref MeshTools::boundingRange() for AABBs (see [mosra/magnum#557](https://github.com/mosra/magnum/pull/557))
+-   Added @ref MeshTools::generateTrivialIndices() as a STL-less alternative
+    to @ref std::iota()
 -   Added @ref MeshTools::generateQuadIndices() for quad triangulation
     including non-convex and non-planar quads
 -   New @ref MeshTools::filterAttributes(),
@@ -269,6 +330,9 @@ See also:
 -   New @ref MeshTools::compileLines() utility for creating meshes compatible
     with the new @ref Shaders::LineGL. See also
     [mosra/magnum#601](https://github.com/mosra/magnum/pull/601).
+-   New @ref MeshTools::interleave(MeshPrimitive, const Trade::MeshIndexData&, Containers::ArrayView<const Trade::MeshAttributeData>)
+    overload for conveniently creating an interleaved mesh out of loose index
+    and attribute arrays
 
 @subsubsection changelog-latest-new-platform Platform libraries
 
@@ -289,6 +353,23 @@ See also:
     and @relativeref{Platform::EmscriptenApplication::GLConfiguration,Flag::PowerPreferenceHighPerformance}
     flags allowing to pick either a low power, high performance or default
     behavior (see [mosra/magnum#500](https://github.com/mosra/magnum/issues/500)).
+-   Added @ref Platform::GlfwApplication::setMinimalLoopPeriod() and
+    @relativeref{Platform::GlfwApplication,tickEvent()} to match the interface
+    of @ref Platform::Sdl2Application (see [mosra/magnum#577](https://github.com/mosra/magnum/issues/577)
+    and [mosra/magnum#580](https://github.com/mosra/magnum/pull/580))
+-   Multi-touch support in @ref Platform::Sdl2Application,
+    @ref Platform::EmscriptenApplication and
+    @ref Platform::AndroidApplication through new
+    @relativeref{Platform::Sdl2Application,PointerEvent} and
+    @relativeref{Platform::Sdl2Application,PointerMoveEvent} that unify mouse,
+    pen and touch input events. This also means
+    @ref Platform::EmscriptenApplication finally supports touch drag
+    ([mosra/magnum#532](https://github.com/mosra/magnum/issues/532)) --- no
+    touch-to-mouse event passthrough needs to be implemented, it works out of
+    the box with the new pointer events. The Android implementation is
+    building upon [mosra/magnum#527](https://github.com/mosra/magnum/pull/527).
+    There's also a new @ref Platform::TwoFingerGesture helper for recognition
+    of common two-finger gestures for zoom, rotation and pan.
 
 @subsubsection changelog-latest-new-scenegraph SceneGraph library
 
@@ -340,10 +421,12 @@ See also:
 -   Support for instanced drawing in @ref Shaders::MeshVisualizerGL2D and
     @ref Shaders::MeshVisualizerGL3D for better feature parity with the other
     shaders
--   New @ref Shaders::Generic::JointIds,
-    @ref Shaders::Generic::SecondaryJointIds, @ref Shaders::Generic::Weights
-    and @ref Shaders::Generic::SecondaryWeights attributes for GPU skinning
+-   New @ref Shaders::GenericGL::JointIds,
+    @ref Shaders::GenericGL::SecondaryJointIds, @ref Shaders::GenericGL::Weights
+    and @ref Shaders::GenericGL::SecondaryWeights attributes for GPU skinning
     support (see also [mosra/magnum#441](https://github.com/mosra/magnum/pull/441))
+-   New @ref Shaders::GenericGL::TextureArrayCoordinates attribute for shaders
+    accepting three-component texture array coordinates
 -   GPU skinning support in @ref Shaders::FlatGL, @ref Shaders::PhongGL and
     @ref Shaders::MeshVisualizerGL2D / @ref Shaders::MeshVisualizerGL3D (see
     also [mosra/magnum#444](https://github.com/mosra/magnum/pull/444) and
@@ -379,10 +462,17 @@ See also:
 -   Reworked @ref Text::AbstractGlyphCache on top of
     @ref TextureTools::AtlasLandfill allowing more efficient and incremental
     glyph packing together with support for texture arrays
+-   New @ref Text::Renderer, @ref Text::RendererGL and @ref Text::RendererCore
+    classes that provide high-level multi-line and multi-font text rendering
+    functionality
 -   New @ref Text::renderLineGlyphPositionsInto(),
-    @ref Text::renderGlyphQuadsInto(), @ref Text::alignRenderedLine(),
-    @ref Text::alignRenderedBlock() and @ref Text::renderGlyphQuadIndicesInto()
-    APIs providing low-level access to the text renderer building blocks
+    @ref Text::renderGlyphQuadsInto(), @ref Text::glyphQuadBounds(),
+    @ref Text::alignRenderedLine(), @ref Text::alignRenderedBlock() and
+    @ref Text::renderGlyphQuadIndicesInto() APIs providing low-level access to
+    the text renderer building blocks
+-   New @ref Text::glyphRangeForBytes() API for providing byte-to-glyph mapping
+    for arbitrarily complex shapers using the output from
+    @ref Text::AbstractShaper::glyphClustersInto()
 
 @subsubsection changelog-latest-new-texturetools TextureTools library
 
@@ -393,7 +483,7 @@ See also:
 -   New @ref TextureTools::atlasTextureCoordinateTransformation() helper for
     creating an appropriate texture coordinate transformation matrix for
     textures placed into an atlas
--   Added a @ref TextureTools::DistanceField::operator()() overload taking a
+-   Added a @ref TextureTools::DistanceFieldGL::operator()() overload taking a
     @ref GL::Framebuffer instead of a @ref GL::Texture as an output for an
     easier ability to download the resulting image on OpenGL ES platforms;
     the @ref magnum-distancefieldconverter "magnum-distancefieldconverter"
@@ -407,7 +497,8 @@ See also:
     @ref Trade::PbrMetallicRoughnessMaterialData,
     @ref Trade::PbrSpecularGlossinessMaterialData and
     @ref Trade::PbrClearCoatMaterialData convenience accessor APIs similar to
-    @ref Trade::PhongMaterialData. See [mosra/magnum#459](https://github.com/mosra/magnum/pull/459).
+    @ref Trade::PhongMaterialData. See also [mosra/magnum#459](https://github.com/mosra/magnum/pull/459)
+    and [mosra/magnum#662](https://github.com/mosra/magnum/issues/662).
 -   Added @ref Trade::PhongMaterialData::hasSpecularTexture(),
     @ref Trade::PhongMaterialData::specularTextureSwizzle(),
     @ref Trade::PhongMaterialData::normalTextureScale() and
@@ -664,6 +755,8 @@ See also:
     APIs that take sized views.
 -   Added @ref Math::Range::scaled() and @ref Math::Range::scaledFromCenter()
     overloads taking a scalar
+-   Added a @ref Math::join(const Range<dimensions, T>&, const Vector<dimensions, T>&)
+    overload for joining a range and a point
 
 @subsubsection changelog-latest-changes-meshtools MeshTools library
 
@@ -672,6 +765,7 @@ See also:
     @ref MeshTools::concatenate(const Containers::Iterable<const Trade::MeshData>&, InterleaveFlags)
     optionally take a @ref MeshTools::InterleaveFlags parameter affecting the
     output, in particular whether to preserve the original interleaved layout.
+-   @ref MeshTools::interleaveInto() now returns the actually filled size
 -   @ref MeshTools::concatenate() now allows concatenating an array attribute
     into an array attribute with more elements. The remaining elements are
     zero-filled, similarly to how missing attributes are handled. To avoid
@@ -689,6 +783,9 @@ See also:
     @relativeref{MeshTools,generateIndices()} now allow empty input, producing
     an empty index buffer as a result. Disallowing empty input was an
     unnecessary restriction that was inconsistent with other APIs.
+-   @ref MeshTools::generateIndices() now generates a trivial index buffer for
+    non-loop, non-strip and non-fan primitives, and if such a mesh is already
+    indexed it simply passes it through
 -   Added overloads to @ref MeshTools::generateLineStripIndices(),
     @relativeref{MeshTools,generateLineLoopIndices()},
     @relativeref{MeshTools,generateTriangleStripIndices()} and
@@ -738,7 +835,8 @@ See also:
 -   @ref Platform::Sdl2Application now overrides SDL's default behavior that
     prevents computer from entering a power-saving mode while the application
     is running, as that's generally undesirable for regular GUI applications.
-    See @ref Platform-Sdl2Application-usage-power for more information.
+    See @ref Platform-Sdl2Application-platform-specific-power for more
+    information.
 -   @ref Platform::GlfwApplication now overrides GLFW's default behavior that
     changes current working directory to `Resources/` in the app bundle on
     Apple platforms.
@@ -752,12 +850,31 @@ See also:
     UI scale. However note that this does not yet properly handle DPI change
     events themselves, which happen for example when moving windows across
     displays with different DPI.
+-   Added more keys to @ref Platform::AbstractXApplication::KeyEvent::Key and
+    implemented @ref Platform::AbstractXApplication::scrollEvent() for better
+    consistency with other application implementations
+-   Added @ref Platform::Sdl2Application::KeyEvent::scanCode(),
+    @relativeref{Platform::Sdl2Application::KeyEvent,scanCodeName()},
+    @ref Platform::GlfwApplication::KeyEvent::scanCode() and
+    @ref Platform::EmscriptenApplication::KeyEvent::scanCodeName() for querying
+    layout-independent key identifiers as well as
+    @ref Platform::Sdl2Application::scanCodeName(UnsignedInt),
+    @relativeref{Platform::Sdl2Application,keyToScanCode()},
+    @relativeref{Platform::Sdl2Application,scanCodeToKey()} and
+    @ref Platform::GlfwApplication::keyToScanCode() helpers for key / scan code
+    conversion outside of event handlers
+-   Updated @ref Platform::AndroidApplication to not use a deprecated API that
+    was removed in NDK 27 ([mosra/magnum#659](https://github.com/mosra/magnum/pull/659))
 
 @subsubsection changelog-latest-changes-scenegraph SceneGraph library
 
 -   @ref SceneGraph trees are now destructed in a way that preserves
     @ref SceneGraph::Object::parent() links up to the root as well as
     @ref SceneGraph::AbstractFeature::object() references
+-   Added @ref SceneGraph::Object::addFeature() as a counterpart to
+    @ref SceneGraph::AbstractObject::addFeature() that passes a concrete object
+    type to the feature constructor, in order to make it work with for example
+    the @ref BulletIntegration::MotionState
 
 @subsubsection changelog-latest-changes-scenetools SceneTools library
 
@@ -778,6 +895,9 @@ See also:
 
 @subsubsection changelog-latest-changes-shaders Shaders library
 
+-   This library no longer has a hard dependency on OpenGL. If
+    @ref MAGNUM_TARGET_GL is not enabled, this library will contain just
+    uniform struct definitions and related utilities.
 -   In the original implementation of normal mapping in @ref Shaders::PhongGL,
     there shader didn't provide a way to supply bitangent direction, forcing
     users to patch normal maps. This is now possible using newly added
@@ -800,7 +920,7 @@ See also:
 
 -   Added @ref Text::AbstractFont::glyphCount() and
     @relativeref{Text::AbstractFont,glyphSize()}
--   Added @ref Text::Renderer::fontSize()
+-   Added @ref Text::AbstractRenderer::fontSize()
 -   @ref Text::Alignment now has separate values for alignment based on font
     metrics and cursor position alone, which is the more commonly expected
     behavior, and `*GlyphBounds` values that align based on actual glyph
@@ -808,6 +928,27 @@ See also:
     missing before, and @ref Text::Alignment::TopCenterIntegral, which is also
     needed in order to prevent aligning pixel-perfect fonts to fractional
     positions.
+-   @ref Text::Alignment gained special `*Start` and `*End` values for
+    alignment based on text direction, and a new
+    @ref Text::alignmentForDirection() utility that resolves those to concrete
+    `*Left` and `*Right` values based @ref Text::LayoutDirection and
+    @ref Text::ShapeDirection
+-   Added a @ref Text::GlyphCacheGL::GlyphCacheGL(NoCreateT) and
+    @ref Text::DistanceFieldGlyphCacheGL::DistanceFieldGlyphCacheGL(NoCreateT)
+    constructor allowing to construct the object without a GL context present
+-   New @ref Text::AbstractFont::fillGlyphCache() overload taking a list of
+    glyph IDs instead of a UTF-8 string to allow filling the glyph cache with
+    glyphs that don't directly map to Unicode
+-   New @ref Text::AbstractFont::glyphName() and
+    @relativeref{Text::AbstractFont,glyphForName()} APIs for querying glyph
+    names and retrieving IDs for particular glyph names.
+-   @ref Text::AbstractFont::fillGlyphCache() now returns a @cpp bool @ce to
+    allow font plugin implementations to gracefully report failures
+
+@subsubsection changelog-latest-changes-texturetools TextureTools library
+
+-   Added a @ref TextureTools::DistanceFieldGL::DistanceFieldGL(NoCreateT)
+    constructor allowing to construct the object without a GL context present
 
 @subsubsection changelog-latest-changes-trade Trade library
 
@@ -832,13 +973,16 @@ See also:
 -   Recognizing BMP and TIFF file header magic in @relativeref{Trade,AnyImageImporter}
 -   Recognizing ASTC and WebP files and data in
     @relativeref{Trade,AnyImageImporter}
+-   Recognizing also a second variant of Radiance HDR file headers in
+    @relativeref{Trade,AnyImageImporter} (see [mosra/magnum#652](https://github.com/mosra/magnum/issues/652))
 -   Recognizing KTX2 files and data in @relativeref{Trade,AnyImageImporter} and
     @relativeref{Trade,AnyImageConverter} (see also
     [mosra/magnum#529](https://github.com/mosra/magnum/pull/529))
 -   Recognizing KTX2 for (compressed) 1D/2D/3D and multi-level 1D/2D/3D images
     in @relativeref{Trade,AnyImageConverter}
+-   Recognizing WebP files in @relativeref{Trade,AnyImageConverter}
 -   Recognizing glTF files in @relativeref{Trade,AnySceneConverter}
--   Recognizing 3MF files in @relativeref{Trade,AnySceneImporter}
+-   Recognizing 3MF, VRM and USD files in @relativeref{Trade,AnySceneImporter}
 -   Recognizing OpenVBD files in @relativeref{Trade,AnyImageImporter} and
     @relativeref{Trade,AnyImageConverter}
 -   @ref Audio::AnyImporter "AnyAudioImporter",
@@ -1013,9 +1157,45 @@ See also:
     dependencies without risking breakages when new Emscripten versions make
     more JS API functions optional, and circumvents the need for users to
     specify `-s EXPORTED_FUNCTIONS` on their side. See [mosra/magnum#619](https://github.com/mosra/magnum/issues/619).
+-   Fixed build of @ref Platform::EmscriptenApplication on Emscripten 3.1.49
+    and newer (see [mosra/magnum#631](https://github.com/mosra/magnum/issues/631)),
+    and on Emscripten 3.1.62 and newer (see
+    [mosra/magnum#641](https://github.com/mosra/magnum/pull/641))
+-   The Emscripten toolchain no longer uses a `*.bc` extension for static
+    libraries, as that breaks builds with version 3.1.52+. See
+    [mosra/magnum#633](https://github.com/mosra/magnum/issues/633) for more
+    information.
+-   Fixed most remaining warnings on MSVC, in particular those related to
+    "conversion from T to void * of greater size" (see
+    [mosra/magnum#544](https://github.com/mosra/magnum/issues/544)).
+-   The @cb{.cmake} android_create_apk() @ce CMake function gained an ability
+    to copy resources and assets to the APK. See @ref platforms-android-apps-cmake "the corresponding Android platform documentation"
+    and [mosra/toolchains#10](https://github.com/mosra/toolchains/pull/10) for
+    more information
+-   Magnum now automatically installs and uses Find modules for its
+    dependencies in a way that doesn't clash with modules of the same name
+    potentially installed by other software, meaning the user doesn't need to
+    copy and carry them along anymore (see [mosra/magnum#436](https://github.com/mosra/magnum/issues/436))
+-   The `FindSDL2.cmake` module now delegates to SDL's own CMake config file,
+    if available, especially to ensure all dependencies are correctly linked on
+    static builds (see [mosra/magnum#553](https://github.com/mosra/magnum/issues/553))
+-   Created a RPM package with a helper script for building (see
+    [mosra/magnum#537](https://github.com/mosra/magnum/pull/537) and
+    [mosra/magnum#650](https://github.com/mosra/magnum/pull/650))
+-   Worked around a `-Wnon-virtual-dtor` warning on GCC and Clang in the
+    @ref SceneGraph library. The same warning (which is off by default) fires
+    also for any use of @ref Platform application classes, fixing that would
+    however only add warning suppression noise or force destructors to be
+    `virtual` for no reason, so it's not done there. See [mosra/magnum#665](https://github.com/mosra/magnum/issues/665).
 
 @subsection changelog-latest-bugfixes Bug fixes
 
+-   The state tracker didn't correctly recognize the "base" / "range"
+    @ref GL::Buffer::bind() call as affecting also the regular binding point,
+    leading to wrong buffer object being used for data upload etc. in certain
+    cases on platforms without DSA extensions.
+-   A large refactor of @ref GL::Mesh internals caused VAOs to no longer be
+    correctly deleted on destruction (see [mosra/magnum#632](https://github.com/mosra/magnum/issues/632))
 -   @ref GL::Context move constructor was not marked @cpp noexcept @ce by
     accident and it was also not really moving everything properly, especially
     when delayed creation was done on the moved-to object
@@ -1023,6 +1203,10 @@ See also:
     passed the arguments to the base @relativeref{Corrade,TestSuite::Tester}
     implementation in a wrong order, failing to compile if this function was
     used in a test
+-   Destructing a moved-out @ref GL::Mesh was querying the GL context to decide
+    what to destroy in its internal state, now it's a proper no-op that works
+    also with the GL context already gone, like with all other GL object
+    wrappers.
 -   @ref GL::Renderer::MemoryBarrier::ShaderStorage had an incorrect value
 -   @ref GL::Shader limit queries for a particular shader stage on desktop were
     out-of-bounds array accesses, causing wrong or random values being returned
@@ -1096,12 +1280,17 @@ See also:
 -   @ref Shaders::PhongGL wasn't normalizing normals coming from normal textures,
     which may have caused slight artifacts due to limited precision of 8-bit
     pixel formats
+-   The default @ref Shaders::PhongGL light range value embedded in the shader
+    was interpreted as NaN instead of an infinity on NVidia, causing completely
+    black output unless @ref Shaders::PhongGL::setLightRange() was explicitly
+    called to overwrite it with a runtime-specified value (see
+    [mosra/magnum#446](https://github.com/mosra/magnum/issues/446))
 -   @ref Text::AbstractFontConverter::exportFontToData() and
     @ref Text::AbstractFontConverter::exportGlyphCacheToData() didn't correctly
     propagate errors when delegating to
     @ref Text::AbstractFontConverter::exportFontToSingleData() /
     @ref Text::AbstractFontConverter::exportGlyphCacheToSingleData()
--   @ref TextureTools::DistanceField no longer generates an output that's
+-   @ref TextureTools::DistanceFieldGL no longer generates an output that's
     slightly shifted, which also makes the output invariant to flips and
     transpositions
 -   @ref Trade::MeshData::attributeData(UnsignedInt) const was not correctly
@@ -1141,6 +1330,16 @@ See also:
     work on Firefox again. The reported renderer string got changed, possibly
     in relation to @webgl_extension{WEBGL,debug_renderer_info} being
     deprecated, which broke Firefox detection in the workaround enabling code.
+-   @ref Platform::EmscriptenApplication was emitting only a text input event
+    if text input was active, not a key press event as well, making it
+    impossible to handle keyboard shortcuts such as copy / paste when editing
+    text. Now it emits both, consistently with @ref Platform::Sdl2Application
+    and @ref Platform::GlfwApplication, and in the same order as in those. See
+    [mosra/magnum#637](https://github.com/mosra/magnum/issues/637).
+-   Fixed swapped middle and right buttons in
+    @ref Platform::EmscriptenApplication::MouseMoveEvent, caused by the
+    JavaScript events themselves having an unexplainable inconsistency in
+    button numbering
 
 @subsection changelog-latest-deprecated Deprecated APIs
 
@@ -1151,6 +1350,11 @@ See also:
     disabling it on GLES will force creation of a GLES context using the GLX /
     WGL libraries (if available); enabling it on desktop GL will allow running
     windowless applications on headless machines.
+-   The @cpp MAGNUM_TARGET_GLES3 @ce CMake and preprocessor variable existed
+    solely in anticipation of there eventually being OpenGL ES 4.0. That is
+    increasingly unlikely to happen and most of the internal code treated it as
+    a simple inverse of @ref MAGNUM_TARGET_GLES2, thus it's deprecated in favor
+    of that.
 -   All @ref building-features "CMake build options" are now prefixed with
     `MAGNUM_`. For backwards compatibility, unless @ref MAGNUM_BUILD_DEPRECATED
     is disabled and unless a prefixed option is already set during the initial
@@ -1160,13 +1364,28 @@ See also:
     [mosra/corrade#139](https://github.com/mosra/corrade/issues/139).
 -   @ref GL::DebugOutput::setCallback() taking a @ref std::string in the
     callback function pointer is deprecated in favor of a version taking a
-    @ref Containers::StringView. See also [mosra/magnum#499](https://github.com/mosra/magnum/pull/499)
-    and [mosra/magnum#596](https://github.com/mosra/magnum/pull/596).
+    @relativeref{Corrade,Containers::StringView}. See also
+    [mosra/magnum#499](https://github.com/mosra/magnum/pull/499) and
+    [mosra/magnum#596](https://github.com/mosra/magnum/pull/596).
 -   @cpp GL::MeshView::setIndexRange() @ce is deprecated in favor of
     @ref GL::MeshView::setIndexOffset() that has a much less confusing name
 -   @cpp GL::Mesh::indexTypeSize() @ce is deprecated in favor of a standalone
     @ref GL::meshIndexTypeSize() utility that you can call on the enum returned
     from @ref GL::Mesh::indexType()
+-   On WebGL builds, @ref GL::Attribute::DataType::Byte,
+    @relativeref{GL::Attribute::DataType,Short} and
+    @relativeref{GL::Attribute::DataType,Int} values are deprecated for
+    @ref GL::Attribute with an unsigned integer type, and conversely
+    @ref GL::Attribute::DataType::UnsignedByte,
+    @relativeref{GL::Attribute::DataType,UnsignedShort} and
+    @relativeref{GL::Attribute::DataType,UnsignedInt} values are deprecated for
+    @ref GL::Attribute with a signed integer type. Those never actually worked,
+    causing a WebGL error because WebGL requires the signedness to match
+    between the attribute and the GLSL definition, now it's being checked at
+    compile time. If @ref MAGNUM_BUILD_DEPRECATED is disabled, only values with
+    matching signedness are present for integer @ref GL::Attribute on WebGL
+    builds. There's no such restriction on OpenGL ES and desktop GL, there all
+    combinations are exposed like before.
 -   The @cpp Array @ce, @cpp Array1D @ce, @cpp Array2D @ce and
     @cpp Array3D @ce types that were used exclusively for specifying
     @ref SamplerWrapping in various texture APIs are deprecated in favor of
@@ -1248,6 +1467,49 @@ See also:
     performance and a default, use @relativeref{Platform::EmscriptenApplication::GLConfiguration,Flag::PowerPreferenceLowPower}
     or @relativeref{Platform::EmscriptenApplication::GLConfiguration,Flag::PowerPreferenceHighPerformance}
     instead
+-   @cpp Platform::Sdl2Application::setMinimalLoopPeriod(UnsignedInt) @ce
+    taking an untyped millisecond value is deprecated in favor of
+    @relativeref{Platform::Sdl2Application,setMinimalLoopPeriod(Nanoseconds)}
+-   @cpp Platform::Sdl2Application::mousePressEvent() @ce,
+    @cpp mouseReleaseEvent() @ce, @cpp mouseMoveEvent() @ce,
+    @cpp mouseScrollEvent() @ce, @cpp MouseEvent @ce. @cpp MouseMoveEvent @ce
+    and @cpp MouseScrollEvent @ce are deprecated in favor of new
+    @ref Platform::Sdl2Application::pointerPressEvent(),
+    @relativeref{Platform::Sdl2Application,pointerReleaseEvent()},
+    @relativeref{Platform::Sdl2Application,pointerMoveEvent()},
+    @relativeref{Platform::Sdl2Application,scrollEvent()},
+    @relativeref{Platform::Sdl2Application,PointerEvent},
+    @relativeref{Platform::Sdl2Application,PointerMoveEvent} and
+    @relativeref{Platform::Sdl2Application,ScrollEvent} APIs that provide a
+    better abstraction over general pointer input, not just a mouse alone.
+    The same change is done in @ref Platform::AbstractXApplication,
+    @ref Platform::AndroidApplication, @ref Platform::EmscriptenApplication,
+    @ref Platform::GlfwApplication and the
+    @ref Platform::BasicScreenedApplication / @ref Platform::BasicScreen
+    wrappers as well.
+-   @cpp Platform::Sdl2Application::multiGestureEvent() @ce and the
+    @cpp MultiGestureEvent @ce event class is deprecated in favor of a new
+    @ref Platform::TwoFingerGesture helper. The SDL event reported relative
+    distance to previous finger positions instead of a relative diameter
+    between multiple pressed fingers, making it practically useless for
+    implementing pinch zoom. It additionally reported everything in normalized
+    coordinates, thus the distance and rotation was only meaningful when the
+    window was an exact square.
+-   @cpp Platform::Sdl2Application::InputEvent::Modifier @ce,
+    @cpp Modifiers @ce and @cpp Platform::Sdl2Application::KeyEvent::Key @ce
+    enums and the @cpp Platform::Sdl2Application::KeyEvent::keyName(Key) @ce
+    function are deprecated in favor of @ref Platform::Sdl2Application::Modifier,
+    @relativeref{Platform::Sdl2Application,Modifiers},
+    @relativeref{Platform::Sdl2Application,Key} and
+    @relativeref{Platform::Sdl2Application,keyName()} APIs contained directly
+    in the application class. Besides the obvious advantage of them being
+    shorter to type, this allows the enums to be used outside of the event
+    class scope. The same change is done in @ref Platform::AbstractXApplication,
+    @ref Platform::EmscriptenApplication and @ref Platform::GlfwApplication.
+-   @cpp Platform::AbstractXApplication::MouseEvent::Button::WheelUp @ce and
+    `WheelDown` members are deprecated in favor of a dedicated
+    @ref Platform::AbstractXApplication::scrollEvent(). Similar change was done
+    for all other application classes in 2016 already.
 -   @cpp Shaders::DistanceFieldVector @ce, @cpp Shaders::Flat @ce,
     @cpp Shaders::Generic @ce, @cpp Shaders::MeshVisualizer2D @ce,
     @cpp Shaders::MeshVisualizer3D @ce, @cpp Shaders::Phong @ce,
@@ -1304,6 +1566,9 @@ See also:
         @relativeref{Text::AbstractGlyphCache,addGlyph()} that better expose
         multi-font and 2D array support. The old API can only be called on 2D
         glyph caches now.
+    -   @cpp Text::AbstractGlyphCache::operator[]() @ce is deprecated in favor
+        of @ref Text::AbstractGlyphCache::glyph() that returns also an array
+        atlas layer. See also [mosra/magnum#661](https://github.com/mosra/magnum/issues/661).
     -   @cpp Text::AbstractGlyphCache::textureSize() @ce is deprecated in favor
         of @ref Text::AbstractGlyphCache::size() which returns a 3D size in
         order to support texture arrays as well. The old API can only be called
@@ -1312,10 +1577,33 @@ See also:
         data to slices of @ref Text::AbstractGlyphCache::image() instead and
         call @relativeref{Text::AbstractGlyphCache,flushImage()} instead. The
         old API can only be called on 2D glyph caches now.
+    -   @cpp Text::DistanceFieldGlyphCacheGL::distanceFieldTextureSize() @ce
+        and @cpp setDistanceFieldImage() @ce is deprecated in favor of
+        @ref Text::AbstractGlyphCache::processedSize() and
+        @relativeref{Text::AbstractGlyphCache,setProcessedImage()}
+    -   @ref Text::GlyphCacheGL constructors taking either a
+        @ref GL::TextureFormat or no texture / pixel format at all are
+        deprecated in favor of constructors taking an explicit
+        @ref PixelFormat. The internal texture format is now considered an
+        implementation detail.
 -   The @cpp TextureTools::atlas() @ce utility is deprecated in favor of
     @ref TextureTools::AtlasLandfill, which has a vastly better packing
     efficiency, supports incremental packing and doesn't force the caller to
     use a @ref std::vector
+-   The @cpp Text::GlyphCache @ce, @cpp Text::DistanceFieldGlyphCache @ce and
+    @cpp TextureTools::DistanceField @ce classes are deprecated in favor of
+    @ref Text::GlyphCacheGL, @ref Text::DistanceFieldGlyphCacheGL and
+    @ref TextureTools::DistanceFieldGL along with correspondingly renamed
+    headers, to make room for implementations with other backends such as
+    Vulkan
+-   The @cpp Text::AbstractRenderer @ce class and the
+    @cpp Text::Renderer2D @ce and @cpp Text::Renderer3D @ce typedefs are
+    deprecated in favor of @ref Text::Renderer and @ref Text::RendererGL
+    instead, which expose a superset of the functionality through a more
+    efficient interface. The new API doesn't distinguish between 2D and 3D
+    anymore as the original implementation had two-component vertex positions
+    in 3D as well. If you really need a third coordinate for transforming
+    individual glyphs, use a @ref Text-Renderer-allocators "custom Renderer vertex allocator".
 -   @cpp Trade::AbstractMaterialData @ce as well as its containing header
     `Magnum/Trade/AbstractMaterialData.h` is now a deprecated alias to the new
     and more flexible @ref Trade::MaterialData.
@@ -1427,8 +1715,8 @@ See also:
     scheme used elsewhere
 -   The signature of @ref Trade::AbstractSceneConverter::convertToFile() was
     changed to have input first and output second, for consistency with other
-    interfaces, together with a switch to @ref Containers::StringView. The
-    original signature is marked as deprecated.
+    interfaces, together with a switch to @relativeref{Corrade,Containers::StringView}.
+    The original signature is marked as deprecated.
 -   The @cpp Trade::AnimationTrackTargetType @ce enum and
     @cpp Trade::AnimationData::trackTargetType() @ce is deprecated in favor of
     a shorter and less confusing @ref Trade::AnimationTrackTarget and
@@ -1505,12 +1793,41 @@ See also:
         @cpp Trade::AbstractMaterialData::AbstractMaterialData(MaterialType, Flags, MaterialAlphaMode, Float, const void*) @ce
         and @cpp Trade::PhongMaterialData::PhongMaterialData(Flags, MaterialAlphaMode, Float, Float, const void*) @ce
         constructors or directly the new @ref Trade::MaterialData class
+-   Removed APIs deprecated in 2019.01, in particular:
+    -   @cpp TextureTools::distanceField() @ce, use the
+        @ref TextureTools::DistanceFieldGL class instead.
 -   Removed APIs deprecated in 2019.10, in particular:
+    -   @cpp MAGNUM_BUILD_MULTITHREADED @ce, use
+        @ref CORRADE_BUILD_MULTITHREADED instead (i.e., the feature is now
+        enabled consistently between Corrade and Magnum)
+    -   Templated @cpp Image*::data() @ce APIs returning a pointer which
+        allowed for dangerous data access without any bounds, type or layout
+        checks, use @ref Image::pixels() instead
+    -   Passing empty data with a non-zero size to @ref ImageView constructors,
+        which caused a runtime deprecation warning, is not allowed anymore. Use
+        a constructor without the data parameter instead.
+    -   @cpp GL::TextureFormat::R3B3G2 @ce containing a typo, use
+        @ref GL::TextureFormat::R3G3B2 instead
+    -   @cpp Platform::GlfwApplication::Key::Smicolon @ce containing a typo,
+        use @ref Platform::GlfwApplication::Key::Semicolon instead
+    -   @cpp Trade::ImporterFileCallbackPolicy @ce, use the
+        @ref InputFileCallbackPolicy enum instead; additionally there was
+        @cpp Trade::ImporterFileCallbackPolicy::LoadPernament @ce containing a
+        typo, use @ref InputFileCallbackPolicy::LoadPermanent instead
+    -   @cpp DebugTools::ForceRendererOptions::scale() @ce, use
+        @ref DebugTools::ForceRendererOptions::size() instead
     -   @cpp Math::Color3::Hsv @ce and @cpp Math::Color4::Hsv @ce
         @ref std::tuple typedefs and @ref Math::Color3::fromHsv() /
         @ref Math::Color4::fromHsv() overloads taking separate hue, saturation
         and value arguments. Use the @ref Math::ColorHsv struct instead.
+    -   @cpp Math::Frustum::planes() @ce, use @ref Math::Frustum::data() or
+        @relativeref{Math::Frustum,begin()} / @relativeref{Math::Frustum,end()}
+        instead
     -   @cpp Math::swizzle() @ce, use @ref Math::gather() instead
+    -   @cpp Magnum/MeshTools/GenerateFlatNormals.h @ce, use
+        @ref Magnum/MeshTools/GenerateNormals.h instead
+    -   @ref Magnum::MeshTools::generateFlatNormals() overload that used an
+        excessive amount of STL
     -   @cpp Text::FontFeature::MultiFile @ce,
         @cpp Text::AbstractFont::openData() @ce taking a vector of pairs, and
         @cpp openSingleData() @ce, use @ref Text::AbstractFont::openData() and
@@ -1568,9 +1885,9 @@ See also:
     -   All @ref Math APIs that took or returned @ref std::pair now use
         @relativeref{Corrade,Containers::Pair} instead
     -   @ref Text::AbstractFont public APIs now take
-        @ref Containers::StringView instead of @ref std::string and return
-        @relativeref{Corrade,Containers::Pair} instead of @ref std::pair.
-        Additionally, the internal implementation relies on
+        @relativeref{Corrade,Containers::StringView} instead of @ref std::string
+        and return @relativeref{Corrade,Containers::Pair} instead of
+        @ref std::pair. Additionally, the internal implementation relies on
         @ref Corrade::Containers::ArrayView "Containers::ArrayView<const char32_t>"
         instead of @ref std::u32string and
         @relativeref{Corrade,Containers::Triple} instead of @ref std::tuple,
@@ -1617,6 +1934,13 @@ See also:
     @ref Math::RectangularMatrix::data() are no longer @cpp constexpr @ce in
     order to make them return a reference to a fixed-size array instead of a
     pointer, which was deemed a more useful property.
+-   @ref Math::sign() now always returns a unitless type instead of the
+    input type itself, so it's possible to e.g. extract a sign of an angle
+    value and multiply other angles with it. In a similar spirit,
+    @ref Math::select() now enforces the interpolation phase to be a unitless
+    type. That was the case with @ref Math::lerp() already, where using angles
+    for `t` didn't even compile, this makes the behavior consistently strict
+    for both.
 -   @ref MeshTools::primitiveCount() now requires the element count to follow
     rules defined by a particular primitive to be consistent with requirements
     of @ref MeshTools::generateIndices() and related APIs. Before it was just
@@ -1681,16 +2005,24 @@ See also:
     -   The @ref Text::AbstractGlyphCache::image() query now returns a
         @ref MutableImageView3D instead of an @ref Image2D in order to support
         incremental population and texture arrays
+-   The @cpp Text::Renderer @ce class template is now gone and its
+    functionality was merged to the now-deprecated @ref Text::AbstractRenderer
+    class. The assumption is that most existing code uses it through the
+    @ref Text::Renderer2D and @ref Text::Renderer3D typedefs and thus it
+    shouldn't result in any breakage, and the original implementation didn't
+    distinguish between 2D and 3D anyway, having two-component vertex positions
+    in 3D as well.
 -   The @ref Text::Alignment left, right, top and middle values now work with
     the font metrics and cursor position instead of glyph bounding rectangles,
-    as that's the more commonly expected behavior. The original behavior with alignment based on glyph bounds is now in the `*GlyphBounds` variants
+    as that's the more commonly expected behavior. The original behavior with
+    alignment based on glyph bounds is now in the `*GlyphBounds` variants
     except for `*LeftGlyphBounds`, where the left glyph offset is also removed
     by the alignment compared to `*Left` which performs no horizontal
     translation like in the original case. Additionally, the `*Integer`
     variants now only round the axis where division by 2 happened for the
     middle / center alignment, with the other axis kept unchanged.
--   @ref TextureTools::DistanceField now asserts that the output texture has a
-    framebuffer-drawable format. Before it only printed an error message and
+-   @ref TextureTools::DistanceFieldGL now asserts that the output texture has
+    a framebuffer-drawable format. Before it only printed an error message and
     silently did nothing, causing a hard-to-track error.
 -   The @ref Trade::AnimationTrackTarget enum was extended from 8 to 16 bits to
     provide more room for custom targets, consistently with
@@ -1754,6 +2086,8 @@ See also:
     That's no longer the case and cube map images are 3D. Because no importer
     implemented support for cube map images, this shouldn't cause a problem in
     practice.
+-   @relativeref{Trade,AnySceneImporter} now recognizes only `*.mesh.xml` for
+    OGRE XML files, because `*.xml` may be used for COLLADA files as well
 
 @subsection changelog-latest-documentation Documentation
 
@@ -2128,7 +2462,7 @@ Released 2020-06-27, tagged as
     now fall back to linear interpolation when the quaternions are close to
     each other, instead of unconditionally returning the first argument
 -   Added non-const overloads to @ref Math::Frustum::operator[]() and
-    @ref Math::Frustum::front() etc. accessors, returning references (see
+    @ref Math::Frustum::near() etc. accessors, returning references (see
     [mosra/magnum#425](https://github.com/mosra/magnum/pull/425))
 
 @subsubsection changelog-2020-06-changes-meshtools MeshTools library
@@ -2847,8 +3181,8 @@ Released 2019-10-24, tagged as
 -   A new @ref Text::AbstractGlyphCache base now makes @ref Text::AbstractFont
     and @ref Text::AbstractFontConverter independent on the graphics API used,
     meaning the @ref Text library now has just an optional dependency on
-    @ref GL. The @ref Text::Renderer, @ref Text::GlyphCache and
-    @ref Text::DistanceFieldGlyphCache classes are now built only if
+    @ref GL. The @cpp Text::Renderer @ce, @cpp Text::GlyphCache @ce and
+    @cpp Text::DistanceFieldGlyphCache @ce classes are now built only if
     `TARGET_GL` is enabled (done by default).
 -   New @ref Text::AbstractFont::setFileCallback() to allow opening multi-file
     fonts with an API similar to @ref Trade::AbstractImporter
@@ -2997,7 +3331,7 @@ Released 2019-10-24, tagged as
 
 @subsubsection changelog-2019-10-changes-texturetools TextureTools library
 
--   @ref TextureTools::DistanceField was updated to work on ES3 SwiftShader
+-   @cpp TextureTools::DistanceField @ce was updated to work on ES3 SwiftShader
     contexts (which have broken @glsl gl_VertexID @ce)
 
 @subsubsection changelog-2019-10-changes-platform Platform libraries
@@ -3010,7 +3344,7 @@ Released 2019-10-24, tagged as
     to use a system GL driver or a dedicated GLES driver based on whether
     @cpp MAGNUM_TARGET_DESKTOP_GLES @ce is defined. This allows for a smoother
     experience for example when using ANGLE on Windows. See
-    @ref Platform-Sdl2Application-usage-gles for more information.
+    @ref Platform-Sdl2Application-platform-specific-gles for more information.
 -   Replaced uses of `Pointer_stringify()` in @ref Platform::Sdl2Application
     which was removed in Emscripten 1.38.27
 -   @ref Platform::Sdl2Application and all Emscripten markup was updated to
@@ -3477,8 +3811,8 @@ Released 2019-02-04, tagged as
 @subsubsection changelog-2019-01-changes-texturetools TextureTools library
 
 -   Further performance and output quality improvements for
-    @ref TextureTools::DistanceField, making the ES2/WebGL 1 consistent with
-    desktop and speeding up the processing to take only 60% of the time
+    @cpp TextureTools::DistanceField @ce, making the ES2/WebGL 1 consistent
+    with desktop and speeding up the processing to take only 60% of the time
     compared to before. It's now also possible to reuse the internal state for
     batch processing.
 
@@ -3501,8 +3835,8 @@ Released 2019-02-04, tagged as
     information. See also [mosra/magnum#307](https://github.com/mosra/magnum/pull/307).
 -   The `Magnum::AndroidApplication` target was missing a few dependency
     libraries when Magnum was used as a CMake subproject
--   Fixed an ambiguous overload error in @ref Text::GlyphCache when compiling
-    this library under C++17 (see
+-   Fixed an ambiguous overload error in @cpp Text::GlyphCache @ce when
+    compiling this library under C++17 (see
     [mosra/magnum#297](https://github.com/mosra/magnum/pull/297))
 -   Imroved initial Emscripten setup on Windows to be more frictionless (see
     [mosra/toolchains#4](https://github.com/mosra/toolchains/pull/4))
@@ -3522,8 +3856,8 @@ Released 2019-02-04, tagged as
     `RESOURCE_MANAGER` (see [mosra/magnum#290](https://github.com/mosra/magnum/issues/290))
 -   Properly escaping log output on Emscripten @ref Platform::WindowlessEglApplication
 -   The @ref GL::Context::States enum set was missing value combining operators
--   Fixed @ref Text::DistanceFieldGlyphCache internal formats on ES2 devices
-    that support @gl_extension{EXT,texture_storage} (see
+-   Fixed @cpp Text::DistanceFieldGlyphCache @ce internal formats on ES2
+    devices that support @gl_extension{EXT,texture_storage} (see
     [mosra/magnum#289](https://github.com/mosra/magnum/pull/289))
 -   @ref PixelStorage::imageHeight() and Z value of @ref PixelStorage::skip()
     was not properly handled on ES3 / WebGL 2 builds.
@@ -3547,7 +3881,7 @@ Released 2019-02-04, tagged as
     @ref Corrade/Containers/PointerStl.h header explicitly.
 -   @cpp TextureTools::distanceField() @ce is deprecated due to inefficiency of
     its statelessness when doing batch processing. Use the
-    @ref TextureTools::DistanceField class instead.
+    @cpp TextureTools::DistanceField @ce class instead.
 -   @cpp Platform::GlfwApplication::KeyEvent::Key::Smicolon @ce has a typo and
     so is deprecated in favor of
     @ref Platform::GlfwApplication::KeyEvent::Key::Semicolon
@@ -3896,7 +4230,7 @@ Released 2018-10-23, tagged as
 -   @ref Platform::Sdl2Application::Configuration::WindowFlags values that make
     no sense on Emscripten are not available there anymore
 -   When using SDL 2.0.8 and newer, @ref Platform::Sdl2Application no longer
-    attempts to disable compositing on Linux. See @ref Platform-Sdl2Application-usage-linux
+    attempts to disable compositing on Linux. See @ref Platform-Sdl2Application-platform-specific-linux
     for more information. See also [mosra/magnum#184](https://github.com/mosra/magnum/issues/184).
 -   New @cpp "swiftshader-no-empty-egl-context-flags" @ce and
     @cpp "swiftshader-egl-context-needs-pbuffer" @ce workarounds to make

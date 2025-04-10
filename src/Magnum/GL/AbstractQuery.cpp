@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -122,7 +123,6 @@ bool AbstractQuery::resultAvailable() {
     return result == GL_TRUE;
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 template<> UnsignedInt AbstractQuery::result<UnsignedInt>() {
     UnsignedInt result;
     #ifndef MAGNUM_TARGET_GLES2
@@ -164,7 +164,6 @@ template<> Long AbstractQuery::result<Long>() {
     #endif
     return result;
 }
-#endif
 
 void AbstractQuery::begin() {
     #ifndef MAGNUM_TARGET_GLES2

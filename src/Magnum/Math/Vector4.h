@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -41,7 +42,8 @@ namespace Magnum { namespace Math {
 @brief Four-component vector
 @tparam T   Data type
 
-See @ref matrix-vector for brief introduction.
+See @ref matrix-vector for brief introduction. The vectors are columns, see
+@ref Matrix4x1 for a row vector.
 @see @ref Magnum::Vector4, @ref Magnum::Vector4h, @ref Magnum::Vector4d,
     @ref Magnum::Vector4ub, @ref Magnum::Vector4b, @ref Magnum::Vector4us,
     @ref Magnum::Vector4s, @ref Magnum::Vector4ui, @ref Magnum::Vector4i
@@ -107,14 +109,29 @@ template<class T> class Vector4: public Vector<4, T> {
          */
         constexpr /*implicit*/ Vector4(const Vector3<T>& xyz, T w) noexcept: Vector<4, T>(xyz[0], xyz[1], xyz[2], w) {}
 
+        /** @copydoc Magnum::Math::Vector::Vector(const T(&)[size_]) */
+        /* For some freaking reason doxygen 1.8.17 needs a fully qualified name
+           here but GUESS WHAT! Not in the other Vector2/3 classes! Dumpster
+           fire! FFS. */
+        #if !defined(CORRADE_TARGET_GCC) || defined(CORRADE_TARGET_CLANG) || __GNUC__ >= 5
+        template<std::size_t size_> constexpr explicit Vector4(const T(&data)[size_]) noexcept: Vector<4, T>{data} {}
+        #else
+        /* GCC 4.8 workaround, see the Vector base for details */
+        constexpr explicit Vector4(const T(&data)[4]) noexcept: Vector<4, T>{data} {}
+        #endif
+
         /** @copydoc Magnum::Math::Vector::Vector(const Vector<size, U>&) */
         /* For some freaking reason doxygen 1.8.17 needs a fully qualified name
            here but GUESS WHAT! Not in the other Vector2/3 classes! Dumpster
            fire! FFS. */
         template<class U> constexpr explicit Vector4(const Vector<4, U>& other) noexcept: Vector<4, T>(other) {}
 
+        /** @copydoc Magnum::Math::Vector::Vector(const BitVector<size>&) */
+        /* Lol and here too */
+        constexpr explicit Vector4(const BitVector4& other) noexcept: Vector<4, T>{other} {}
+
         /** @brief Construct a vector from external representation */
-        template<class U, class V = decltype(Implementation::VectorConverter<4, T, U>::from(std::declval<U>()))> constexpr explicit Vector4(const U& other): Vector<4, T>(Implementation::VectorConverter<4, T, U>::from(other)) {}
+        template<class U, class = decltype(Implementation::VectorConverter<4, T, U>::from(std::declval<U>()))> constexpr explicit Vector4(const U& other): Vector<4, T>(Implementation::VectorConverter<4, T, U>::from(other)) {}
 
         /** @brief Copy constructor */
         constexpr /*implicit*/ Vector4(const Vector<4, T>& other) noexcept: Vector<4, T>(other) {}
@@ -125,7 +142,8 @@ template<class T> class Vector4: public Vector<4, T> {
          * @see @ref r()
          */
         T& x() { return Vector<4, T>::_data[0]; }
-        constexpr T x() const { return Vector<4, T>::_data[0]; } /**< @overload */
+        /** @overload */
+        constexpr const T& x() const { return Vector<4, T>::_data[0]; }
 
         /**
          * @brief Y component
@@ -133,7 +151,8 @@ template<class T> class Vector4: public Vector<4, T> {
          * @see @ref g()
          */
         T& y() { return Vector<4, T>::_data[1]; }
-        constexpr T y() const { return Vector<4, T>::_data[1]; } /**< @overload */
+        /** @overload */
+        constexpr const T& y() const { return Vector<4, T>::_data[1]; }
 
         /**
          * @brief Z component
@@ -141,7 +160,8 @@ template<class T> class Vector4: public Vector<4, T> {
          * @see @ref b()
          */
         T& z() { return Vector<4, T>::_data[2]; }
-        constexpr T z() const { return Vector<4, T>::_data[2]; } /**< @overload */
+        /** @overload */
+        constexpr const T& z() const { return Vector<4, T>::_data[2]; }
 
         /**
          * @brief W component
@@ -149,7 +169,8 @@ template<class T> class Vector4: public Vector<4, T> {
          * @see @ref a()
          */
         T& w() { return Vector<4, T>::_data[3]; }
-        constexpr T w() const { return Vector<4, T>::_data[3]; } /**< @overload */
+        /** @overload */
+        constexpr const T& w() const { return Vector<4, T>::_data[3]; }
 
         /**
          * @brief R component
@@ -157,7 +178,8 @@ template<class T> class Vector4: public Vector<4, T> {
          * Equivalent to @ref x().
          */
         T& r() { return Vector<4, T>::_data[0]; }
-        constexpr T r() const { return Vector<4, T>::_data[0]; } /**< @overload */
+        /** @overload */
+        constexpr const T& r() const { return Vector<4, T>::_data[0]; }
 
         /**
          * @brief G component
@@ -165,7 +187,8 @@ template<class T> class Vector4: public Vector<4, T> {
          * Equivalent to @ref y().
          */
         T& g() { return Vector<4, T>::_data[1]; }
-        constexpr T g() const { return Vector<4, T>::_data[1]; } /**< @overload */
+        /** @overload */
+        constexpr const T& g() const { return Vector<4, T>::_data[1]; }
 
         /**
          * @brief B component
@@ -173,7 +196,8 @@ template<class T> class Vector4: public Vector<4, T> {
          * Equivalent to @ref z().
          */
         T& b() { return Vector<4, T>::_data[2]; }
-        constexpr T b() const { return Vector<4, T>::_data[2]; } /**< @overload */
+        /** @overload */
+        constexpr const T& b() const { return Vector<4, T>::_data[2]; }
 
         /**
          * @brief A component
@@ -181,7 +205,8 @@ template<class T> class Vector4: public Vector<4, T> {
          * Equivalent to @ref w().
          */
         T& a() { return Vector<4, T>::_data[3]; }
-        constexpr T a() const { return Vector<4, T>::_data[3]; } /**< @overload */
+        /** @overload */
+        constexpr const T& a() const { return Vector<4, T>::_data[3]; }
 
         /**
          * @brief XYZ part of the vector
@@ -236,6 +261,10 @@ template<class T> class Vector4: public Vector<4, T> {
         MAGNUM_VECTOR_SUBCLASS_IMPLEMENTATION(4, Vector4)
 };
 
+#ifdef CORRADE_MSVC2015_COMPATIBILITY
+MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION(4, Vector4)
+#endif
+
 /** @relatesalso Vector4
 @brief Create a plane equation from three points
 
@@ -283,10 +312,6 @@ using a dot product with the normal @f$ \boldsymbol{n} @f$ using the point
 template<class T> Vector4<T> planeEquation(const Vector3<T>& normal, const Vector3<T>& point) {
     return {normal, -Math::dot(normal, point)};
 }
-
-#ifndef DOXYGEN_GENERATING_OUTPUT
-MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION(4, Vector4)
-#endif
 
 #ifndef MAGNUM_NO_MATH_STRICT_WEAK_ORDERING
 namespace Implementation {

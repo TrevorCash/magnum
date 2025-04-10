@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Trade/PbrClearCoatMaterialData.h"
 
@@ -336,7 +335,7 @@ void PbrClearCoatMaterialDataTest::invalidTextures() {
         {MaterialLayer::ClearCoat},
     }, {0, 1}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     data.roughnessTexture();
     data.roughnessTextureSwizzle();
@@ -349,7 +348,7 @@ void PbrClearCoatMaterialDataTest::invalidTextures() {
     data.normalTextureMatrix();
     data.normalTextureCoordinates();
     data.normalTextureLayer();
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::MaterialData::attribute(): attribute RoughnessTexture not found in layer ClearCoat\n"
         "Trade::PbrClearCoatMaterialData::roughnessTextureSwizzle(): the layer doesn't have a roughness texture\n"
         "Trade::PbrClearCoatMaterialData::roughnessTextureMatrix(): the layer doesn't have a roughness texture\n"
@@ -493,12 +492,12 @@ void PbrClearCoatMaterialDataTest::noCommonTransformationCoordinatesLayer() {
     CORRADE_VERIFY(!data.hasCommonTextureTransformation());
     CORRADE_VERIFY(!data.hasCommonTextureCoordinates());
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     data.commonTextureMatrix();
     data.commonTextureCoordinates();
     data.commonTextureLayer();
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::PbrClearCoatMaterialData::commonTextureMatrix(): the layer doesn't have a common texture coordinate transformation\n"
         "Trade::PbrClearCoatMaterialData::commonTextureCoordinates(): the layer doesn't have a common texture coordinate set\n"
         "Trade::PbrClearCoatMaterialData::commonTextureLayer(): the layer doesn't have a common array texture layer\n");

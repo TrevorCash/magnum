@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -29,6 +30,7 @@
  * @brief Class @ref Magnum::Text::AbstractFont, enum @ref Magnum::Text::FontFeature, enum set @ref Magnum::Text::FontFeatures
  */
 
+#include <initializer_list>
 #include <Corrade/PluginManager/AbstractPlugin.h>
 #include <Corrade/Utility/StlForwardString.h> /** @todo remove once file callbacks are std::string-free */
 
@@ -74,7 +76,11 @@ enum class FontFeature: UnsignedByte {
      * @see @ref AbstractFont::fillGlyphCache(),
      *      @ref AbstractFont::createGlyphCache()
      */
-    PreparedGlyphCache = 1 << 2
+    PreparedGlyphCache = 1 << 2,
+
+    /* Glyph names are not exposed as a feature because even though the
+       implementation may support these, a particular font file may not, and
+       it'd give a false impression. */
 };
 
 /**
@@ -96,8 +102,9 @@ MAGNUM_TEXT_EXPORT Debug& operator<<(Debug& debug, FontFeatures value);
 /**
 @brief Base for font plugins
 
-Provides interface for opening fonts, filling a glyph cache and layouting the
-glyphs.
+Provides interface for opening font files, filling a glyph cache with
+rasterized glyphs and shaping a Unicode text into a sequence of glyph IDs and
+their positions.
 
 @section Text-AbstractFont-usage Usage
 
@@ -108,17 +115,20 @@ glyphs will be rasterized. Then it stays open until the font is destroyed,
 @ref close() or another font is opened.
 
 In the following example a font is loaded from the filesystem using the
-@ref StbTrueTypeFont plugin, prerendering all needed glyphs, completely with
-all error handling:
+@ref StbTrueTypeFont plugin, prerendering desired glyphs into a
+@ref GlyphCacheGL, completely with all error handling ---  depending on the
+font file, font plugin implementation, font size and cache size, it may happen
+that the characters won't all fit, which should be checked by the application:
 
-@snippet MagnumText-gl.cpp AbstractFont-usage
+@snippet Text-gl.cpp AbstractFont-usage
 
 See @ref plugins for more information about general plugin usage and the list
-of @m_class{m-doc} [derived classes](#derived-classes) for available font
-plugins. See @ref GlyphCache for more information about glyph caches and
-@ref Renderer for information about actual text rendering.
+of @m_class{m-doc} <a href="#derived-classes">derived classes</a> for available
+font plugins. See @ref AbstractGlyphCache for more information about glyph
+caches, @ref Renderer for high-level text rendering, and @ref AbstractShaper
+for low-level access to the font text shaping functionality.
 
-@subsection Text-AbstractFont-usage-font-size Font size
+@section Text-AbstractFont-font-size Font size
 
 Font libraries specify font size in *points*, where 1 pt = ~1.333 px at 96 DPI,
 so in the above snippet a 12 pt font corresponds to 16 px on a 96 DPI display.
@@ -130,24 +140,56 @@ properties are specified *in pixels* in @ref lineHeight(), @ref ascent() and
 @ref descent().
 
 The font size used when opening the font affects how large the glyphs will be
-when rendered into the @ref GlyphCache. Actual text rendering with @ref Renderer
-however uses its own font size, and the rendered size is then additionally
-depending on the actual projection used. This decoupling of font sizes is
-useful for example in case of @ref DistanceFieldGlyphCache, where a single
-prerendered glyph size can be used to render arbitrarily large font sizes
-without becoming blurry or jaggy. When not using a distance field glyph cache,
-it's usually desirable to have the font size and the actual rendered size
-match. See @ref Text-Renderer-usage-font-size "the Renderer documentation" for
-further information about picking font sizes.
+when rasterized into the glyph cache. Actual text rendering with @ref Renderer
+then uses its own font size, and the actual size that's visible on the screen
+is then additionally depending on the actual projection used when drawing the
+rendered mesh.
 
-@subsection Text-AbstractFont-usage-callbacks Loading data from memory, using file callbacks
+This decoupling of font sizes is useful for example in case of
+@ref DistanceFieldGlyphCacheGL, where a single prerendered glyph size can be
+used to render arbitrarily large font sizes without becoming blurry or jaggy.
+When not using a distance field glyph cache, it's usually desirable to have the
+font size and the actual rendered size match. See
+@ref Text-Renderer-usage-font-size "the Renderer documentation" for further
+information about picking font sizes.
+
+@section Text-AbstractFont-glyph-cache Glyph cache filling options
+
+Besides filling the cache with glyphs corresponding to individual characters in
+a UTF-8 string, it's possible to directly specify glyph IDs with
+@ref fillGlyphCache(AbstractGlyphCache&, const Containers::StridedArrayView1D<const UnsignedInt>&).
+That's useful for example with ligatures like *fl* or *ff* that can get used by
+a particular font implementation instead of individual letters, and which thus
+don't have a clear mapping to a Unicode codepoint. You can use some font
+introspection utility to retrieve either directly the glyph IDs, or get just
+glyph names and match them with IDs using @ref glyphForName() at runtime. The
+following snippet prerenders a few of the named ligatures present in the
+[Source Sans](https://github.com/adobe-fonts/source-sans) font that this
+website uses. Again explicitly checking that the operation succeeds, this time
+with a @ref CORRADE_INTERNAL_ASSERT_OUTPUT() macro:
+
+@snippet Text.cpp AbstractFont-glyph-cache-by-id
+
+Subsequent calls to @ref fillGlyphCache() add to already existing glyphs,
+allowing for incremental filling based on which glyphs are needed by actual
+text. Such as by passing the output of @ref AbstractShaper::glyphIdsInto()
+through @ref AbstractGlyphCache::glyphIdsInto() and adding all glyphs which it
+didn't find. Note that, however, the glyph cache packing is the most efficient
+when all glyphs are added at once.
+
+Finally, it's possible to use this overload to populate the glyph cache with
+all glyphs in the font:
+
+@snippet Text.cpp AbstractFont-glyph-cache-all
+
+@section Text-AbstractFont-usage-callbacks Loading data from memory, using file callbacks
 
 Besides loading data directly from the filesystem using @ref openFile() like
 shown above, it's possible to use @ref openData() to import data from memory.
 Note that the particular importer implementation must support
 @ref FontFeature::OpenData for this method to work.
 
-@snippet MagnumText.cpp AbstractFont-usage-data
+@snippet Text.cpp AbstractFont-usage-data
 
 Some font formats consist of more than one file and in that case you may want
 to intercept those references and load them in a custom way as well. For font
@@ -161,7 +203,7 @@ file loading callback affects @ref openFile() as well --- you don't have to
 load the top-level file manually and pass it to @ref openData(), any font
 plugin supporting the callback feature handles that correctly.
 
-@snippet MagnumText.cpp AbstractFont-usage-callbacks
+@snippet Text.cpp AbstractFont-usage-callbacks
 
 For importers that don't support @ref FontFeature::FileCallback directly, the
 base @ref openFile() implementation will use the file callback to pass the
@@ -321,7 +363,7 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
          * See the overload below for a more convenient type-safe way to pass
          * the user data pointer.
          *
-         * @snippet MagnumText.cpp AbstractFont-setFileCallback
+         * @snippet Text.cpp AbstractFont-setFileCallback
          *
          * @see @ref Text-AbstractFont-usage-callbacks
          */
@@ -337,7 +379,7 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
          * @ref Corrade::Utility::Resource instance to avoid a potentially slow
          * resource group lookup every time:
          *
-         * @snippet MagnumText.cpp AbstractFont-setFileCallback-template
+         * @snippet Text.cpp AbstractFont-setFileCallback-template
          *
          * @see @ref Text-AbstractFont-usage-callbacks
          */
@@ -408,10 +450,10 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
         /**
          * @brief Font ascent in pixels
          *
-         * Distance from baseline to top, positive value. Font size is defined
-         * as the distance between @ref ascent() and @ref descent(), thus the
-         * value of @cpp (ascent - descent)*0.75f @ce (i.e., converted to
-         * points) is equal to @ref size(). Expects that a font is opened.
+         * Distance from the baseline to the top, a *positive* value. Font size
+         * is defined as the distance between @ref ascent() and @ref descent(),
+         * thus the value of @cpp (ascent - descent)*0.75f @ce (i.e., converted
+         * to points) is equal to @ref size(). Expects that a font is opened.
          * @see @ref lineHeight(), @ref glyphAdvance()
          */
         Float ascent() const;
@@ -419,10 +461,11 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
         /**
          * @brief Font descent in pixels
          *
-         * Distance from baseline to bottom, negative value. Font size is defined
-         * as the distance between @ref ascent() and @ref descent(), thus the
-         * value of @cpp (ascent - descent)*0.75f @ce (i.e., converted to
-         * points) is equal to @ref size(). Expects that a font is opened.
+         * Distance from the baseline to the bottom, a *negative* value. Font
+         * size is defined as the distance between @ref ascent() and
+         * @ref descent(), thus the value of @cpp (ascent - descent)*0.75f @ce
+         * (i.e., converted to points) is equal to @ref size(). Expects that a
+         * font is opened.
          * @see @ref lineHeight(), @ref glyphAdvance()
          */
         Float descent() const;
@@ -431,8 +474,8 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
          * @brief Line height in pixels
          *
          * Distance between baselines in consecutive text lines that
-         * corresponds to @ref ascent() and @ref descent(). Expects that a font
-         * is opened.
+         * corresponds to @ref ascent() and @ref descent(), a *positive* value.
+         * Expects that a font is opened.
          * @see @ref size(), @ref glyphAdvance()
          */
         Float lineHeight() const;
@@ -452,13 +495,47 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
         /**
          * @brief Glyph ID for given character
          *
-         * Expects that a font is opened.
-         * @note This function is meant to be used only for font observations
-         *      and conversions. In performance-critical code the
-         *      @ref fillGlyphCache() and @ref layout() functions should be
-         *      used instead.
+         * A convenience wrapper around @ref glyphIdsInto() for querying a
+         * glyph ID for a single character. Expects that a font is opened.
          */
         UnsignedInt glyphId(char32_t character);
+
+        /**
+         * @brief Glyph IDs for given characters
+         * @param[in]  characters   Input characters
+         * @param[out] glyphs       Output glyph IDs
+         * @m_since_latest
+         *
+         * Expects that a font is opened and that the @p characters and
+         * @p glyphs views have the same size. The glyph IDs are all guaranteed
+         * to be less than @ref glyphCount().
+         */
+        void glyphIdsInto(const Containers::StridedArrayView1D<const char32_t>& characters, const Containers::StridedArrayView1D<UnsignedInt>& glyphs);
+
+        /**
+         * @brief Glyph name
+         * @m_since_latest
+         *
+         * Returns a name of the glyph in the font file, if present and
+         * supported by the implementation, or an empty string. Expects that a
+         * font is opened and @p glyph is less than @ref glyphCount().
+         * @see @ref glyphForName()
+         */
+        Containers::String glyphName(UnsignedInt glyph);
+
+        /**
+         * @brief Glyph for given name
+         * @m_since_latest
+         *
+         * If the implementation supports querying glyphs by name and the name
+         * exists, returns a corresponding glyph ID, otherwise returns
+         * @cpp 0 @ce for an invalid glyph. Note that certain named glyphs can
+         * also map to glyph @cpp 0 @ce, in particular @cpp ".notdef" @ce in
+         * TTF and OTF fonts, the way to distinguish them is to ask for name of
+         * the zero glyph and compare. The returned index is guaranteed to be
+         * less than @ref glyphCount().
+         */
+        UnsignedInt glyphForName(Containers::StringView name);
 
         /**
          * @brief Glyph size in pixels
@@ -468,7 +545,8 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
          * Size of the glyph image in pixels when rasterized. Some
          * implementations may return fractional values, in which case
          * @ref Math::ceil() should be used to get the actual integer pixel
-         * size.
+         * size. Expects that a font is opened and @p glyph is less than
+         * @ref glyphCount().
          * @note This function is meant to be used only for font observations
          *      and conversions. In performance-critical code the
          *      @ref fillGlyphCache() and @ref layout() functions should be
@@ -493,16 +571,37 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
         Vector2 glyphAdvance(UnsignedInt glyph);
 
         /**
+         * @brief Fill glyph cache with given glyph IDs
+         * @param cache         Glyph cache instance
+         * @param glyphs        Glyph IDs to render
+         * @m_since_latest
+         *
+         * Fills the cache with given glyph IDs. Fonts having
+         * @ref FontFeature::PreparedGlyphCache do not support partial glyph
+         * cache filling, use @ref createGlyphCache() instead. Expects that a
+         * font is opened and @p glyphs are all unique and less than
+         * @ref glyphCount().
+         *
+         * On success returns @cpp true @ce. On failure, for example if the
+         * @p cache doesn't have expected format or the @p glyphs can't
+         * fit, prints a message to @relativeref{Magnum,Error} and returns
+         * @cpp false @ce.
+         */
+        bool fillGlyphCache(AbstractGlyphCache& cache, const Containers::StridedArrayView1D<const UnsignedInt>& glyphs);
+        /** @overload */
+        bool fillGlyphCache(AbstractGlyphCache& cache, std::initializer_list<UnsignedInt> glyphs);
+
+        /**
          * @brief Fill glyph cache with given character set
          * @param cache         Glyph cache instance
          * @param characters    UTF-8 characters to render
          *
-         * Fills the cache with given characters. Fonts having
-         * @ref FontFeature::PreparedGlyphCache do not support partial glyph
-         * cache filling, use @ref createGlyphCache() instead. Expects that a
-         * font is opened and @p characters is valid UTF-8.
+         * Converts @p characters to a list of Unicode codepoints, gets glyph
+         * IDs for them using @ref glyphIdsInto(), removes duplicates, adds the
+         * glyph @cpp 0 @ce if the font is not in @p cache already, and
+         * delegates to @ref fillGlyphCache(AbstractGlyphCache&, const Containers::StridedArrayView1D<const UnsignedInt>&).
          */
-        void fillGlyphCache(AbstractGlyphCache& cache, Containers::StringView characters);
+        bool fillGlyphCache(AbstractGlyphCache& cache, Containers::StringView characters);
 
         /**
          * @brief Create glyph cache
@@ -511,6 +610,11 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
          * Available only if @ref FontFeature::PreparedGlyphCache is supported.
          * Other fonts support only partial glyph cache filling, see
          * @ref fillGlyphCache(). Expects that a font is opened.
+         *
+         * On success returns an instance of a newly created glyph cache. On
+         * failure, for example if a file containing glyph cache data cannot be
+         * open, prints a message to @relativeref{Magnum,Error} and returns
+         * @cpp nullptr @ce.
          */
         Containers::Pointer<AbstractGlyphCache> createGlyphCache();
 
@@ -537,8 +641,8 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
          *      @ref AbstractShaper class instead.
          *
          * Note that the layouters support rendering of single-line text only.
-         * See @ref Renderer class for more advanced text layouting. Expects
-         * that a font is opened.
+         * See @ref AbstractRenderer class for more advanced text layouting.
+         * Expects that a font is opened.
          * @see @ref fillGlyphCache(), @ref createGlyphCache()
          */
         CORRADE_DEPRECATED("use createShaper() instead") Containers::Pointer<AbstractLayouter> layout(const AbstractGlyphCache& cache, Float size, Containers::StringView text);
@@ -643,8 +747,31 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
         /** @brief Implementation for @ref close() */
         virtual void doClose() = 0;
 
-        /** @brief Implementation for @ref glyphId() */
-        virtual UnsignedInt doGlyphId(char32_t character) = 0;
+        /**
+         * @brief Implementation for @ref glyphIdsInto()
+         * @m_since_latest
+         *
+         * The implementation is expected to return all @p glyphs smaller than
+         * @ref glyphCount().
+         */
+        virtual void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>& characters, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) = 0;
+
+        /**
+         * @brief Implementation for @ref glyphName()
+         * @m_since_latest
+         *
+         * Default implementation returns an empty string.
+         */
+        virtual Containers::String doGlyphName(UnsignedInt glyph);
+
+        /**
+         * @brief Implementation for @ref glyphForName()
+         * @m_since_latest
+         *
+         * The implementation is expected to return a value smaller than
+         * @ref glyphCount(). Default implementation returns @cpp 0 @ce.
+         */
+        virtual UnsignedInt doGlyphForName(Containers::StringView name);
 
         /**
          * @brief Implementation for @ref glyphSize()
@@ -658,10 +785,10 @@ class MAGNUM_TEXT_EXPORT AbstractFont: public PluginManager::AbstractPlugin {
         /**
          * @brief Implementation for @ref fillGlyphCache()
          *
-         * The string is converted from UTF-8 to UTF-32, duplicate characters
-         * are *not* removed.
+         * The @p glyphs are guaranteed to be unique and all less than
+         * @ref glyphCount().
          */
-        virtual void doFillGlyphCache(AbstractGlyphCache& cache, Containers::ArrayView<const char32_t> characters);
+        virtual bool doFillGlyphCache(AbstractGlyphCache& cache, const Containers::StridedArrayView1D<const UnsignedInt>& glyphs);
 
         /** @brief Implementation for @ref createGlyphCache() */
         virtual Containers::Pointer<AbstractGlyphCache> doCreateGlyphCache();
@@ -711,18 +838,26 @@ class MAGNUM_TEXT_EXPORT
 AbstractLayouter {
     public:
         /** @brief Copying is not allowed */
+        CORRADE_IGNORE_DEPRECATED_PUSH /* GCC <=7 warns due to the argument */
         AbstractLayouter(const AbstractLayouter&) = delete;
+        CORRADE_IGNORE_DEPRECATED_POP
 
         /** @brief Moving is not allowed */
+        CORRADE_IGNORE_DEPRECATED_PUSH /* GCC <=7 warns due to the argument */
         AbstractLayouter(AbstractLayouter&&) = delete;
+        CORRADE_IGNORE_DEPRECATED_POP
 
         virtual ~AbstractLayouter();
 
         /** @brief Copying is not allowed */
+        CORRADE_IGNORE_DEPRECATED_PUSH /* GCC <=7 warns due to the argument */
         AbstractLayouter& operator=(const AbstractLayouter&) = delete;
+        CORRADE_IGNORE_DEPRECATED_POP
 
         /** @brief Moving is not allowed */
+        CORRADE_IGNORE_DEPRECATED_PUSH /* GCC <=7 warns due to the argument */
         AbstractLayouter& operator=(const AbstractLayouter&&) = delete;
+        CORRADE_IGNORE_DEPRECATED_POP
 
         /** @brief Count of glyphs in the laid out text */
         UnsignedInt glyphCount() const { return _glyphs.size(); }
@@ -763,7 +898,7 @@ Same string as returned by
 inside @ref CORRADE_PLUGIN_REGISTER() to avoid having to update the interface
 string by hand every time the version gets bumped:
 
-@snippet MagnumText.cpp MAGNUM_TEXT_ABSTRACTFONT_PLUGIN_INTERFACE
+@snippet Text.cpp MAGNUM_TEXT_ABSTRACTFONT_PLUGIN_INTERFACE
 
 The interface string version gets increased on every ABI break to prevent
 silent crashes and memory corruption. Plugins built against the previous
@@ -772,7 +907,7 @@ updated interface string.
 */
 /* Silly indentation to make the string appear in pluginInterface() docs */
 #define MAGNUM_TEXT_ABSTRACTFONT_PLUGIN_INTERFACE /* [interface] */ \
-"cz.mosra.magnum.Text.AbstractFont/0.3.5"
+"cz.mosra.magnum.Text.AbstractFont/0.3.7"
 /* [interface] */
 
 #ifndef DOXYGEN_GENERATING_OUTPUT

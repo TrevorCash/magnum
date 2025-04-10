@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
 #   copy of this software and associated documentation files (the "Software"),
@@ -87,42 +88,46 @@ else()
     endif()
 endif()
 
-if(MAGNUM_BUILD_GL_TESTS)
-    # Otherwise CMake complains that Corrade::PluginManager is not found, wtf
-    find_package(Corrade REQUIRED PluginManager)
+if(MAGNUM_TARGET_GL)
+    corrade_add_test(TextureToolsDistanceFieldGL_Test DistanceFieldGL_Test.cpp LIBRARIES MagnumTextureTools)
 
-    set(TextureToolsDistanceFieldGLTest_SRCS DistanceFieldGLTest.cpp)
-    if(CORRADE_TARGET_IOS)
-        # TODO: do this in a generic way in corrade_add_test()
-        set_source_files_properties(DistanceFieldGLTestFiles PROPERTIES
-            MACOSX_PACKAGE_LOCATION Resources)
-        list(APPEND TextureToolsDistanceFieldGLTest_SRCS DistanceFieldGLTestFiles)
-    endif()
-    corrade_add_test(TextureToolsDistanceFieldGLTest ${TextureToolsDistanceFieldGLTest_SRCS}
-        LIBRARIES
-            MagnumDebugTools
-            MagnumGL
-            MagnumOpenGLTester
-            MagnumTextureToolsTestLib
-            MagnumTrade
-        FILES
-            DistanceFieldGLTestFiles/input.tga
-            DistanceFieldGLTestFiles/output.tga)
-    target_include_directories(TextureToolsDistanceFieldGLTest PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
-    if(MAGNUM_BUILD_PLUGINS_STATIC)
-        if(MAGNUM_WITH_ANYIMAGEIMPORTER)
-            target_link_libraries(TextureToolsDistanceFieldGLTest PRIVATE AnyImageImporter)
+    if(MAGNUM_BUILD_GL_TESTS)
+        # Otherwise CMake complains that Corrade::PluginManager is not found, wtf
+        find_package(Corrade REQUIRED PluginManager)
+
+        set(TextureToolsDistanceFieldGLTest_SRCS DistanceFieldGLTest.cpp)
+        if(CORRADE_TARGET_IOS)
+            # TODO: do this in a generic way in corrade_add_test()
+            set_source_files_properties(DistanceFieldGLTestFiles PROPERTIES
+                MACOSX_PACKAGE_LOCATION Resources)
+            list(APPEND TextureToolsDistanceFieldGLTest_SRCS DistanceFieldGLTestFiles)
         endif()
-        if(MAGNUM_WITH_TGAIMPORTER)
-            target_link_libraries(TextureToolsDistanceFieldGLTest PRIVATE TgaImporter)
-        endif()
-    else()
-        # So the plugins get properly built when building the test
-        if(MAGNUM_WITH_ANYIMAGEIMPORTER)
-            add_dependencies(TextureToolsDistanceFieldGLTest AnyImageImporter)
-        endif()
-        if(MAGNUM_WITH_TGAIMPORTER)
-            add_dependencies(TextureToolsDistanceFieldGLTest TgaImporter)
+        corrade_add_test(TextureToolsDistanceFieldGLTest ${TextureToolsDistanceFieldGLTest_SRCS}
+            LIBRARIES
+                MagnumDebugTools
+                MagnumGL
+                MagnumOpenGLTester
+                MagnumTextureToolsTestLib
+                MagnumTrade
+            FILES
+                DistanceFieldGLTestFiles/input.tga
+                DistanceFieldGLTestFiles/output.tga)
+        target_include_directories(TextureToolsDistanceFieldGLTest PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
+        if(MAGNUM_BUILD_PLUGINS_STATIC)
+            if(MAGNUM_WITH_ANYIMAGEIMPORTER)
+                target_link_libraries(TextureToolsDistanceFieldGLTest PRIVATE AnyImageImporter)
+            endif()
+            if(MAGNUM_WITH_TGAIMPORTER)
+                target_link_libraries(TextureToolsDistanceFieldGLTest PRIVATE TgaImporter)
+            endif()
+        else()
+            # So the plugins get properly built when building the test
+            if(MAGNUM_WITH_ANYIMAGEIMPORTER)
+                add_dependencies(TextureToolsDistanceFieldGLTest AnyImageImporter)
+            endif()
+            if(MAGNUM_WITH_TGAIMPORTER)
+                add_dependencies(TextureToolsDistanceFieldGLTest TgaImporter)
+            endif()
         endif()
     endif()
 endif()

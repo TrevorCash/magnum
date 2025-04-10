@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2019 Guillaume Jacquemin <williamjcm@users.noreply.github.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,7 +25,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#include <Corrade/Containers/Pair.h>
+#include <Corrade/Containers/Reference.h>
 #include <Corrade/TestSuite/Tester.h>
+#include <Corrade/Utility/DebugStl.h> /** @todo remove once Buffer is std::pair-free */
 
 #include "Magnum/Audio/Buffer.h"
 #include "Magnum/Audio/BufferFormat.h"
@@ -51,7 +55,7 @@ struct BufferALTest: TestSuite::Tester {
 
 BufferALTest::BufferALTest():
     TestSuite::Tester{TestSuite::Tester::TesterConfiguration{}.setSkippedArgumentPrefixes({"magnum"})},
-    _context{arguments().first, arguments().second}
+    _context{arguments().first(), arguments().second()}
 {
     addTests({&BufferALTest::construct,
 

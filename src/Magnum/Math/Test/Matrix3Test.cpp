@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Matrix3.h"
 #include "Magnum/Math/StrictWeakOrdering.h"
@@ -65,6 +66,8 @@ struct Matrix3Test: TestSuite::Tester {
     void constructZero();
     void constructNoInit();
     void constructOneValue();
+    void constructArray();
+    void constructArrayRvalue();
     void constructConversion();
     void constructFromDifferentSize();
     void constructCopy();
@@ -104,6 +107,8 @@ struct Matrix3Test: TestSuite::Tester {
     void debug();
 };
 
+/* What's a typedef and not a using differs from the typedefs in root Magnum
+   namespace, or is not present there at all */
 using Magnum::Deg;
 using Magnum::Matrix2x2;
 using Magnum::Matrix2x4;
@@ -119,6 +124,8 @@ Matrix3Test::Matrix3Test() {
               &Matrix3Test::constructZero,
               &Matrix3Test::constructNoInit,
               &Matrix3Test::constructOneValue,
+              &Matrix3Test::constructArray,
+              &Matrix3Test::constructArrayRvalue,
               &Matrix3Test::constructConversion,
               &Matrix3Test::constructFromDifferentSize,
               &Matrix3Test::constructCopy,
@@ -240,6 +247,104 @@ void Matrix3Test::constructOneValue() {
     CORRADE_VERIFY(!std::is_convertible<Float, Matrix3>::value);
 
     CORRADE_VERIFY(std::is_nothrow_constructible<Matrix3, Float>::value);
+}
+
+void Matrix3Test::constructArray() {
+    float data[3][3]{
+        {3.0f,  5.0f, 8.0f},
+        {4.5f,  4.0f, 7.0f},
+        {1.0f,  2.0f, 3.0f}
+    };
+    Matrix3 a{data};
+    CORRADE_COMPARE(a, (Matrix3{{3.0f,  5.0f, 8.0f},
+                                {4.5f,  4.0f, 7.0f},
+                                {1.0f,  2.0f, 3.0f}}));
+
+    constexpr float cdata[3][3]{
+        {3.0f,  5.0f, 8.0f},
+        {4.5f,  4.0f, 7.0f},
+        {1.0f,  2.0f, 3.0f}
+    };
+    constexpr Matrix3 ca{cdata};
+    CORRADE_COMPARE(ca, (Matrix3{{3.0f,  5.0f, 8.0f},
+                                 {4.5f,  4.0f, 7.0f},
+                                 {1.0f,  2.0f, 3.0f}}));
+
+    /* Implicit conversion is not allowed */
+    CORRADE_VERIFY(!std::is_convertible<float[3][3], Matrix3>::value);
+
+    CORRADE_VERIFY(std::is_nothrow_constructible<Matrix3, float[3][3]>::value);
+
+    /* See RectangularMatrixTest::constructArray() for details */
+    #if 0
+    float data32[3][2]{
+        {3.0f,  5.0f},
+        {4.5f,  4.0f},
+        {1.0f,  2.0f}
+    };
+    float data34[3][4]{
+        {3.0f,  5.0f, 8.0f, -3.0f},
+        {4.5f,  4.0f, 7.0f,  2.0f},
+        {1.0f,  2.0f, 3.0f, -1.0f}
+    };
+    float data13[1][3]{
+        {3.0f, 5.0f, 8.0f},
+    };
+    float data43[4][3]{
+        {3.0f, 5.0f, 8.0f},
+        {4.5f, 4.0f, 7.0f},
+        {4.5f, 4.0f, 7.0f},
+        {4.5f, 4.0f, 7.0f}
+    };
+    Matrix3 b{data32};
+    Matrix3 c{data34};
+    Matrix3 d{data13};
+    Matrix3 e{data43};
+    #endif
+}
+
+void Matrix3Test::constructArrayRvalue() {
+    /* In this case the constructor already has concrete types, so the array
+       constructor doesn't really add anything to it */
+    Matrix3 a{{{3.0f,  5.0f, 8.0f},
+               {4.5f,  4.0f, 7.0f},
+               {1.0f,  2.0f, 3.0f}}};
+    CORRADE_COMPARE(a, (Matrix3{{3.0f,  5.0f, 8.0f},
+                                {4.5f,  4.0f, 7.0f},
+                                {1.0f,  2.0f, 3.0f}}));
+
+    /* Unfortunately on MSVC (even 2022) this leads to
+        error C2131: expression did not evaluate to a constant
+        note: failure was caused by out of range index 3; allowed range is 0 <= index < 2
+       and similarly in other tests. Not sure where that comes from, for Vector
+       this all works, constructArray() above works, and the GCC 4.8 workaround
+       with fixed size doesn't help here. */
+    #ifndef CORRADE_TARGET_MSVC
+    constexpr Matrix3 ca{{{3.0f,  5.0f, 8.0f},
+                          {4.5f,  4.0f, 7.0f},
+                          {1.0f,  2.0f, 3.0f}}};
+    CORRADE_COMPARE(ca, (Matrix3{{3.0f,  5.0f, 8.0f},
+                                 {4.5f,  4.0f, 7.0f},
+                                 {1.0f,  2.0f, 3.0f}}));
+    #endif
+
+    /* See RectangularMatrixTest::constructArrayRvalue() for details */
+    #if 0
+    Matrix3 c{{{3.0f,  5.0f, 8.0f, -3.0f},
+               {4.5f,  4.0f, 7.0f,  2.0f},
+               {1.0f,  2.0f, 3.0f, -1.0f}}};
+    Matrix3 e{{{3.0f, 5.0f, 8.0f},
+               {4.5f, 4.0f, 7.0f},
+               {4.5f, 4.0f, 7.0f},
+               {4.5f, 4.0f, 7.0f}}};
+    #endif
+    #if 0 || (defined(CORRADE_TARGET_GCC) && !defined(CORRADE_TARGET_CLANG) && __GNUC__ < 5)
+    CORRADE_WARN("Creating a Matrix from a smaller array isn't an error on GCC 4.8.");
+    Matrix3 b{{{3.0f,  5.0f},
+               {4.5f,  4.0f},
+               {1.0f,  2.0f}}};
+    Matrix3 d{{{3.0f, 5.0f, 8.0f}}};
+    #endif
 }
 
 void Matrix3Test::constructConversion() {
@@ -378,11 +483,11 @@ void Matrix3Test::reflection() {
 void Matrix3Test::reflectionNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     Matrix3::reflection({-1.0f, 2.0f});
-    CORRADE_COMPARE(out.str(), "Math::Matrix3::reflection(): normal Vector(-1, 2) is not normalized\n");
+    CORRADE_COMPARE(out, "Math::Matrix3::reflection(): normal Vector(-1, 2) is not normalized\n");
 }
 
 void Matrix3Test::reflectionIsScaling() {
@@ -506,7 +611,7 @@ void Matrix3Test::rotationPart() {
 void Matrix3Test::rotationPartNotOrthogonal() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* Test both non-orthogonality and "unnormalizable" scaling */
@@ -514,7 +619,7 @@ void Matrix3Test::rotationPartNotOrthogonal() {
     Matrix3::scaling(Vector2::yScale(0.0f)).rotation();
 
     #ifdef CORRADE_TARGET_MSVC
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::Matrix3::rotation(): the normalized rotation part is not orthogonal:\n"
         "Matrix(1, 0.83205,\n"
         "       0, 0.5547)\n"
@@ -534,9 +639,9 @@ void Matrix3Test::rotationPartNotOrthogonal() {
         "Math::Matrix3::rotation(): the normalized rotation part is not orthogonal:\n"
         "Matrix(1, nan,\n"
         "       0, nan)\n";
-    if(out.str() == expectedPositive)
-        CORRADE_COMPARE(out.str(), expectedPositive);
-    else CORRADE_COMPARE(out.str(),
+    if(out == expectedPositive)
+        CORRADE_COMPARE(out, expectedPositive);
+    else CORRADE_COMPARE(out,
         "Math::Matrix3::rotation(): the normalized rotation part is not orthogonal:\n"
         "Matrix(1, 0.83205,\n"
         "       0, 0.5547)\n"
@@ -558,7 +663,7 @@ void Matrix3Test::rotationNormalizedPart() {
 void Matrix3Test::rotationNormalizedPartNotOrthogonal() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     Matrix3 a({1.0f,  0.0f, 8.0f},
@@ -566,7 +671,7 @@ void Matrix3Test::rotationNormalizedPartNotOrthogonal() {
               {7.0f, -1.0f, 8.0f});
     a.rotationNormalized();
 
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::Matrix3::rotationNormalized(): the rotation part is not orthogonal:\n"
         "Matrix(1, 1,\n"
         "       0, 0.1)\n");
@@ -620,10 +725,10 @@ void Matrix3Test::uniformScalingPart() {
 void Matrix3Test::uniformScalingPartNotUniform() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     Matrix3::scaling(Vector2::yScale(3.0f)).uniformScaling();
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::Matrix3::uniformScaling(): the matrix doesn't have uniform scaling:\n"
         "Matrix(1, 0,\n"
         "       0, 3)\n");
@@ -666,11 +771,11 @@ void Matrix3Test::invertedRigid() {
 void Matrix3Test::invertedRigidNotRigid() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     (Matrix3::rotation(60.0_degf)*2.0f).invertedRigid();
 
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::Matrix3::invertedRigid(): the matrix doesn't represent a rigid transformation:\n"
         "Matrix(1, -1.73205, 0,\n"
         "       1.73205, 1, 0,\n"
@@ -706,9 +811,9 @@ void Matrix3Test::debug() {
               {4.0f,  4.0f, 7.0f},
               {7.0f, -1.0f, 8.0f});
 
-    std::ostringstream o;
-    Debug(&o) << m;
-    CORRADE_COMPARE(o.str(), "Matrix(3, 4, 7,\n"
+    Containers::String out;
+    Debug{&out} << m;
+    CORRADE_COMPARE(out, "Matrix(3, 4, 7,\n"
                              "       5, 4, -1,\n"
                              "       8, 7, 8)\n");
 }

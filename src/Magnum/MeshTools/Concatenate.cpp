@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -25,10 +26,10 @@
 
 #include "Concatenate.h"
 
-#include <numeric>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Utility/Algorithms.h>
 
+#include "Magnum/MeshTools/GenerateIndices.h"
 #include "Magnum/MeshTools/Implementation/remapAttributeData.h"
 
 namespace Magnum { namespace MeshTools {
@@ -102,7 +103,7 @@ Trade::MeshData concatenate(Containers::Array<char>&& indexData, const UnsignedI
         /* If the mesh is indexed, copy the indices over, expanded to 32bit */
         if(mesh.isIndexed()) {
             CORRADE_ASSERT(!isMeshIndexTypeImplementationSpecific(mesh.indexType()),
-                assertPrefix << "mesh" << i << "has an implementation-specific index type" << reinterpret_cast<void*>(meshIndexTypeUnwrap(mesh.indexType())),
+                assertPrefix << "mesh" << i << "has an implementation-specific index type" << Debug::hex << meshIndexTypeUnwrap(mesh.indexType()),
                 (Trade::MeshData{MeshPrimitive{}, 0}));
 
             Containers::ArrayView<UnsignedInt> dst = indices.slice(indexOffset, indexOffset + mesh.indexCount());
@@ -115,7 +116,7 @@ Trade::MeshData concatenate(Containers::Array<char>&& indexData, const UnsignedI
         /* Otherwise, if we need an index buffer (meaning at least one of the
            meshes is indexed), generate a trivial index buffer */
         } else if(!indices.isEmpty()) {
-            std::iota(indices + indexOffset, indices + indexOffset + mesh.vertexCount(), UnsignedInt(vertexOffset));
+            MeshTools::generateTrivialIndicesInto(indices.sliceSize(indexOffset, mesh.vertexCount()), vertexOffset);
             indexOffset += mesh.vertexCount();
         }
 
@@ -176,7 +177,7 @@ Trade::MeshData concatenate(const Containers::Iterable<const Trade::MeshData>& m
     for(std::size_t i = 0; i != meshes.front().attributeCount(); ++i) {
         const VertexFormat format = meshes.front().attributeFormat(i);
         CORRADE_ASSERT(!isVertexFormatImplementationSpecific(format),
-            "MeshTools::concatenate(): attribute" << i << "of the first mesh has an implementation-specific format" << reinterpret_cast<void*>(vertexFormatUnwrap(format)),
+            "MeshTools::concatenate(): attribute" << i << "of the first mesh has an implementation-specific format" << Debug::hex << vertexFormatUnwrap(format),
             (Trade::MeshData{MeshPrimitive::Points, 0}));
     }
     #endif

@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -42,8 +43,13 @@ namespace Magnum { namespace Trade {
 @brief Skin data
 @m_since_latest
 
-@see @ref SkinData2D, @ref SkinData3D, @ref AbstractImporter::skin2D(),
-    @ref AbstractImporter::skin3D()
+Provides access to skin properties used for skeletal animations. Populated
+instances of this class are returned from @ref AbstractImporter::skin2D() or
+@relativeref{AbstractImporter,skin3D()} and can be passed to
+@ref AbstractSceneConverter::add(const SkinData3D&, Containers::StringView) and
+overloads. Similarly to other @ref Trade types, the internal representation is
+fixed upon construction and doesn't allow any modification afterwards.
+@see @ref SkinData2D, @ref SkinData3D
 */
 template<UnsignedInt dimensions> class SkinData {
     public:

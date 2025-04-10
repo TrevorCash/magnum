@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,13 +24,12 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/ArrayViewStl.h>
 #include <Corrade/Containers/StridedArrayView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/FunctionsBatch.h"
 #include "Magnum/Math/Vector3.h"
@@ -38,19 +38,12 @@
 #include "Magnum/Primitives/Cylinder.h"
 #include "Magnum/Trade/MeshData.h"
 
-#ifdef MAGNUM_BUILD_DEPRECATED
-#include <vector>
-#endif
-
 namespace Magnum { namespace MeshTools { namespace Test { namespace {
 
 struct GenerateNormalsTest: TestSuite::Tester {
     explicit GenerateNormalsTest();
 
     void flat();
-    #ifdef MAGNUM_BUILD_DEPRECATED
-    void flatDeprecated();
-    #endif
     void flatWrongCount();
     void flatIntoWrongSize();
 
@@ -74,9 +67,6 @@ struct GenerateNormalsTest: TestSuite::Tester {
 
 GenerateNormalsTest::GenerateNormalsTest() {
     addTests({&GenerateNormalsTest::flat,
-              #ifdef MAGNUM_BUILD_DEPRECATED
-              &GenerateNormalsTest::flatDeprecated,
-              #endif
               &GenerateNormalsTest::flatWrongCount,
               &GenerateNormalsTest::flatIntoWrongSize,
 
@@ -125,55 +115,27 @@ void GenerateNormalsTest::flat() {
         }), TestSuite::Compare::Container);
 }
 
-#ifdef MAGNUM_BUILD_DEPRECATED
-void GenerateNormalsTest::flatDeprecated() {
-    /* Two vertices connected by one edge, each wound in another direction */
-    std::vector<UnsignedInt> indices;
-    std::vector<Vector3> normals;
-    CORRADE_IGNORE_DEPRECATED_PUSH
-    std::tie(indices, normals) = generateFlatNormals({
-        0, 1, 2,
-        1, 2, 3
-    }, {
-        {-1.0f, 0.0f, 0.0f},
-        {0.0f, -1.0f, 0.0f},
-        {0.0f, 1.0f, 0.0f},
-        {1.0f, 0.0f, 0.0f}
-    });
-    CORRADE_IGNORE_DEPRECATED_POP
-
-    CORRADE_COMPARE(indices, (std::vector<UnsignedInt>{
-        0, 0, 0,
-        1, 1, 1
-    }));
-    CORRADE_COMPARE(normals, (std::vector<Vector3>{
-        Vector3::zAxis(),
-        -Vector3::zAxis()
-    }));
-}
-#endif
-
 void GenerateNormalsTest::flatWrongCount() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::stringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     const Vector3 positions[7];
     generateFlatNormals(positions);
-    CORRADE_COMPARE(out.str(), "MeshTools::generateFlatNormalsInto(): position count not divisible by 3\n");
+    CORRADE_COMPARE(out, "MeshTools::generateFlatNormalsInto(): position count not divisible by 3\n");
 }
 
 void GenerateNormalsTest::flatIntoWrongSize() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::stringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     const Vector3 positions[6];
     Vector3 normals[7];
     generateFlatNormalsInto(positions, normals);
-    CORRADE_COMPARE(out.str(), "MeshTools::generateFlatNormalsInto(): bad output size, expected 6 but got 7\n");
+    CORRADE_COMPARE(out, "MeshTools::generateFlatNormalsInto(): bad output size, expected 6 but got 7\n");
 }
 
 template<class T> void GenerateNormalsTest::smoothTwoTriangles() {
@@ -393,38 +355,38 @@ void GenerateNormalsTest::smoothNanPosition() {
 void GenerateNormalsTest::smoothWrongCount() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::stringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     const UnsignedByte indices[7]{};
     const Vector3 positions[1];
     generateSmoothNormals(indices, positions);
-    CORRADE_COMPARE(out.str(), "MeshTools::generateSmoothNormalsInto(): index count not divisible by 3\n");
+    CORRADE_COMPARE(out, "MeshTools::generateSmoothNormalsInto(): index count not divisible by 3\n");
 }
 
 void GenerateNormalsTest::smoothOutOfRange() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::stringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     const Vector3 positions[2];
     const UnsignedInt indices[] { 0, 1, 2 };
     generateSmoothNormals(indices, positions);
-    CORRADE_COMPARE(out.str(), "MeshTools::generateSmoothNormalsInto(): index 2 out of range for 2 elements\n");
+    CORRADE_COMPARE(out, "MeshTools::generateSmoothNormalsInto(): index 2 out of range for 2 elements\n");
 }
 
 void GenerateNormalsTest::smoothIntoWrongSize() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::stringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     const UnsignedByte indices[6]{};
     const Vector3 positions[3];
     Vector3 normals[4];
     generateSmoothNormalsInto(indices, positions, normals);
-    CORRADE_COMPARE(out.str(), "MeshTools::generateSmoothNormalsInto(): bad output size, expected 3 but got 4\n");
+    CORRADE_COMPARE(out, "MeshTools::generateSmoothNormalsInto(): bad output size, expected 3 but got 4\n");
 }
 
 void GenerateNormalsTest::benchmarkFlat() {
@@ -472,10 +434,10 @@ void GenerateNormalsTest::smoothErasedNonContiguous() {
     const char indices[6*4]{};
     const Vector3 positions[3];
 
-    std::stringstream out;
+    Containers::String out;
     Error redirectError{&out};
     generateSmoothNormals(Containers::StridedArrayView2D<const char>{indices, {6, 2}, {4, 2}}, positions);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "MeshTools::generateSmoothNormalsInto(): second index view dimension is not contiguous\n");
 }
 
@@ -485,10 +447,10 @@ void GenerateNormalsTest::smoothErasedWrongIndexSize() {
     const char indices[6*3]{};
     const Vector3 positions[3];
 
-    std::stringstream out;
+    Containers::String out;
     Error redirectError{&out};
     generateSmoothNormals(Containers::StridedArrayView2D<const char>{indices, {6, 3}}.every(2), positions);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "MeshTools::generateSmoothNormalsInto(): expected index type size 1, 2 or 4 but got 3\n");
 }
 

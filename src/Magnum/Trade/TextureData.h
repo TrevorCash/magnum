@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -108,7 +109,12 @@ enum class TextureType: UnsignedByte {
 /**
 @brief Texture data
 
-@see @ref AbstractImporter::texture()
+Provides access to texture metadata such as sampler properties and association
+with a concrete image. Populated instances of this class are returned from
+@ref AbstractImporter::texture() and can be passed to
+@ref AbstractSceneConverter::add(const TextureData&, Containers::StringView).
+Similarly to other @ref Trade types, the internal representation is fixed upon
+construction and doesn't allow any modification afterwards.
 */
 class TextureData {
     public:

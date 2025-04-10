@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -31,13 +32,17 @@
 
 #include "Magnum/Types.h"
 
-#ifdef MAGNUM_BUILD_DEPRECATED
+#if defined(MAGNUM_TARGET_GL) && defined(MAGNUM_BUILD_DEPRECATED)
 #include <Corrade/Utility/Macros.h>
 #endif
 
+#ifndef DOXYGEN_GENERATING_OUTPUT
 namespace Magnum { namespace Shaders {
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
+enum class LineCapStyle: UnsignedByte;
+enum class LineJoinStyle: UnsignedByte;
+
+#ifdef MAGNUM_TARGET_GL
 template<UnsignedInt> class DistanceFieldVectorGL;
 typedef DistanceFieldVectorGL<2> DistanceFieldVectorGL2D;
 typedef DistanceFieldVectorGL<3> DistanceFieldVectorGL3D;
@@ -56,12 +61,9 @@ typedef CORRADE_DEPRECATED("use FlatGL2D instead") FlatGL2D Flat2D;
 typedef CORRADE_DEPRECATED("use FlatGL3D instead") FlatGL3D Flat3D;
 #endif
 
-/* Generic is used only statically */
+/* GenericGL is used only statically */
 
 #ifndef MAGNUM_TARGET_GLES2
-enum class LineCapStyle: UnsignedByte;
-enum class LineJoinStyle: UnsignedByte;
-
 template<UnsignedInt> class LineGL;
 typedef LineGL<2> LineGL2D;
 typedef LineGL<3> LineGL3D;
@@ -100,5 +102,6 @@ typedef CORRADE_DEPRECATED("use VertexColorGL3D instead") VertexColorGL3D Vertex
 #endif
 
 }}
+#endif
 
 #endif

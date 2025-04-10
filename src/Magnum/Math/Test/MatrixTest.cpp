@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Matrix.h"
 #include "Magnum/Math/StrictWeakOrdering.h"
@@ -66,6 +67,8 @@ struct MatrixTest: TestSuite::Tester {
     void constructNoInit();
     void constructOneValue();
     void constructOneComponent();
+    void constructArray();
+    void constructArrayRvalue();
     void constructConversion();
     void constructFromDifferentSize();
     void constructCopy();
@@ -89,6 +92,9 @@ struct MatrixTest: TestSuite::Tester {
     void debug();
 };
 
+
+/* What's a typedef and not a using differs from the typedefs in root Magnum
+   namespace, or is not present there at all */
 using Magnum::Matrix2x2;
 using Magnum::Matrix2x3;
 using Magnum::Matrix3x3;
@@ -107,6 +113,8 @@ MatrixTest::MatrixTest() {
               &MatrixTest::constructNoInit,
               &MatrixTest::constructOneValue,
               &MatrixTest::constructOneComponent,
+              &MatrixTest::constructArray,
+              &MatrixTest::constructArrayRvalue,
               &MatrixTest::constructConversion,
               &MatrixTest::constructFromDifferentSize,
               &MatrixTest::constructCopy,
@@ -234,6 +242,118 @@ void MatrixTest::constructOneComponent() {
     CORRADE_VERIFY(std::is_nothrow_constructible<Matrix1x1, Vector1>::value);
 }
 
+void MatrixTest::constructArray() {
+    float data[4][4]{
+        {3.0f,  5.0f, 8.0f, -3.0f},
+        {4.5f,  4.0f, 7.0f,  2.0f},
+        {1.0f,  2.0f, 3.0f, -1.0f},
+        {7.9f, -1.0f, 8.0f, -1.5f}
+    };
+    Matrix4x4 a{data};
+    CORRADE_COMPARE(a, (Matrix4x4{Vector4{3.0f,  5.0f, 8.0f, -3.0f},
+                                  Vector4{4.5f,  4.0f, 7.0f,  2.0f},
+                                  Vector4{1.0f,  2.0f, 3.0f, -1.0f},
+                                  Vector4{7.9f, -1.0f, 8.0f, -1.5f}}));
+
+    constexpr float cdata[4][4]{
+        {3.0f,  5.0f, 8.0f, -3.0f},
+        {4.5f,  4.0f, 7.0f,  2.0f},
+        {1.0f,  2.0f, 3.0f, -1.0f},
+        {7.9f, -1.0f, 8.0f, -1.5f}
+    };
+    constexpr Matrix4x4 ca{cdata};
+    CORRADE_COMPARE(ca, (Matrix4x4{Vector4{3.0f,  5.0f, 8.0f, -3.0f},
+                                   Vector4{4.5f,  4.0f, 7.0f,  2.0f},
+                                   Vector4{1.0f,  2.0f, 3.0f, -1.0f},
+                                   Vector4{7.9f, -1.0f, 8.0f, -1.5f}}));
+
+    /* Implicit conversion is not allowed */
+    CORRADE_VERIFY(!std::is_convertible<float[4][4], Matrix4x4>::value);
+
+    CORRADE_VERIFY(std::is_nothrow_constructible<Matrix4x4, float[4][4]>::value);
+
+    /* See RectangularMatrixTest::constructArray() for details */
+    #if 0
+    float data43[4][3]{
+        {3.0f,  5.0f, 8.0f},
+        {4.5f,  4.0f, 7.0f},
+        {1.0f,  2.0f, 3.0f},
+        {7.9f, -1.0f, 8.0f}
+    };
+    float data45[4][5]{
+        {3.0f,  5.0f, 8.0f, -3.0f, 0.3f},
+        {4.5f,  4.0f, 7.0f,  2.0f, 0.3f},
+        {1.0f,  2.0f, 3.0f, -1.0f, 0.3f},
+        {7.9f, -1.0f, 8.0f, -1.5f, 0.3f}
+    };
+    float data14[1][4]{
+        {3.0f, 5.0f, 8.0f, -3.0f},
+    };
+    float data54[5][4]{
+        {3.0f, 5.0f, 8.0f, -3.0f},
+        {4.5f, 4.0f, 7.0f,  2.0f},
+        {4.5f, 4.0f, 7.0f,  2.0f},
+        {4.5f, 4.0f, 7.0f,  2.0f},
+        {3.0f, 7.0f, 0.0f,  1.0f}
+    };
+    Matrix4x4 b{data43};
+    Matrix4x4 c{data45};
+    Matrix4x4 d{data14};
+    Matrix4x4 e{data54};
+    #endif
+}
+
+void MatrixTest::constructArrayRvalue() {
+    /* This, the extra {} to supply an array, avoids the need to have to
+       explicitly type out Vector for every column */
+    Matrix4x4 a{{{3.0f,  5.0f, 8.0f, -3.0f},
+                 {4.5f,  4.0f, 7.0f,  2.0f},
+                 {1.0f,  2.0f, 3.0f, -1.0f},
+                 {7.9f, -1.0f, 8.0f, -1.5f}}};
+    CORRADE_COMPARE(a, (Matrix4x4{Vector4{3.0f,  5.0f, 8.0f, -3.0f},
+                                  Vector4{4.5f,  4.0f, 7.0f,  2.0f},
+                                  Vector4{1.0f,  2.0f, 3.0f, -1.0f},
+                                  Vector4{7.9f, -1.0f, 8.0f, -1.5f}}));
+
+    /* Unfortunately on MSVC (even 2022) this leads to
+        error C2131: expression did not evaluate to a constant
+        note: failure was caused by out of range index 3; allowed range is 0 <= index < 2
+       and similarly in other tests. Not sure where that comes from, for Vector
+       this all works, constructArray() above works, and the GCC 4.8 workaround
+       with fixed size doesn't help here. */
+    #ifndef CORRADE_TARGET_MSVC
+    constexpr Matrix4x4 ca{{{3.0f,  5.0f, 8.0f, -3.0f},
+                            {4.5f,  4.0f, 7.0f,  2.0f},
+                            {1.0f,  2.0f, 3.0f, -1.0f},
+                            {7.9f, -1.0f, 8.0f, -1.5f}}};
+    CORRADE_COMPARE(ca, (Matrix4x4{Vector4{3.0f,  5.0f, 8.0f, -3.0f},
+                                   Vector4{4.5f,  4.0f, 7.0f,  2.0f},
+                                   Vector4{1.0f,  2.0f, 3.0f, -1.0f},
+                                   Vector4{7.9f, -1.0f, 8.0f, -1.5f}}));
+    #endif
+
+    /* See RectangularMatrixTest::constructArrayRvalue() for details */
+    #if 0
+    Matrix4x4 c{{{3.0f,  5.0f, 8.0f, -3.0f, 0.3f},
+                 {4.5f,  4.0f, 7.0f,  2.0f, 0.3f},
+                 {1.0f,  2.0f, 3.0f, -1.0f, 0.3f},
+                 {7.9f, -1.0f, 8.0f, -1.5f, 0.3f}}};
+    Matrix4x4 e{{{3.0f, 5.0f, 8.0f, -3.0f},
+                 {4.5f, 4.0f, 7.0f,  2.0f},
+                 {4.5f, 4.0f, 7.0f,  2.0f},
+                 {4.5f, 4.0f, 7.0f,  2.0f},
+                 {3.0f, 7.0f, 0.0f,  1.0f}}};
+    #endif
+    #if 0 || (defined(CORRADE_TARGET_GCC) && !defined(CORRADE_TARGET_CLANG) && __GNUC__ < 5)
+    CORRADE_WARN("Creating a Matrix from a smaller array isn't an error on GCC 4.8.");
+    Matrix4x4 b{{{3.0f,  5.0f, 8.0f},
+                 {4.5f,  4.0f, 7.0f},
+                 {1.0f,  2.0f, 3.0f},
+                 {7.9f, -1.0f, 8.0f}}};
+    Matrix4x4 d{{{3.0f, 5.0f, 8.0f, -3.0f}}};
+    #endif
+}
+
 void MatrixTest::constructConversion() {
     constexpr Matrix4x4 a(Vector4(3.0f,  5.0f, 8.0f, -3.0f),
                           Vector4(4.5f,  4.0f, 7.0f,  2.0f),
@@ -331,6 +451,9 @@ void MatrixTest::isOrthogonal() {
     CORRADE_VERIFY(!Matrix3x3(Vector3(1.0f, 0.0f, 0.0f),
                               Vector3(0.0f, 1.0f, 0.0f),
                               Vector3(0.0f, 1.0f, 0.0f)).isOrthogonal());
+    CORRADE_VERIFY(!Matrix3x3(Vector3(1.0f, 0.0f, 0.0f),
+                              Vector3(0.0f, 1.0f, 0.0f),
+                              Vector3(0.0f, -1.0f, 0.0f)).isOrthogonal());
     CORRADE_VERIFY(Matrix3x3(Vector3(1.0f, 0.0f, 0.0f),
                              Vector3(0.0f, 1.0f, 0.0f),
                              Vector3(0.0f, 0.0f, 1.0f)).isOrthogonal());
@@ -413,14 +536,14 @@ void MatrixTest::invertedOrthogonal() {
 void MatrixTest::invertedOrthogonalNotOrthogonal() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream o;
-    Error redirectError{&o};
+    Containers::String out;
+    Error redirectError{&out};
 
     Matrix3x3 a(Vector3(Constants::sqrt3()/2.0f, 0.5f, 0.0f),
                 Vector3(-0.5f, Constants::sqrt3()/2.0f, 0.0f),
                 Vector3(0.0f, 0.0f, 1.0f));
     (a*2).invertedOrthogonal();
-    CORRADE_COMPARE(o.str(),
+    CORRADE_COMPARE(out,
         "Math::Matrix::invertedOrthogonal(): the matrix is not orthogonal:\n"
         "Matrix(1.73205, -1, 0,\n"
         "       1, 1.73205, 0,\n"
@@ -508,16 +631,16 @@ void MatrixTest::debug() {
                 Vector4(7.0f, -1.0f, 8.0f, 0.0f),
                 Vector4(9.0f,  4.0f, 5.0f, 9.0f));
 
-    std::ostringstream o;
-    Debug(&o) << m;
-    CORRADE_COMPARE(o.str(), "Matrix(3, 4, 7, 9,\n"
+    Containers::String out;
+    Debug{&out} << m;
+    CORRADE_COMPARE(out, "Matrix(3, 4, 7, 9,\n"
                              "       5, 4, -1, 4,\n"
                              "       8, 7, 8, 5,\n"
                              "       4, 3, 0, 9)\n");
 
-    o.str({});
-    Debug(&o) << "a" << Matrix4x4() << "b" << Matrix4x4();
-    CORRADE_COMPARE(o.str(), "a Matrix(1, 0, 0, 0,\n"
+    out = {};
+    Debug{&out} << "a" << Matrix4x4() << "b" << Matrix4x4();
+    CORRADE_COMPARE(out, "a Matrix(1, 0, 0, 0,\n"
                              "       0, 1, 0, 0,\n"
                              "       0, 0, 1, 0,\n"
                              "       0, 0, 0, 1) b Matrix(1, 0, 0, 0,\n"

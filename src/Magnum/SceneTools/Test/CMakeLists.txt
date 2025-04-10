@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
 #   copy of this software and associated documentation files (the "Software"),
@@ -51,10 +52,11 @@ file(GENERATE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/configure.h
     INPUT ${CMAKE_CURRENT_BINARY_DIR}/configure.h.in)
 
 corrade_add_test(SceneToolsCombineTest CombineTest.cpp LIBRARIES MagnumSceneToolsTestLib)
-corrade_add_test(SceneToolsCopyTest CopyTest.cpp LIBRARIES MagnumSceneTools)
+corrade_add_test(SceneToolsCopyTest CopyTest.cpp LIBRARIES MagnumSceneToolsTestLib)
 corrade_add_test(SceneToolsConvertToSingleFunc___Test ConvertToSingleFunctionObjectsTest.cpp LIBRARIES MagnumSceneToolsTestLib)
 corrade_add_test(SceneToolsFilterTest FilterTest.cpp LIBRARIES MagnumSceneToolsTestLib)
 corrade_add_test(SceneToolsHierarchyTest HierarchyTest.cpp LIBRARIES MagnumSceneToolsTestLib)
+corrade_add_test(SceneToolsMapTest MapTest.cpp LIBRARIES MagnumSceneToolsTestLib)
 
 corrade_add_test(SceneToolsSceneConverterImple___Test SceneConverterImplementationTest.cpp
     LIBRARIES MagnumSceneTools
@@ -108,6 +110,7 @@ if(CORRADE_TARGET_UNIX AND NOT CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT)
             SceneConverterTestFiles/broken-image-3d.gltf
             SceneConverterTestFiles/broken-material.gltf
             SceneConverterTestFiles/broken-mesh.obj
+            SceneConverterTestFiles/broken-mesh-with-scene.gltf
             SceneConverterTestFiles/broken-scene.gltf
             SceneConverterTestFiles/dxt1.dds
             SceneConverterTestFiles/empty.gltf
@@ -132,6 +135,8 @@ if(CORRADE_TARGET_UNIX AND NOT CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT)
             SceneConverterTestFiles/info-importer-ignored-input-output.txt
             SceneConverterTestFiles/info-preferred-importer-plugin.txt
             SceneConverterTestFiles/materials-3d.gltf
+            SceneConverterTestFiles/materials-duplicate.gltf
+            SceneConverterTestFiles/materials-duplicate-removed.gltf
             SceneConverterTestFiles/materials-pbr.gltf
             SceneConverterTestFiles/materials-phong.mtl
             SceneConverterTestFiles/materials-phong.obj
@@ -166,7 +171,8 @@ if(CORRADE_TARGET_UNIX AND NOT CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT)
             SceneConverterTestFiles/two-triangles-transformed.bin
             SceneConverterTestFiles/two-triangles-transformed.gltf
             SceneConverterTestFiles/two-triangles-transformed-no-default-scene.gltf
-            SceneConverterTestFiles/two-triangles.obj)
+            SceneConverterTestFiles/two-triangles.obj
+            SceneConverterTestFiles/two-scenes.gltf)
     target_include_directories(SceneToolsSceneConverterTest PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
     if(MAGNUM_WITH_SCENECONVERTER)
         add_dependencies(SceneToolsSceneConverterTest magnum-sceneconverter)

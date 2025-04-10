@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -99,7 +100,7 @@ template<class T> class DualComplex: public Dual<Complex<T>> {
         }
 
         /**
-         * @brief Create dual complex number from rotation matrix
+         * @brief Create a dual complex number from rotation matrix
          *
          * Expects that the matrix represents rigid transformation.
          * @see @ref toMatrix(), @ref Complex::fromMatrix(),
@@ -112,7 +113,7 @@ template<class T> class DualComplex: public Dual<Complex<T>> {
         }
 
         /**
-         * @brief Create dual complex from rotation complex and translation vector
+         * @brief Create a dual complex from rotation complex and translation vector
          * @m_since_latest
          *
          * @f[
@@ -144,14 +145,14 @@ template<class T> class DualComplex: public Dual<Complex<T>> {
          */
         constexpr explicit DualComplex(IdentityInitT) noexcept: Dual<Complex<T>>({}, {T(0), T(0)}) {}
 
-        /** @brief Construct zero-initialized dual complex number */
+        /** @brief Construct a zero-initialized dual complex number */
         constexpr explicit DualComplex(ZeroInitT) noexcept: Dual<Complex<T>>{Complex<T>{ZeroInit}, Complex<T>{ZeroInit}} {}
 
         /** @brief Construct without initializing the contents */
         explicit DualComplex(Magnum::NoInitT) noexcept: Dual<Complex<T>>{Magnum::NoInit} {}
 
         /**
-         * @brief Construct dual complex number from real and dual part
+         * @brief Construct a dual complex number from real and dual part
          *
          * @f[
          *      \hat c = c_0 + \epsilon c_\epsilon
@@ -166,7 +167,7 @@ template<class T> class DualComplex: public Dual<Complex<T>> {
            ambiguous with the above */
 
         /**
-         * @brief Construct dual complex number from vector
+         * @brief Construct a dual complex number from vector
          *
          * To be used in transformations later. @f[
          *      \hat c = (0 + i1) + \epsilon(v_x + iv_y)
@@ -175,21 +176,21 @@ template<class T> class DualComplex: public Dual<Complex<T>> {
         constexpr explicit DualComplex(const Vector2<T>& vector) noexcept: Dual<Complex<T>>({}, Complex<T>(vector)) {}
 
         /**
-         * @brief Construct dual complex number from another of different type
+         * @brief Construct a dual complex number from another of different type
          *
          * Performs only default casting on the values, no rounding or anything
          * else.
          */
         template<class U> constexpr explicit DualComplex(const DualComplex<U>& other) noexcept: Dual<Complex<T>>{other} {}
 
-        /** @brief Construct dual complex number from external representation */
-        template<class U, class V = decltype(Implementation::DualComplexConverter<T, U>::from(std::declval<U>()))> constexpr explicit DualComplex(const U& other): DualComplex{Implementation::DualComplexConverter<T, U>::from(other)} {}
+        /** @brief Construct a dual complex number from external representation */
+        template<class U, class = decltype(Implementation::DualComplexConverter<T, U>::from(std::declval<U>()))> constexpr explicit DualComplex(const U& other): DualComplex{Implementation::DualComplexConverter<T, U>::from(other)} {}
 
         /** @brief Copy constructor */
         constexpr /*implicit*/ DualComplex(const Dual<Complex<T>>& other) noexcept: Dual<Complex<T>>(other) {}
 
-        /** @brief Convert dual complex number to external representation */
-        template<class U, class V = decltype(Implementation::DualComplexConverter<T, U>::to(std::declval<DualComplex<T>>()))> constexpr explicit operator U() const {
+        /** @brief Convert the dual complex number to external representation */
+        template<class U, class = decltype(Implementation::DualComplexConverter<T, U>::to(std::declval<DualComplex<T>>()))> constexpr explicit operator U() const {
             return Implementation::DualComplexConverter<T, U>::to(*this);
         }
 

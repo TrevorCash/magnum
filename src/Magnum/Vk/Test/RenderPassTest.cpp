@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -24,11 +25,9 @@
 */
 
 #include <new>
-#include <sstream>
 #include <Corrade/Containers/Array.h>
-#include <Corrade/Containers/StringView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Color.h"
 #include "Magnum/Math/Range.h"
@@ -355,10 +354,10 @@ void RenderPassTest::attachmentDescriptionConvertDisallowed() {
     AttachmentDescription description{PixelFormat{}, AttachmentLoadOperation{}, AttachmentStoreOperation{}, ImageLayout{}, ImageLayout{}};
     description->pNext = &description;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     description.vkAttachmentDescription();
-    CORRADE_COMPARE(out.str(), "Vk::AttachmentDescription: disallowing conversion to VkAttachmentDescription with non-empty pNext to prevent information loss\n");
+    CORRADE_COMPARE(out, "Vk::AttachmentDescription: disallowing conversion to VkAttachmentDescription with non-empty pNext to prevent information loss\n");
 }
 
 void RenderPassTest::attachmentReferenceConstruct() {
@@ -413,10 +412,10 @@ void RenderPassTest::attachmentReferenceConvertDisallowed() {
     AttachmentReference reference{0, ImageLayout{}};
     reference->pNext = &reference;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     reference.vkAttachmentReference();
-    CORRADE_COMPARE(out.str(), "Vk::AttachmentReference: disallowing conversion to VkAttachmentReference with non-empty pNext to prevent information loss\n");
+    CORRADE_COMPARE(out, "Vk::AttachmentReference: disallowing conversion to VkAttachmentReference with non-empty pNext to prevent information loss\n");
 }
 
 void RenderPassTest::subpassDescriptionConstruct() {
@@ -497,10 +496,10 @@ void RenderPassTest::subpassDescriptionConstructColorResolveAttachmentsWrongCoun
 
     SubpassDescription description;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     description.setColorAttachments({{}, {}}, {{}, {}, {}});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Vk::SubpassDescription::setColorAttachments(): resolve attachments expected to be either empty or have a size of 2 but got 3\n");
 }
 
@@ -739,10 +738,10 @@ void RenderPassTest::subpassDescriptionConvertDisallowed() {
     SubpassDescription description;
     description->pNext = &description;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     description.vkSubpassDescription();
-    CORRADE_COMPARE(out.str(), "Vk::SubpassDescription: disallowing conversion to VkSubpassDescription with non-empty pNext to prevent information loss\n");
+    CORRADE_COMPARE(out, "Vk::SubpassDescription: disallowing conversion to VkSubpassDescription with non-empty pNext to prevent information loss\n");
 }
 
 void RenderPassTest::subpassDescriptionRvalue() {
@@ -842,10 +841,10 @@ void RenderPassTest::subpassDependencyConvertDisallowed() {
     SubpassDependency dependency{0, 1, PipelineStages{}, PipelineStages{}, Accesses{}, Accesses{}};
     dependency->pNext = &dependency;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     dependency.vkSubpassDependency();
-    CORRADE_COMPARE(out.str(), "Vk::SubpassDependency: disallowing conversion to VkSubpassDependency with non-empty pNext to prevent information loss\n");
+    CORRADE_COMPARE(out, "Vk::SubpassDependency: disallowing conversion to VkSubpassDependency with non-empty pNext to prevent information loss\n");
 }
 
 void RenderPassTest::createInfoConstruct() {
@@ -1122,8 +1121,8 @@ void RenderPassTest::constructCopy() {
 void RenderPassTest::beginInfoConstruct() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
-    auto renderPass = reinterpret_cast<VkRenderPass>(reinterpret_cast<void*>(0xbadbeef));
-    auto framebuffer = reinterpret_cast<VkFramebuffer>(reinterpret_cast<void*>(0xdeadcafe));
+    auto renderPass = reinterpret_cast<VkRenderPass>(reinterpret_cast<void*>(std::size_t{0xbadbeef}));
+    auto framebuffer = reinterpret_cast<VkFramebuffer>(reinterpret_cast<void*>(std::size_t{0xdeadcafe}));
 
     RenderPassBeginInfo info{renderPass, framebuffer, Range2Di{{3, 7}, {15, 78}}};
     CORRADE_COMPARE(info->renderPass, renderPass);
@@ -1136,9 +1135,9 @@ void RenderPassTest::beginInfoConstruct() {
 void RenderPassTest::beginInfoConstructImplicitSize() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
-    auto renderPass = reinterpret_cast<VkRenderPass>(reinterpret_cast<void*>(0xbadbeef));
+    auto renderPass = reinterpret_cast<VkRenderPass>(reinterpret_cast<void*>(std::size_t{0xbadbeef}));
     Device device{NoCreate};
-    auto framebuffer = Framebuffer::wrap(device, reinterpret_cast<VkFramebuffer>(reinterpret_cast<void*>(0xdeadcafe)), {256, 384, 16});
+    auto framebuffer = Framebuffer::wrap(device, reinterpret_cast<VkFramebuffer>(reinterpret_cast<void*>(std::size_t{0xdeadcafe})), {256, 384, 16});
 
     RenderPassBeginInfo info{renderPass, framebuffer};
     CORRADE_COMPARE(info->renderPass, renderPass);
@@ -1153,10 +1152,10 @@ void RenderPassTest::beginInfoConstructImplicitSizeUnknown() {
 
     Framebuffer framebuffer{NoCreate};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     RenderPassBeginInfo{VkRenderPass{}, framebuffer};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Vk::RenderPassBeginInfo: the framebuffer has unknown size, you have to specify the render area explicitly\n");
 }
 

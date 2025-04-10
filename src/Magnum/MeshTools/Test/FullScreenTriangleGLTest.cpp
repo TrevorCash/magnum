@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -30,7 +31,9 @@
 #include <Corrade/Utility/Resource.h>
 
 #include "Magnum/Image.h"
+#include "Magnum/ImageView.h"
 #include "Magnum/PixelFormat.h"
+#include "Magnum/DebugTools/CompareImage.h"
 #include "Magnum/GL/AbstractShaderProgram.h"
 #include "Magnum/GL/Framebuffer.h"
 #include "Magnum/GL/Mesh.h"
@@ -135,12 +138,26 @@ void main() {
     using namespace Math::Literals;
 
     Image2D image = framebuffer.read({{}, Vector2i{4}}, PixelFormat::RGBA8Unorm);
-    CORRADE_COMPARE_AS(Containers::arrayCast<Color4ub>(image.data()), Containers::arrayView<Color4ub>({
+    Color4ub expected[]{
         0xff80ff80_rgba, 0xff80ff80_rgba, 0xff80ff80_rgba, 0xff80ff80_rgba,
         0xff80ff80_rgba, 0xff80ff80_rgba, 0xff80ff80_rgba, 0xff80ff80_rgba,
         0xff80ff80_rgba, 0xff80ff80_rgba, 0xff80ff80_rgba, 0xff80ff80_rgba,
         0xff80ff80_rgba, 0xff80ff80_rgba, 0xff80ff80_rgba, 0xff80ff80_rgba
-    }), TestSuite::Compare::Container);
+    };
+    #ifndef MAGNUM_TARGET_GLES2
+    CORRADE_COMPARE_WITH(image,
+        (ImageView2D{PixelFormat::RGBA8Unorm, {4, 4}, expected}),
+        /* Off-by-one difference in all pixels on NV */
+        (DebugTools::CompareImage{0.5f, 0.5f}));
+    #else
+    /* The RGBA4 format on ES2 causes rounding errors. On NV it's stable
+       off-by-one, 0x7f, on Mesa it's more (either 0x77 or 0x88 instead of
+       0x80. Since this platform isn't really important nowadays, I don't
+       really care. */
+    CORRADE_COMPARE_WITH(image,
+        (ImageView2D{PixelFormat::RGBA8Unorm, {4, 4}, expected}),
+        (DebugTools::CompareImage{4.5f, 4.25f}));
+    #endif
 }
 
 }}}}

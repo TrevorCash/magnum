@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -223,7 +224,7 @@ remaining 31 bits. Use @ref meshPrimitiveUnwrap() for the inverse operation.
 template<class T> constexpr MeshPrimitive meshPrimitiveWrap(T implementationSpecific) {
     static_assert(sizeof(T) <= 4, "types larger than 32bits are not supported");
     return CORRADE_CONSTEXPR_ASSERT(!(UnsignedInt(implementationSpecific) & (1u << 31)),
-        "meshPrimitiveWrap(): implementation-specific value" << reinterpret_cast<void*>(implementationSpecific) << "already wrapped or too large"),
+        "meshPrimitiveWrap(): implementation-specific value" << Debug::hex << UnsignedInt(implementationSpecific) << "already wrapped or too large"),
         MeshPrimitive((1u << 31)|UnsignedInt(implementationSpecific));
 }
 
@@ -329,7 +330,7 @@ remaining 31 bits. Use @ref meshIndexTypeUnwrap() for the inverse operation.
 template<class T> constexpr MeshIndexType meshIndexTypeWrap(T implementationSpecific) {
     static_assert(sizeof(T) <= 4, "types larger than 32bits are not supported");
     return CORRADE_CONSTEXPR_ASSERT(!(UnsignedInt(implementationSpecific) & (1u << 31)),
-        "meshIndexTypeWrap(): implementation-specific value" << reinterpret_cast<void*>(implementationSpecific) << "already wrapped or too large"),
+        "meshIndexTypeWrap(): implementation-specific value" << Debug::hex << UnsignedInt(implementationSpecific) << "already wrapped or too large"),
         MeshIndexType((1u << 31)|UnsignedInt(implementationSpecific));
 }
 

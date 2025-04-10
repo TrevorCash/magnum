@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -100,7 +101,7 @@ template<class T> inline const void** structureFind(const void*& next, const T& 
 
 class AnyStructure {
     public:
-        template<class T, class = typename std::enable_if<IsVulkanStructure<T>::value>::type> /*implicit*/ AnyStructure(const T& structure): _structure{reinterpret_cast<const VkBaseOutStructure*>(&structure)} {}
+        template<class T, typename std::enable_if<IsVulkanStructure<T>::value, int>::type = 0> /*implicit*/ AnyStructure(const T& structure): _structure{reinterpret_cast<const VkBaseOutStructure*>(&structure)} {}
 
         /*implicit*/ operator const VkBaseOutStructure&() const { return *_structure; }
 

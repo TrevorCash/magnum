@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
+#include <Corrade/Containers/ArrayView.h> /* arraySize() */
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/RectangularMatrix.h"
 #include "Magnum/Math/StrictWeakOrdering.h"
@@ -64,6 +66,8 @@ struct RectangularMatrixTest: TestSuite::Tester {
     void constructNoInit();
     void constructOneValue();
     void constructOneComponent();
+    void constructArray();
+    void constructArrayRvalue();
     void constructConversion();
     void constructFromDifferentSize();
     void constructFromData();
@@ -82,6 +86,7 @@ struct RectangularMatrixTest: TestSuite::Tester {
     void multiplyDivide();
     void multiply();
     void multiplyVector();
+    void multiplyRowVector();
 
     void transposed();
     void flippedCols();
@@ -99,21 +104,26 @@ struct RectangularMatrixTest: TestSuite::Tester {
     void debugPacked();
 };
 
-typedef RectangularMatrix<4, 3, Float> Matrix4x3;
-typedef RectangularMatrix<4, 2, Float> Matrix4x2;
-typedef RectangularMatrix<3, 4, Float> Matrix3x4;
+/* What's a typedef and not a using differs from the typedefs in root Magnum
+   namespace, or is not present there at all */
+using Magnum::Matrix4x3;
+using Magnum::Matrix4x2;
+using Magnum::Matrix3x4;
 typedef RectangularMatrix<3, 3, Float> Matrix3x3;
-typedef RectangularMatrix<3, 2, Float> Matrix3x2;
+using Magnum::Matrix3x2;
 typedef RectangularMatrix<2, 2, Float> Matrix2x2;
-typedef RectangularMatrix<2, 3, Float> Matrix2x3;
-typedef RectangularMatrix<2, 4, Float> Matrix2x4;
+using Magnum::Matrix2x3;
+using Magnum::Matrix2x4;
 typedef RectangularMatrix<2, 2, Int> Matrix2x2i;
 typedef Vector<4, Float> Vector4;
 typedef Vector<3, Float> Vector3;
 typedef Vector<2, Float> Vector2;
+using Magnum::BitVector3;
 
-typedef RectangularMatrix<4, 3, Int> Matrix4x3i;
-typedef RectangularMatrix<3, 4, Int> Matrix3x4i;
+typedef Math::Matrix3x1<Int> Matrix3x1i;
+typedef Math::Matrix4x1<Int> Matrix4x1i;
+typedef Math::Matrix4x3<Int> Matrix4x3i;
+typedef Math::Matrix3x4<Int> Matrix3x4i;
 typedef Vector<4, Int> Vector4i;
 typedef Vector<3, Int> Vector3i;
 typedef Vector<2, Int> Vector2i;
@@ -125,6 +135,8 @@ RectangularMatrixTest::RectangularMatrixTest() {
               &RectangularMatrixTest::constructNoInit,
               &RectangularMatrixTest::constructOneValue,
               &RectangularMatrixTest::constructOneComponent,
+              &RectangularMatrixTest::constructArray,
+              &RectangularMatrixTest::constructArrayRvalue,
               &RectangularMatrixTest::constructConversion,
               &RectangularMatrixTest::constructFromDifferentSize,
               &RectangularMatrixTest::constructFromData,
@@ -143,6 +155,7 @@ RectangularMatrixTest::RectangularMatrixTest() {
               &RectangularMatrixTest::multiplyDivide,
               &RectangularMatrixTest::multiply,
               &RectangularMatrixTest::multiplyVector,
+              &RectangularMatrixTest::multiplyRowVector,
 
               &RectangularMatrixTest::transposed,
               &RectangularMatrixTest::flippedCols,
@@ -256,6 +269,108 @@ void RectangularMatrixTest::constructOneComponent() {
     CORRADE_COMPARE(c, Matrix1x1{Vector1{1.5f}});
 
     CORRADE_VERIFY(std::is_nothrow_constructible<Matrix1x1, Vector1>::value);
+}
+
+void RectangularMatrixTest::constructArray() {
+    float data[2][4]{
+        {3.0f, 5.0f, 8.0f, -3.0f},
+        {4.5f, 4.0f, 7.0f,  2.0f},
+    };
+    Matrix2x4 a{data};
+    CORRADE_COMPARE(a, (Matrix2x4{Vector4{3.0f, 5.0f, 8.0f, -3.0f},
+                                  Vector4{4.5f, 4.0f, 7.0f,  2.0f}}));
+
+    constexpr float cdata[2][4]{
+        {3.0f, 5.0f, 8.0f, -3.0f},
+        {4.5f, 4.0f, 7.0f,  2.0f},
+    };
+    constexpr Matrix2x4 ca{cdata};
+    CORRADE_COMPARE(ca, (Matrix2x4{Vector4{3.0f, 5.0f, 8.0f, -3.0f},
+                                   Vector4{4.5f, 4.0f, 7.0f,  2.0f}}));
+
+    /* Implicit conversion is not allowed */
+    CORRADE_VERIFY(!std::is_convertible<float[2][4], Matrix2x4>::value);
+
+    CORRADE_VERIFY(std::is_nothrow_constructible<Matrix2x4, float[2][4]>::value);
+
+    /* It should always be constructible only with exactly the matching number
+       of elements. As that's checked with a static_assert(), it's impossible
+       to verify with std::is_constructible unfortunately and the only way to
+       test that is manually, thus uncomment the code below to test the error
+       behavior.
+
+       Additionally, to avoid noise in the compiler output, the second and
+       fourth should only produce "excess elements in array initializer" and a
+       static assert, the first and third just a static assert, no other
+       compiler error. */
+    #if 0
+    float data23[2][3]{
+        {3.0f, 5.0f, 8.0f},
+        {4.5f, 4.0f, 7.0f}
+    };
+    float data25[2][5]{
+        {3.0f, 5.0f, 8.0f, -3.0f, 17.0f},
+        {4.5f, 4.0f, 7.0f,  2.0f, 23.2f}
+    };
+    float data14[1][4]{
+        {3.0f, 5.0f, 8.0f, -3.0f},
+    };
+    float data34[3][4]{
+        {3.0f, 5.0f, 8.0f, -3.0f},
+        {4.5f, 4.0f, 7.0f,  2.0f},
+        {3.0f, 7.0f, 0.0f,  1.0f}
+    };
+    Matrix2x4 b{data23};
+    Matrix2x4 c{data25};
+    Matrix2x4 d{data14};
+    Matrix2x4 e{data34};
+    #endif
+}
+
+void RectangularMatrixTest::constructArrayRvalue() {
+    /* This, the extra {} to supply an array, avoids the need to have to
+       explicitly type out Vector for every column */
+    Matrix2x4 a{{{3.0f, 5.0f, 8.0f, -3.0f},
+                 {4.5f, 4.0f, 7.0f,  2.0f}}};
+    CORRADE_COMPARE(a, (Matrix2x4{Vector4{3.0f, 5.0f, 8.0f, -3.0f},
+                                  Vector4{4.5f, 4.0f, 7.0f,  2.0f}}));
+
+    /* Unfortunately on MSVC (even 2022) this leads to
+        error C2131: expression did not evaluate to a constant
+        note: failure was caused by out of range index 3; allowed range is 0 <= index < 2
+       and similarly in other tests. Not sure where that comes from, for Vector
+       this all works, constructArray() above works, and the GCC 4.8 workaround
+       with fixed size doesn't help here. */
+    #ifndef CORRADE_TARGET_MSVC
+    constexpr Matrix2x4 ca{{{3.0f, 5.0f, 8.0f, -3.0f},
+                            {4.5f, 4.0f, 7.0f,  2.0f}}};
+    CORRADE_COMPARE(ca, (Matrix2x4{Vector4{3.0f, 5.0f, 8.0f, -3.0f},
+                                   Vector4{4.5f, 4.0f, 7.0f,  2.0f}}));
+    #endif
+
+    /* It should always be constructible only with exactly the matching number
+       of elements. As that's checked with a static_assert(), it's impossible
+       to verify with std::is_constructible unfortunately and the only way to
+       test that is manually, thus uncomment the code below to test the error
+       behavior.
+
+       Additionally, to avoid noise in the compiler output, the first and
+       second should only produce "excess elements in array initializer" and a
+       static assert, the third and fourth a static assert, no other compiler
+       error. */
+    #if 0
+    Matrix2x4 c{{{3.0f, 5.0f, 8.0f, -3.0f, 17.0f},
+                 {4.5f, 4.0f, 7.0f,  2.0f, 23.2f}}};
+    Matrix2x4 e{{{3.0f, 5.0f, 8.0f, -3.0f},
+                 {4.5f, 4.0f, 7.0f,  2.0f},
+                 {3.0f, 7.0f, 0.0f,  1.0f}}};
+    #endif
+    #if 0 || (defined(CORRADE_TARGET_GCC) && !defined(CORRADE_TARGET_CLANG) && __GNUC__ < 5)
+    CORRADE_WARN("Creating a RectangularMatrix from a smaller array isn't an error on GCC 4.8.");
+    Matrix2x4 b{{{3.0f, 5.0f, 8.0f},
+                 {4.5f, 4.0f, 7.0f}}};
+    Matrix2x4 d{{{3.0f, 5.0f, 8.0f, -3.0f}}};
+    #endif
 }
 
 void RectangularMatrixTest::constructConversion() {
@@ -380,7 +495,6 @@ void RectangularMatrixTest::constructCopy() {
 }
 
 void RectangularMatrixTest::convert() {
-    typedef RectangularMatrix<2, 3, Float> Matrix2x3;
     constexpr Mat2x3 a{{1.5f,  2.0f, -3.5f,
                         2.0f, -3.1f,  0.4f}};
     constexpr Matrix2x3 b(Vector3(1.5f, 2.0f, -3.5f),
@@ -474,7 +588,6 @@ void RectangularMatrixTest::compare() {
 }
 
 void RectangularMatrixTest::compareComponentWise() {
-    typedef BitVector<3> BitVector3;
     typedef RectangularMatrix<3, 1, Float> Matrix3x1;
     CORRADE_COMPARE(Matrix3x1(1.0f, -1.0f, 5.0f) < Matrix3x1(1.1f, -1.0f, 3.0f), BitVector3(0x1));
     CORRADE_COMPARE(Matrix3x1(1.0f, -1.0f, 5.0f) <= Matrix3x1(1.1f, -1.0f, 3.0f), BitVector3(0x3));
@@ -492,82 +605,130 @@ void RectangularMatrixTest::promotedNegated() {
 }
 
 void RectangularMatrixTest::addSubtract() {
-    Matrix4x3 a(Vector3(0.0f,   1.0f,   3.0f),
-                Vector3(4.0f,   5.0f,   7.0f),
-                Vector3(8.0f,   9.0f,   11.0f),
-                Vector3(12.0f, 13.0f,  15.0f));
-    Matrix4x3 b(Vector3(-4.0f,  0.5f,   9.0f),
-                Vector3(-9.0f, 11.0f,  0.25f),
-                Vector3( 0.0f, -8.0f,  19.0f),
-                Vector3(-3.0f, -5.0f,   2.0f));
-    Matrix4x3 c(Vector3(-4.0f,  1.5f,  12.0f),
-                Vector3(-5.0f, 16.0f,  7.25f),
-                Vector3( 8.0f,  1.0f,  30.0f),
-                Vector3( 9.0f,  8.0f,  17.0f));
+    const Matrix4x3 a{Vector3{0.0f,   1.0f,   3.0f},
+                      Vector3{4.0f,   5.0f,   7.0f},
+                      Vector3{8.0f,   9.0f,   11.0f},
+                      Vector3{12.0f, 13.0f,  15.0f}};
+    const Matrix4x3 b{Vector3{-4.0f,  0.5f,   9.0f},
+                      Vector3{-9.0f, 11.0f,  0.25f},
+                      Vector3{ 0.0f, -8.0f,  19.0f},
+                      Vector3{-3.0f, -5.0f,   2.0f}};
+    const Matrix4x3 c{Vector3{-4.0f,  1.5f,  12.0f},
+                      Vector3{-5.0f, 16.0f,  7.25f},
+                      Vector3{ 8.0f,  1.0f,  30.0f},
+                      Vector3{ 9.0f,  8.0f,  17.0f}};
 
     CORRADE_COMPARE(a + b, c);
+    {
+        Matrix4x3 m{Vector3{0.0f,   1.0f,   3.0f},
+                    Vector3{4.0f,   5.0f,   7.0f},
+                    Vector3{8.0f,   9.0f,   11.0f},
+                    Vector3{12.0f, 13.0f,  15.0f}};
+        CORRADE_COMPARE(&(m += b), &m);
+        CORRADE_COMPARE(m, c);
+    }
+
     CORRADE_COMPARE(c - b, a);
+    {
+        Matrix4x3 m{Vector3{-4.0f,  1.5f,  12.0f},
+                    Vector3{-5.0f, 16.0f,  7.25f},
+                    Vector3{ 8.0f,  1.0f,  30.0f},
+                    Vector3{ 9.0f,  8.0f,  17.0f}};
+        CORRADE_COMPARE(&(m -= b), &m);
+        CORRADE_COMPARE(m, a);
+    }
 }
 
 void RectangularMatrixTest::multiplyDivide() {
-    Matrix2x2 matrix(Vector2(1.0f, 2.0f),
-                     Vector2(3.0f, 4.0f));
-    Matrix2x2 multiplied(Vector2(-1.5f, -3.0f),
-                         Vector2(-4.5f, -6.0f));
+    const Matrix2x2 matrix{Vector2{1.0f, 2.0f},
+                           Vector2{3.0f, 4.0f}};
+    const Matrix2x2 multiplied{Vector2{-1.5f, -3.0f},
+                               Vector2{-4.5f, -6.0f}};
 
     CORRADE_COMPARE(matrix*-1.5f, multiplied);
     CORRADE_COMPARE(-1.5f*matrix, multiplied);
+    {
+        Matrix2x2 m{Vector2{1.0f, 2.0f},
+                    Vector2{3.0f, 4.0f}};
+        CORRADE_COMPARE(&(m *= -1.5f), &m);
+        CORRADE_COMPARE(m, multiplied);
+    }
+
     CORRADE_COMPARE(multiplied/-1.5f, matrix);
+    {
+        Matrix2x2 m{Vector2{-1.5f, -3.0f},
+                    Vector2{-4.5f, -6.0f}};
+        CORRADE_COMPARE(&(m /= -1.5f), &m);
+        CORRADE_COMPARE(m, matrix);
+    }
 
     /* Divide vector with number and inverse */
-    Matrix2x2 divisor(Vector2( 1.0f, 2.0f),
-                      Vector2(-4.0f, 8.0f));
-    Matrix2x2 result(Vector2(  1.0f,   0.5f),
-                     Vector2(-0.25f, 0.125f));
+    const Matrix2x2 divisor{Vector2{ 1.0f, 2.0f},
+                            Vector2{-4.0f, 8.0f}};
+    const Matrix2x2 result{Vector2{  1.0f,   0.5f},
+                           Vector2{-0.25f, 0.125f}};
     CORRADE_COMPARE(1.0f/divisor, result);
 }
 
 void RectangularMatrixTest::multiply() {
-    RectangularMatrix<4, 6, Int> left(
-        Vector<6, Int>(-5,   27, 10,  33, 0, -15),
-        Vector<6, Int>( 7,   56, 66,   1, 0, -24),
-        Vector<6, Int>( 4,   41,  4,   0, 1,  -4),
-        Vector<6, Int>( 9, -100, 19, -49, 1,   9)
-    );
+    const RectangularMatrix<4, 6, Int> left{
+        Vector<6, Int>{-5,   27, 10,  33, 0, -15},
+        Vector<6, Int>{ 7,   56, 66,   1, 0, -24},
+        Vector<6, Int>{ 4,   41,  4,   0, 1,  -4},
+        Vector<6, Int>{ 9, -100, 19, -49, 1,   9}
+    };
 
-    RectangularMatrix<5, 4, Int> right(
-        Vector<4, Int>(1,  -7,  0,  158),
-        Vector<4, Int>(2,  24, -3,   40),
-        Vector<4, Int>(3, -15, -2,  -50),
-        Vector<4, Int>(4,  17, -1, -284),
-        Vector<4, Int>(5,  30,  4,   18)
-    );
+    const RectangularMatrix<5, 4, Int> right{
+        Vector<4, Int>{1,  -7,  0,  158},
+        Vector<4, Int>{2,  24, -3,   40},
+        Vector<4, Int>{3, -15, -2,  -50},
+        Vector<4, Int>{4,  17, -1, -284},
+        Vector<4, Int>{5,  30,  4,   18}
+    };
 
-    RectangularMatrix<5, 6, Int> expected(
-       Vector<6, Int>( 1368, -16165,  2550, -7716,  158,  1575),
-       Vector<6, Int>(  506,  -2725,  2352, -1870,   37,  -234),
-       Vector<6, Int>( -578,   4159, -1918,  2534,  -52,  -127),
-       Vector<6, Int>(-2461,  29419, -4238, 14065, -285, -3020),
-       Vector<6, Int>(  363,    179,  2388,  -687,   22,  -649)
-    );
+    const RectangularMatrix<5, 6, Int> expected{
+       Vector<6, Int>{ 1368, -16165,  2550, -7716,  158,  1575},
+       Vector<6, Int>{  506,  -2725,  2352, -1870,   37,  -234},
+       Vector<6, Int>{ -578,   4159, -1918,  2534,  -52,  -127},
+       Vector<6, Int>{-2461,  29419, -4238, 14065, -285, -3020},
+       Vector<6, Int>{  363,    179,  2388,  -687,   22,  -649}
+    };
 
     CORRADE_COMPARE(left*right, expected);
+
+    /* There's no *= for matrix multiplication as it makes operation order
+       unclear */
 }
 
 void RectangularMatrixTest::multiplyVector() {
-    Vector4i a(-5, 27, 10, 33);
-    RectangularMatrix<3, 1, Int> b(1, 2, 3);
-    CORRADE_COMPARE(a*b, Matrix3x4i(
-       Vector4i( -5,  27, 10,  33),
-       Vector4i(-10,  54, 20,  66),
-       Vector4i(-15,  81, 30,  99)
-    ));
+    const Vector4i a{-5, 27, 10, 33};
+    const RectangularMatrix<3, 1, Int> b{1, 2, 3};
+    CORRADE_COMPARE(a*b, (Matrix3x4i{
+       Vector4i{ -5,  27, 10,  33},
+       Vector4i{-10,  54, 20,  66},
+       Vector4i{-15,  81, 30,  99}
+    }));
 
-    Matrix3x4i c(Vector4i(0, 4,  8, 12),
-                 Vector4i(1, 5,  9, 13),
-                 Vector4i(3, 7, 11, 15));
-    Vector3i d(2, -2, 3);
-    CORRADE_COMPARE(c*d, Vector4i(7, 19, 31, 43));
+    const Matrix3x4i c{Vector4i{0, 4,  8, 12},
+                       Vector4i{1, 5,  9, 13},
+                       Vector4i{3, 7, 11, 15}};
+    const Vector3i d{2, -2, 3};
+    CORRADE_COMPARE(c*d, (Vector4i{7, 19, 31, 43}));
+
+    /* There's no *= for vector and matrix multiplication either */
+}
+
+void RectangularMatrixTest::multiplyRowVector() {
+    /* Like multiplyVector() above, just transposed */
+
+    const Vector3i d{2, -2, 3};
+    const Matrix4x3i c{Vector3i{ 0,  1,  3},
+                       Vector3i{ 4,  5,  7},
+                       Vector3i{ 8,  9, 11},
+                       Vector3i{12, 13, 15}};
+    CORRADE_COMPARE(Matrix3x1i::fromVector(d)*c, (Matrix4x1i{
+       7, 19, 31, 43
+    }));
 }
 
 void RectangularMatrixTest::transposed() {
@@ -637,8 +798,6 @@ void RectangularMatrixTest::diagonal() {
 }
 
 void RectangularMatrixTest::vector() {
-    typedef Vector<3, Int> Vector3i;
-    typedef RectangularMatrix<4, 3, Int> Matrix4x3i;
     typedef Vector<12, Int> Vector12i;
 
     Matrix4x3i a(Vector3i(0, 1, 2),
@@ -729,33 +888,55 @@ void RectangularMatrixTest::subclass() {
     CORRADE_COMPARE(-a, Mat2x2(Vector2(-1.0f, 3.0f),
                                Vector2(3.0f, -1.0f)));
 
-    Mat2x2 b(Vector2(-2.0f, 5.0f),
-             Vector2(5.0f, -2.0f));
-    const Mat2x2 bExpected(Vector2(-1.0f, 2.0f),
-                           Vector2(2.0f, -1.0f));
+    const Mat2x2 b{Vector2{-2.0f, 5.0f},
+                   Vector2{5.0f, -2.0f}};
+    const Mat2x2 bExpected{Vector2{-1.0f, 2.0f},
+                           Vector2{2.0f, -1.0f}};
     CORRADE_COMPARE(b + a, bExpected);
+    {
+        Mat2x2 m{Vector2{-2.0f, 5.0f},
+                 Vector2{5.0f, -2.0f}};
+        CORRADE_COMPARE(&(m += a), &m);
+        CORRADE_COMPARE(m, bExpected);
+    }
 
-    Mat2x2 c(Vector2(-2.0f, 5.0f),
-             Vector2(5.0f, -2.0f));
-    const Mat2x2 cExpected(Vector2(-3.0f, 8.0f),
-                           Vector2(8.0f, -3.0f));
+    const Mat2x2 c{Vector2{-2.0f, 5.0f},
+                   Vector2{5.0f, -2.0f}};
+    const Mat2x2 cExpected{Vector2{-3.0f, 8.0f},
+                           Vector2{8.0f, -3.0f}};
     CORRADE_COMPARE(c - a, cExpected);
+    {
+        Mat2x2 m{Vector2{-2.0f, 5.0f},
+                 Vector2{5.0f, -2.0f}};
+        CORRADE_COMPARE(&(m -= a), &m);
+        CORRADE_COMPARE(m, cExpected);
+    }
 
-    Mat2x2 d(Vector2(-2.0f, 5.0f),
-             Vector2(5.0f, -2.0f));
-    const Mat2x2 dExpected(Vector2(-4.0f, 10.0f),
-                           Vector2(10.0f, -4.0f));
+    const Mat2x2 d{Vector2{-2.0f, 5.0f},
+                   Vector2{5.0f, -2.0f}};
+    const Mat2x2 dExpected{Vector2{-4.0f, 10.0f},
+                           Vector2{10.0f, -4.0f}};
     CORRADE_COMPARE(d*2.0f, dExpected);
     CORRADE_COMPARE(2.0f*d, dExpected);
+    {
+        Mat2x2 m{Vector2{-2.0f, 5.0f},
+                 Vector2{5.0f, -2.0f}};
+        CORRADE_COMPARE(&(m *= 2.0f), &m);
+        CORRADE_COMPARE(m, dExpected);
+    }
 
-    /* No need to test in-place operators as the other ones are implemented
-       using them */
-
-    Mat2x2 e(Vector2(-2.0f, 5.0f),
-             Vector2(5.0f, -2.0f));
+    const Mat2x2 e{Vector2{-2.0f, 5.0f},
+                   Vector2{5.0f, -2.0f}};
     CORRADE_COMPARE(e/0.5f, dExpected);
-    CORRADE_COMPARE(2.0f/e, Mat2x2(Vector2(-1.0f, 0.4f),
-                                   Vector2(0.4f, -1.0f)));
+    CORRADE_COMPARE(2.0f/e, (Mat2x2{Vector2{-1.0f, 0.4f},
+                                    Vector2{0.4f, -1.0f}}));
+    {
+        Mat2x2 m{Vector2{-2.0f, 5.0f},
+                 Vector2{5.0f, -2.0f}};
+        CORRADE_COMPARE(&(m /= 0.5f), &m);
+        CORRADE_COMPARE(m, dExpected);
+    }
+
     const Vector2 f(2.0f, 5.0f);
     const Math::RectangularMatrix<2, 1, Float> g(3.0f, -1.0f);
     CORRADE_COMPARE(f*g, Mat2x2(Vector2(6.0f, 15.0f),
@@ -808,16 +989,16 @@ void RectangularMatrixTest::debug() {
                 Vector4(4.0f,  4.0f, 7.0f, 3.0f),
                 Vector4(7.0f, -1.0f, 8.0f, 0.0f));
 
-    std::ostringstream o;
-    Debug(&o) << m;
-    CORRADE_COMPARE(o.str(), "Matrix(3, 4, 7,\n"
+    Containers::String out;
+    Debug{&out} << m;
+    CORRADE_COMPARE(out, "Matrix(3, 4, 7,\n"
                              "       5, 4, -1,\n"
                              "       8, 7, 8,\n"
                              "       4, 3, 0)\n");
 
-    o.str({});
-    Debug(&o) << "a" << Matrix3x4() << "b" << RectangularMatrix<4, 3, Byte>();
-    CORRADE_COMPARE(o.str(), "a Matrix(0, 0, 0,\n"
+    out = {};
+    Debug{&out} << "a" << Matrix3x4() << "b" << RectangularMatrix<4, 3, Byte>();
+    CORRADE_COMPARE(out, "a Matrix(0, 0, 0,\n"
                              "       0, 0, 0,\n"
                              "       0, 0, 0,\n"
                              "       0, 0, 0) b Matrix(0, 0, 0, 0,\n"
@@ -830,10 +1011,10 @@ void RectangularMatrixTest::debugPacked() {
                 Vector4(4.0f,  4.0f, 7.0f, 3.0f),
                 Vector4(7.0f, -1.0f, 8.0f, 0.0f));
 
-    std::ostringstream out;
+    Containers::String out;
     /* Second is not packed, the first should not make any flags persistent */
     Debug{&out} << Debug::packed << m << Matrix2x2{};
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "{3, 4, 7,\n"
         " 5, 4, -1,\n"
         " 8, 7, 8,\n"

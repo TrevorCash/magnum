@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,11 +24,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/BitArray.h>
 #include <Corrade/Containers/BitArrayView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/DebugTools/CompareMaterial.h"
 #include "Magnum/MaterialTools/Filter.h"
@@ -161,10 +161,10 @@ void FilterTest::attributesWrongBitCount() {
     }, {2, 4}};
     Containers::BitArrayView attributesToKeep{nullptr, 0, 5};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     filterAttributes(material, attributesToKeep);
-    CORRADE_COMPARE(out.str(), "MaterialTools::filterAttributes(): expected 4 bits but got 5\n");
+    CORRADE_COMPARE(out, "MaterialTools::filterAttributes(): expected 4 bits but got 5\n");
 }
 
 void FilterTest::layers() {
@@ -252,10 +252,10 @@ void FilterTest::layersWrongBitCount() {
     }, {2, 4}};
     Containers::BitArrayView layersToKeep{nullptr, 0, 3};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     filterLayers(material, layersToKeep);
-    CORRADE_COMPARE(out.str(), "MaterialTools::filterLayers(): expected 2 bits but got 3\n");
+    CORRADE_COMPARE(out, "MaterialTools::filterLayers(): expected 2 bits but got 3\n");
 }
 
 void FilterTest::attributesLayers() {
@@ -355,11 +355,11 @@ void FilterTest::attributesLayersWrongBitCount() {
     Containers::BitArrayView attributesToKeep{nullptr, 0, 5};
     Containers::BitArrayView layersToKeep{nullptr, 0, 3};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     filterAttributesLayers(material, attributesToKeep, layersToKeep.prefix(2));
     filterAttributesLayers(material, attributesToKeep.prefix(4), layersToKeep);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "MaterialTools::filterAttributesLayers(): expected 4 attribute bits but got 5\n"
         "MaterialTools::filterAttributesLayers(): expected 2 layer bits but got 3\n");
 }

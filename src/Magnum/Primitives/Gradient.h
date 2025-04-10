@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -56,7 +57,7 @@ MAGNUM_PRIMITIVES_EXPORT Trade::MeshData gradient2D(const Vector2& a, const Colo
 
 Equivalent to calling @ref gradient2D() like this:
 
-@snippet MagnumPrimitives.cpp gradient2DHorizontal
+@snippet Primitives.cpp gradient2DHorizontal
 
 @image html primitives-gradient2dhorizontal.png width=256px
 
@@ -69,7 +70,7 @@ MAGNUM_PRIMITIVES_EXPORT Trade::MeshData gradient2DHorizontal(const Color4& colo
 
 Equivalent to calling @ref gradient2D() like this:
 
-@snippet MagnumPrimitives.cpp gradient2DVertical
+@snippet Primitives.cpp gradient2DVertical
 
 @image html primitives-gradient2dvertical.png width=256px
 
@@ -99,7 +100,7 @@ MAGNUM_PRIMITIVES_EXPORT Trade::MeshData gradient3D(const Vector3& a, const Colo
 
 Equivalent to calling @ref gradient3D() like this:
 
-@snippet MagnumPrimitives.cpp gradient3DHorizontal
+@snippet Primitives.cpp gradient3DHorizontal
 
 @image html primitives-gradient3dhorizontal.png width=256px
 
@@ -112,7 +113,7 @@ MAGNUM_PRIMITIVES_EXPORT Trade::MeshData gradient3DHorizontal(const Color4& colo
 
 Equivalent to calling @ref gradient3D() like this:
 
-@snippet MagnumPrimitives.cpp gradient3DVertical
+@snippet Primitives.cpp gradient3DVertical
 
 @image html primitives-gradient3dvertical.png width=256px
 

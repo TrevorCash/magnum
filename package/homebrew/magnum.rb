@@ -6,7 +6,7 @@ class Magnum < Formula
   sha256 "98dfe802e56614e4e6bf750d9b693de46a5ed0c6eb479b0268f1a20bf34268bf"
   head "https://github.com/mosra/magnum.git"
 
-  depends_on "cmake"
+  depends_on "cmake" => :build
   depends_on "corrade"
   depends_on "sdl2"
   depends_on "glfw"
@@ -19,7 +19,14 @@ class Magnum < Formula
     system "mkdir build"
     cd "build" do
       system "cmake",
-        *std_cmake_args,
+        # Without this, the build of magnum-gl-info fails on CMake 3.30.3
+        # because of unresolved references to CGL. The same problem affected
+        # Bullet (https://github.com/bulletphysics/bullet3/issues/4659) and the
+        # fix in https://github.com/Homebrew/homebrew-core/pull/189186 is to
+        # add this, which ultimately results in `-DCMAKE_FIND_FRAMEWORK=FIRST`
+        # being passed to CMake. No idea what's going on, the regular CI build
+        # outside of Homebrew (although with CMake 3.26) doesn't need that.
+        *std_cmake_args(find_framework: "FIRST"),
         # Without this, ARM builds will try to look for dependencies in
         # /usr/local/lib and /usr/lib (which are the default locations) instead
         # of /opt/homebrew/lib which is dedicated for ARM binaries. Please

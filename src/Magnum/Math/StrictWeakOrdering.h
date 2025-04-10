@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2018 Borislav Stanimirov <b.stanimirov@abv.bg>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -50,7 +51,7 @@ set. With it an ordering can be achieved between the elements. This is useful
 mainly for interoperability with ordering containers from the C++ standard
 library, like @ref std::map and @link std::set @endlink:
 
-@snippet MagnumMath.cpp StrictWeakOrdering
+@snippet Math-stl.cpp StrictWeakOrdering
 
 The implementation is done for all types in the @ref Math library, check the
 source for defails if you want to create an implementation for your own types.

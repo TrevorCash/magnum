@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,15 +24,14 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
-#include <vector>
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
+#include <Corrade/TestSuite/Compare/String.h>
 #include <Corrade/Utility/Algorithms.h>
 #include <Corrade/Utility/Endianness.h>
 #include <Corrade/Utility/Debug.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Vector3.h"
 #include "Magnum/MeshTools/Interleave.h"
@@ -53,10 +53,13 @@ struct InterleaveTest: Corrade::TestSuite::Tester {
     void interleaveEmpty();
 
     void interleaveInto();
+    void interleaveIntoLarger();
+    void interleaveIntoInvalid();
 
     void interleavedData();
     void interleavedDataUnordered();
     void interleavedDataGaps();
+    void interleavedDataGapsTrailingOmitted();
     void interleavedDataAliased();
     void interleavedDataSingleAttribute();
     void interleavedDataArrayAttributes();
@@ -98,6 +101,10 @@ struct InterleaveTest: Corrade::TestSuite::Tester {
     void interleaveMeshDataAlreadyInterleavedMoveIndices();
     void interleaveMeshDataAlreadyInterleavedMoveNonOwned();
     void interleaveMeshDataNothing();
+
+    void interleaveMeshDataLooseAttributes();
+    void interleaveMeshDataLooseAttributesIndexed();
+    void interleaveMeshDataLooseAttributesInvalid();
 };
 
 const struct {
@@ -135,10 +142,13 @@ InterleaveTest::InterleaveTest() {
               &InterleaveTest::interleaveEmpty,
 
               &InterleaveTest::interleaveInto,
+              &InterleaveTest::interleaveIntoLarger,
+              &InterleaveTest::interleaveIntoInvalid,
 
               &InterleaveTest::interleavedData,
               &InterleaveTest::interleavedDataUnordered,
               &InterleaveTest::interleavedDataGaps,
+              &InterleaveTest::interleavedDataGapsTrailingOmitted,
               &InterleaveTest::interleavedDataAliased,
               &InterleaveTest::interleavedDataSingleAttribute,
               &InterleaveTest::interleavedDataArrayAttributes,
@@ -190,17 +200,25 @@ InterleaveTest::InterleaveTest() {
         Containers::arraySize(StridedIndicesData));
 
     addTests({&InterleaveTest::interleaveMeshDataAlreadyInterleavedMoveNonOwned,
-              &InterleaveTest::interleaveMeshDataNothing});
+              &InterleaveTest::interleaveMeshDataNothing,
+
+              &InterleaveTest::interleaveMeshDataLooseAttributes,
+              &InterleaveTest::interleaveMeshDataLooseAttributesIndexed,
+              &InterleaveTest::interleaveMeshDataLooseAttributesInvalid});
 }
 
 void InterleaveTest::attributeCount() {
-    CORRADE_COMPARE((Implementation::AttributeCount{}(std::vector<Byte>{0, 1, 2},
-        std::vector<Byte>{3, 4, 5})), std::size_t(3));
+    CORRADE_COMPARE(Implementation::AttributeCount{}(
+        Containers::arrayView<Byte>({0, 1, 2}),
+        Containers::arrayView<Byte>({3, 4, 5})
+    ), std::size_t(3));
 }
 
 void InterleaveTest::attributeCountGaps() {
-    CORRADE_COMPARE((Implementation::AttributeCount{}(std::vector<Byte>{0, 1, 2}, 3,
-        std::vector<Byte>{3, 4, 5}, 5)), std::size_t(3));
+    CORRADE_COMPARE(Implementation::AttributeCount{}(
+        Containers::arrayView<Byte>({0, 1, 2}), 3,
+        Containers::arrayView<Byte>({3, 4, 5}), 5
+    ), std::size_t(3));
 
     /* No arrays from which to get size */
     CORRADE_COMPARE(Implementation::AttributeCount{}(3, 5), ~std::size_t(0));
@@ -209,69 +227,79 @@ void InterleaveTest::attributeCountGaps() {
 void InterleaveTest::attributeCountInvalid() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::stringstream ss;
-    Error redirectError{&ss};
-    CORRADE_COMPARE((Implementation::AttributeCount{}(std::vector<Byte>{0, 1, 2},
-        std::vector<Byte>{0, 1, 2, 3, 4, 5})), std::size_t(0));
-    CORRADE_COMPARE(ss.str(), "MeshTools::interleave(): attribute arrays don't have the same length, expected 3 but got 6\n");
+    Containers::String out;
+    Error redirectError{&out};
+    CORRADE_COMPARE(Implementation::AttributeCount{}(
+        Containers::arrayView<Byte>({0, 1, 2}),
+        Containers::arrayView<Byte>({0, 1, 2, 3, 4, 5})
+    ), std::size_t(0));
+    CORRADE_COMPARE(out, "MeshTools::interleave(): attribute arrays don't have the same length, expected 3 but got 6\n");
 }
 
 void InterleaveTest::stride() {
-    CORRADE_COMPARE(Implementation::Stride{}(std::vector<Byte>()), std::size_t(1));
-    CORRADE_COMPARE(Implementation::Stride{}(std::vector<Int>()), std::size_t(4));
-    CORRADE_COMPARE((Implementation::Stride{}(std::vector<Byte>(), std::vector<Int>())), std::size_t(5));
+    CORRADE_COMPARE(Implementation::Stride{}(Containers::ArrayView<Byte>{}), std::size_t(1));
+    CORRADE_COMPARE(Implementation::Stride{}(Containers::ArrayView<Int>{}), std::size_t(4));
+    CORRADE_COMPARE(Implementation::Stride{}(
+        Containers::ArrayView<Byte>{},
+        Containers::ArrayView<Int>{}
+    ), std::size_t(5));
 }
 
 void InterleaveTest::strideGaps() {
-    CORRADE_COMPARE((Implementation::Stride{}(2, std::vector<Byte>(), 1, std::vector<Int>(), 12)), std::size_t(20));
+    CORRADE_COMPARE(Implementation::Stride{}(
+        2, Containers::ArrayView<Byte>{},
+        1, Containers::ArrayView<Int>{}, 12
+    ), std::size_t(20));
 }
 
 void InterleaveTest::interleave() {
     const Containers::Array<char> data = MeshTools::interleave(
-        std::vector<Byte>{0, 1, 2},
-        std::vector<Int>{3, 4, 5},
-        std::vector<Short>{6, 7, 8});
+        Containers::arrayView<Byte>({0, 1, 2}),
+        Containers::arrayView<Int>({3, 4, 5}),
+        Containers::arrayView<Short>({6, 7, 8})
+    );
 
     if(!Utility::Endianness::isBigEndian()) {
-        CORRADE_COMPARE(std::vector<char>(data.begin(), data.end()), (std::vector<char>{
+        CORRADE_COMPARE_AS(data, Containers::arrayView<char>({
             0x00, 0x03, 0x00, 0x00, 0x00, 0x06, 0x00,
             0x01, 0x04, 0x00, 0x00, 0x00, 0x07, 0x00,
             0x02, 0x05, 0x00, 0x00, 0x00, 0x08, 0x00
-        }));
+        }), TestSuite::Compare::Container);
     } else {
-        CORRADE_COMPARE(std::vector<char>(data.begin(), data.end()), (std::vector<char>{
+        CORRADE_COMPARE_AS(data, Containers::arrayView<char>({
             0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x06,
             0x01, 0x00, 0x00, 0x00, 0x04, 0x00, 0x07,
             0x02, 0x00, 0x00, 0x00, 0x05, 0x00, 0x08
-        }));
+        }), TestSuite::Compare::Container);
     }
 }
 
 void InterleaveTest::interleaveGaps() {
     const Containers::Array<char> data = MeshTools::interleave(
-        std::vector<Byte>{0, 1, 2}, 3,
-        std::vector<Int>{3, 4, 5},
-        std::vector<Short>{6, 7, 8}, 2);
+        Containers::arrayView<Byte>({0, 1, 2}), 3,
+        Containers::arrayView<Int>({3, 4, 5}),
+        Containers::arrayView<Short>({6, 7, 8}), 2
+    );
 
     if(!Utility::Endianness::isBigEndian()) {
         /*  byte, _____________gap, int___________________, short_____, _______gap */
-        CORRADE_COMPARE(std::vector<char>(data.begin(), data.end()), (std::vector<char>{
+        CORRADE_COMPARE_AS(data, Containers::arrayView<char>({
             0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00,
             0x01, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00,
             0x02, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00
-        }));
+        }), TestSuite::Compare::Container);
     } else {
         /*  byte, _____________gap, ___________________int, _____short, _______gap */
-        CORRADE_COMPARE(std::vector<char>(data.begin(), data.end()), (std::vector<char>{
+        CORRADE_COMPARE_AS(data, Containers::arrayView<char>({
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x06, 0x00, 0x00,
             0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x07, 0x00, 0x00,
             0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x08, 0x00, 0x00
-        }));
+        }), TestSuite::Compare::Container);
     }
 }
 
 void InterleaveTest::interleaveEmpty() {
-    const Containers::Array<char> data = MeshTools::interleave(std::vector<Byte>{}, 2);
+    const Containers::Array<char> data = MeshTools::interleave(Containers::ArrayView<Byte>{}, 2);
     CORRADE_COMPARE(data.size(), 0);
 }
 
@@ -282,25 +310,70 @@ void InterleaveTest::interleaveInto() {
         0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77,
         0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77}};
 
-    MeshTools::interleaveInto(data, 2, std::vector<Int>{4, 5, 6, 7}, 1, std::vector<Short>{0, 1, 2, 3}, 3);
+    CORRADE_COMPARE(data.size(), 48);
+    CORRADE_COMPARE(MeshTools::interleaveInto(data, 2, Containers::arrayView<Int>({4, 5, 6, 7}), 1, Containers::arrayView<Short>({0, 1, 2, 3}), 3), 48);
 
     if(!Utility::Endianness::isBigEndian()) {
         /*  _______gap, int___________________, _gap, short_____, _____________gap */
-        CORRADE_COMPARE(std::vector<char>(data.begin(), data.end()), (std::vector<char>{
+        CORRADE_COMPARE_AS(data, Containers::arrayView<char>({
             0x11, 0x33, 0x04, 0x00, 0x00, 0x00, 0x55, 0x00, 0x00, 0x33, 0x55, 0x77,
             0x11, 0x33, 0x05, 0x00, 0x00, 0x00, 0x55, 0x01, 0x00, 0x33, 0x55, 0x77,
             0x11, 0x33, 0x06, 0x00, 0x00, 0x00, 0x55, 0x02, 0x00, 0x33, 0x55, 0x77,
             0x11, 0x33, 0x07, 0x00, 0x00, 0x00, 0x55, 0x03, 0x00, 0x33, 0x55, 0x77
-        }));
+        }), TestSuite::Compare::Container);
     } else {
         /*  _______gap, ___________________int, _gap, _____short, _____________gap */
-        CORRADE_COMPARE(std::vector<char>(data.begin(), data.end()), (std::vector<char>{
+        CORRADE_COMPARE_AS(data, Containers::arrayView<char>({
             0x11, 0x33, 0x00, 0x00, 0x00, 0x04, 0x55, 0x00, 0x00, 0x33, 0x55, 0x77,
             0x11, 0x33, 0x00, 0x00, 0x00, 0x05, 0x55, 0x00, 0x01, 0x33, 0x55, 0x77,
             0x11, 0x33, 0x00, 0x00, 0x00, 0x06, 0x55, 0x00, 0x02, 0x33, 0x55, 0x77,
             0x11, 0x33, 0x00, 0x00, 0x00, 0x07, 0x55, 0x00, 0x03, 0x33, 0x55, 0x77
-        }));
+        }), TestSuite::Compare::Container);
     }
+}
+
+void InterleaveTest::interleaveIntoLarger() {
+    /* Same as interleaveInto(), just with the data buffer being larger */
+
+    Containers::Array<char> data{InPlaceInit, {
+        0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77,
+        0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77,
+        0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77,
+        0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77, 0x11, 0x33, 0x55, 0x77, 0x11}};
+
+    CORRADE_COMPARE(data.size(), 49);
+    CORRADE_COMPARE(MeshTools::interleaveInto(data, 2, Containers::arrayView<Int>({4, 5, 6, 7}), 1, Containers::arrayView<Short>({0, 1, 2, 3}), 3), 48);
+
+    if(!Utility::Endianness::isBigEndian()) {
+        /*  _______gap, int___________________, _gap, short_____, _____________gap */
+        CORRADE_COMPARE_AS(data, Containers::arrayView<char>({
+            0x11, 0x33, 0x04, 0x00, 0x00, 0x00, 0x55, 0x00, 0x00, 0x33, 0x55, 0x77,
+            0x11, 0x33, 0x05, 0x00, 0x00, 0x00, 0x55, 0x01, 0x00, 0x33, 0x55, 0x77,
+            0x11, 0x33, 0x06, 0x00, 0x00, 0x00, 0x55, 0x02, 0x00, 0x33, 0x55, 0x77,
+            0x11, 0x33, 0x07, 0x00, 0x00, 0x00, 0x55, 0x03, 0x00, 0x33, 0x55, 0x77,
+            0x11
+        }), TestSuite::Compare::Container);
+    } else {
+        /*  _______gap, ___________________int, _gap, _____short, _____________gap */
+        CORRADE_COMPARE_AS(data, Containers::arrayView<char>({
+            0x11, 0x33, 0x00, 0x00, 0x00, 0x04, 0x55, 0x00, 0x00, 0x33, 0x55, 0x77,
+            0x11, 0x33, 0x00, 0x00, 0x00, 0x05, 0x55, 0x00, 0x01, 0x33, 0x55, 0x77,
+            0x11, 0x33, 0x00, 0x00, 0x00, 0x06, 0x55, 0x00, 0x02, 0x33, 0x55, 0x77,
+            0x11, 0x33, 0x00, 0x00, 0x00, 0x07, 0x55, 0x00, 0x03, 0x33, 0x55, 0x77,
+            0x11
+        }), TestSuite::Compare::Container);
+    }
+}
+
+void InterleaveTest::interleaveIntoInvalid() {
+    CORRADE_SKIP_IF_NO_ASSERT();
+
+    Containers::Array<char> data{NoInit, 23};
+
+    Containers::String out;
+    Error redirectError{&out};
+    MeshTools::interleaveInto(data, 2, Containers::arrayView({1, 2, 3, 4}));
+    CORRADE_COMPARE(out, "MeshTools::interleaveInto(): expected a buffer of at least 24 bytes but got 23\n");
 }
 
 void InterleaveTest::interleavedData() {
@@ -379,6 +452,30 @@ void InterleaveTest::interleavedDataGaps() {
     CORRADE_COMPARE(interleaved.stride()[1], 1);
 }
 
+void InterleaveTest::interleavedDataGapsTrailingOmitted() {
+    /* Similar to interleavedDataGaps(), but with padding at the end omitted.
+       MeshData allows that, but StridedArrayView constructors don't (which is
+       why this is using offset-only attributes), so verify we don't trip up on
+       that. */
+    Containers::Array<char> vertexData{2*48 + 36};
+    const char* vertexDataPointer = vertexData.data();
+
+    Trade::MeshData data{MeshPrimitive::Triangles, Utility::move(vertexData), {
+        Trade::MeshAttributeData{Trade::MeshAttribute::Position,
+            VertexFormat::Vector2, 5, 3, 48},
+        Trade::MeshAttributeData{Trade::MeshAttribute::Normal,
+            VertexFormat::Vector3, 24, 3, 48}
+    }};
+    CORRADE_VERIFY(MeshTools::isInterleaved(data));
+
+    Containers::StridedArrayView2D<const char> interleaved = MeshTools::interleavedData(data);
+    CORRADE_COMPARE(interleaved.data(), vertexDataPointer + 5);
+    CORRADE_COMPARE(interleaved.size()[0], 3);
+    CORRADE_COMPARE(interleaved.size()[1], 31);
+    CORRADE_COMPARE(interleaved.stride()[0], 48);
+    CORRADE_COMPARE(interleaved.stride()[1], 1);
+}
+
 void InterleaveTest::interleavedDataAliased() {
     /* Compared to interleavedData() the normals share first two components
        with positions */
@@ -447,40 +544,6 @@ void InterleaveTest::interleavedDataArrayAttributes() {
     CORRADE_COMPARE(interleaved.stride()[1], 1);
 }
 
-void InterleaveTest::interleavedDataZeroStride() {
-    Containers::Array<char> vertexData{100 + 20};
-    Containers::StridedArrayView1D<Vector2> positions{vertexData,
-        reinterpret_cast<Vector2*>(vertexData.data() + 100), 3, 0};
-    Containers::StridedArrayView1D<Vector3> normals{vertexData,
-        reinterpret_cast<Vector3*>(vertexData.data() + 100 + 8), 3, 0};
-
-    Trade::MeshData data{MeshPrimitive::Triangles, Utility::move(vertexData), {
-        Trade::MeshAttributeData{Trade::MeshAttribute::Position, positions},
-        Trade::MeshAttributeData{Trade::MeshAttribute::Normal, normals}
-    }};
-
-    /* Technically they *are*, but it causes way too many problems especially
-       when used within interleavedLayout() etc. May tackle properly later. */
-    CORRADE_VERIFY(!MeshTools::isInterleaved(data));
-}
-
-void InterleaveTest::interleavedDataNegativeStride() {
-    Containers::Array<char> vertexData{100 + 3*20};
-    Containers::StridedArrayView1D<Vector2> positions{vertexData,
-        reinterpret_cast<Vector2*>(vertexData.data() + 100), 3, 20};
-    Containers::StridedArrayView1D<Vector3> normals{vertexData,
-        reinterpret_cast<Vector3*>(vertexData.data() + 100 + 8), 3, 20};
-
-    Trade::MeshData data{MeshPrimitive::Triangles, Utility::move(vertexData), {
-        Trade::MeshAttributeData{Trade::MeshAttribute::Position, positions.flipped<0>()},
-        Trade::MeshAttributeData{Trade::MeshAttribute::Normal, normals.flipped<0>()}
-    }};
-
-    /* Technically they *are*, but it causes way too many problems especially
-       when used within interleavedLayout() etc. May tackle properly later. */
-    CORRADE_VERIFY(!MeshTools::isInterleaved(data));
-}
-
 void InterleaveTest::interleavedDataEmpty() {
     Trade::MeshData data{MeshPrimitive::Triangles, 5};
     CORRADE_VERIFY(MeshTools::isInterleaved(data));
@@ -541,10 +604,10 @@ void InterleaveTest::interleavedDataNotInterleaved() {
     }};
     CORRADE_VERIFY(!MeshTools::isInterleaved(data));
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::interleavedData(data);
-    CORRADE_COMPARE(out.str(), "MeshTools::interleavedData(): the mesh is not interleaved\n");
+    CORRADE_COMPARE(out, "MeshTools::interleavedData(): the mesh is not interleaved\n");
 }
 
 void InterleaveTest::interleavedDataAttributeAcrossStride() {
@@ -586,6 +649,40 @@ void InterleaveTest::interleavedDataAttributeAcrossStride() {
     }
 }
 
+void InterleaveTest::interleavedDataZeroStride() {
+    Containers::Array<char> vertexData{100 + 20};
+    Containers::StridedArrayView1D<Vector2> positions{vertexData,
+        reinterpret_cast<Vector2*>(vertexData.data() + 100), 3, 0};
+    Containers::StridedArrayView1D<Vector3> normals{vertexData,
+        reinterpret_cast<Vector3*>(vertexData.data() + 100 + 8), 3, 0};
+
+    Trade::MeshData data{MeshPrimitive::Triangles, Utility::move(vertexData), {
+        Trade::MeshAttributeData{Trade::MeshAttribute::Position, positions},
+        Trade::MeshAttributeData{Trade::MeshAttribute::Normal, normals}
+    }};
+
+    /* Technically they *are*, but it causes way too many problems especially
+       when used within interleavedLayout() etc. May tackle properly later. */
+    CORRADE_VERIFY(!MeshTools::isInterleaved(data));
+}
+
+void InterleaveTest::interleavedDataNegativeStride() {
+    Containers::Array<char> vertexData{100 + 3*20};
+    Containers::StridedArrayView1D<Vector2> positions{vertexData,
+        reinterpret_cast<Vector2*>(vertexData.data() + 100), 3, 20};
+    Containers::StridedArrayView1D<Vector3> normals{vertexData,
+        reinterpret_cast<Vector3*>(vertexData.data() + 100 + 8), 3, 20};
+
+    Trade::MeshData data{MeshPrimitive::Triangles, Utility::move(vertexData), {
+        Trade::MeshAttributeData{Trade::MeshAttribute::Position, positions.flipped<0>()},
+        Trade::MeshAttributeData{Trade::MeshAttribute::Normal, normals.flipped<0>()}
+    }};
+
+    /* Technically they *are*, but it causes way too many problems especially
+       when used within interleavedLayout() etc. May tackle properly later. */
+    CORRADE_VERIFY(!MeshTools::isInterleaved(data));
+}
+
 void InterleaveTest::interleavedDataVertexDataWholeMemory() {
     struct Vertex {
         int:32;
@@ -624,10 +721,10 @@ void InterleaveTest::interleavedMutableDataNotMutable() {
     Trade::MeshData data{MeshPrimitive::Lines, {}, a, {}, 15};
     CORRADE_VERIFY(MeshTools::isInterleaved(data));
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::interleavedMutableData(data);
-    CORRADE_COMPARE(out.str(), "MeshTools::interleavedMutableData(): vertex data is not mutable\n");
+    CORRADE_COMPARE(out, "MeshTools::interleavedMutableData(): vertex data is not mutable\n");
 }
 
 void InterleaveTest::interleavedDataImplementationSpecificVertexFormat() {
@@ -797,10 +894,10 @@ void InterleaveTest::interleavedLayoutImplementationSpecificVertexFormat() {
         Trade::MeshAttributeData{Trade::MeshAttribute::Normal, vertexFormatWrap(0xcaca), nullptr},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::interleavedLayout(data, 5);
-    CORRADE_COMPARE(out.str(), "MeshTools::interleavedLayout(): attribute 1 has an implementation-specific format 0xcaca\n");
+    CORRADE_COMPARE(out, "MeshTools::interleavedLayout(): attribute 1 has an implementation-specific format 0xcaca\n");
 }
 
 void InterleaveTest::interleavedLayoutExtra() {
@@ -899,14 +996,14 @@ void InterleaveTest::interleavedLayoutExtraTooNegativePadding() {
     Trade::MeshData data{MeshPrimitive::Triangles,
         Utility::move(vertexData), {positions}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::interleavedLayout(data, 100, {
         Trade::MeshAttributeData{Trade::MeshAttribute::Normal,
             VertexFormat::Vector3, positions.data()},
         Trade::MeshAttributeData{-25}
     });
-    CORRADE_COMPARE(out.str(), "MeshTools::interleavedLayout(): negative padding -25 in extra attribute 1 too large for stride 24\n");
+    CORRADE_COMPARE(out, "MeshTools::interleavedLayout(): negative padding -25 in extra attribute 1 too large for stride 24\n");
 }
 
 void InterleaveTest::interleavedLayoutExtraOnly() {
@@ -940,13 +1037,13 @@ void InterleaveTest::interleavedLayoutExtraImplementationSpecificVertexFormat() 
         Trade::MeshAttributeData{Trade::MeshAttribute::Position, VertexFormat::Vector2, nullptr},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::interleavedLayout(data, 5, {
         Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, VertexFormat::Vector2, nullptr},
         Trade::MeshAttributeData{Trade::MeshAttribute::Normal, vertexFormatWrap(0xcaca), nullptr},
     });
-    CORRADE_COMPARE(out.str(), "MeshTools::interleavedLayout(): extra attribute 1 has an implementation-specific format 0xcaca\n");
+    CORRADE_COMPARE(out, "MeshTools::interleavedLayout(): extra attribute 1 has an implementation-specific format 0xcaca\n");
 }
 
 void InterleaveTest::interleavedLayoutAlreadyInterleaved() {
@@ -1256,10 +1353,10 @@ void InterleaveTest::interleaveMeshDataImplementationSpecificIndexType() {
             Trade::MeshAttributeData{Trade::MeshAttribute::Position, VertexFormat::Vector2, nullptr}
         }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::interleave(data);
-    CORRADE_COMPARE(out.str(), "MeshTools::interleave(): mesh has an implementation-specific index type 0xcaca, enable MeshTools::InterleaveFlag::PreserveStridedIndices to pass the array through unchanged\n");
+    CORRADE_COMPARE(out, "MeshTools::interleave(): mesh has an implementation-specific index type 0xcaca, enable MeshTools::InterleaveFlag::PreserveStridedIndices to pass the array through unchanged\n");
 }
 
 void InterleaveTest::interleaveMeshDataImplementationSpecificVertexFormat() {
@@ -1270,11 +1367,11 @@ void InterleaveTest::interleaveMeshDataImplementationSpecificVertexFormat() {
         Trade::MeshAttributeData{Trade::MeshAttribute::Normal, vertexFormatWrap(0xcaca), nullptr},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::interleave(data);
     /* Assert is coming from interleavedLayout() because... that's easier */
-    CORRADE_COMPARE(out.str(), "MeshTools::interleavedLayout(): attribute 1 has an implementation-specific format 0xcaca\n");
+    CORRADE_COMPARE(out, "MeshTools::interleavedLayout(): attribute 1 has an implementation-specific format 0xcaca\n");
 }
 
 void InterleaveTest::interleaveMeshDataExtra() {
@@ -1342,6 +1439,7 @@ void InterleaveTest::interleaveMeshDataExtraOriginalEmpty() {
     CORRADE_VERIFY(!interleaved.isIndexed());
     /* No reason to not be like this */
     CORRADE_COMPARE(interleaved.vertexDataFlags(), Trade::DataFlag::Mutable|Trade::DataFlag::Owned);
+    CORRADE_COMPARE(interleaved.attributeStride(0), sizeof(Vector2) + 4);
     CORRADE_COMPARE(interleaved.attributeCount(), 1);
     CORRADE_COMPARE_AS(interleaved.attribute<Vector2>(Trade::MeshAttribute::Position),
         Containers::stridedArrayView(positions),
@@ -1358,13 +1456,13 @@ void InterleaveTest::interleaveMeshDataExtraWrongCount() {
         }};
     const Vector3 normals[]{Vector3::xAxis(), Vector3::yAxis()};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::interleave(data, {
         Trade::MeshAttributeData{10},
         Trade::MeshAttributeData{Trade::MeshAttribute::Normal, VertexFormat::Vector3, Containers::arrayView(normals)}
     });
-    CORRADE_COMPARE(out.str(), "MeshTools::interleave(): extra attribute 1 expected to have 3 items but got 2\n");
+    CORRADE_COMPARE(out, "MeshTools::interleave(): extra attribute 1 expected to have 3 items but got 2\n");
 }
 
 void InterleaveTest::interleaveMeshDataExtraOffsetOnly() {
@@ -1372,13 +1470,13 @@ void InterleaveTest::interleaveMeshDataExtraOffsetOnly() {
 
     Trade::MeshData data{MeshPrimitive::TriangleFan, 5};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::interleave(data, {
         Trade::MeshAttributeData{10},
         Trade::MeshAttributeData{Trade::MeshAttribute::Normal, VertexFormat::Vector3, 3, 5, 14}
     });
-    CORRADE_COMPARE(out.str(), "MeshTools::interleave(): extra attribute 1 is offset-only\n");
+    CORRADE_COMPARE(out, "MeshTools::interleave(): extra attribute 1 is offset-only\n");
 }
 
 void InterleaveTest::interleaveMeshDataExtraImplementationSpecificVertexFormat() {
@@ -1388,14 +1486,14 @@ void InterleaveTest::interleaveMeshDataExtraImplementationSpecificVertexFormat()
         Trade::MeshAttributeData{Trade::MeshAttribute::Position, VertexFormat::Vector2, nullptr},
     }};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshTools::interleave(data, {
         Trade::MeshAttributeData{Trade::MeshAttribute::TextureCoordinates, VertexFormat::Vector2, nullptr},
         Trade::MeshAttributeData{Trade::MeshAttribute::Normal, vertexFormatWrap(0xcaca), nullptr},
     });
     /* Assert is coming from interleavedLayout() because... that's easier */
-    CORRADE_COMPARE(out.str(), "MeshTools::interleavedLayout(): extra attribute 1 has an implementation-specific format 0xcaca\n");
+    CORRADE_COMPARE(out, "MeshTools::interleavedLayout(): extra attribute 1 has an implementation-specific format 0xcaca\n");
 }
 
 void InterleaveTest::interleaveMeshDataAlreadyInterleavedMove() {
@@ -1541,6 +1639,97 @@ void InterleaveTest::interleaveMeshDataNothing() {
     CORRADE_COMPARE(interleaved.vertexCount(), 2);
     CORRADE_VERIFY(!interleaved.vertexData());
     CORRADE_COMPARE(interleaved.vertexData().size(), 0);
+}
+
+void InterleaveTest::interleaveMeshDataLooseAttributes() {
+    /* Same as interleaveMeshDataExtraOriginalEmpty(), but testing the
+       convenience overload instead */
+
+    Vector2 positions[]{{1.3f, 0.3f}, {0.87f, 1.1f}, {1.0f, -0.5f}};
+    Trade::MeshData interleaved = MeshTools::interleave(MeshPrimitive::TriangleFan, {
+        Trade::MeshAttributeData{4},
+        Trade::MeshAttributeData{Trade::MeshAttribute::Position, Containers::arrayView(positions)}
+    });
+
+    CORRADE_VERIFY(MeshTools::isInterleaved(interleaved));
+    CORRADE_COMPARE(interleaved.primitive(), MeshPrimitive::TriangleFan);
+    CORRADE_VERIFY(!interleaved.isIndexed());
+    /* No reason to not be like this */
+    CORRADE_COMPARE(interleaved.vertexDataFlags(), Trade::DataFlag::Mutable|Trade::DataFlag::Owned);
+    CORRADE_COMPARE(interleaved.attributeCount(), 1);
+    CORRADE_COMPARE(interleaved.attributeStride(0), sizeof(Vector2) + 4);
+    CORRADE_COMPARE_AS(interleaved.attribute<Vector2>(Trade::MeshAttribute::Position),
+        Containers::stridedArrayView(positions),
+        TestSuite::Compare::Container);
+}
+
+void InterleaveTest::interleaveMeshDataLooseAttributesIndexed() {
+    /* Same as interleaveMeshDataExtraOriginalEmpty(), but testing the
+       convenience overload instead */
+
+    struct Index {
+        UnsignedShort index;
+        Short dummy; /* MSVC 2015 doesn't like Short:16 in local structs */
+    } indices[]{{3, 0}, {6, 0}, {7, 0}, {9, 0}};
+    Vector2 positions[]{{1.3f, 0.3f}, {0.87f, 1.1f}, {1.0f, -0.5f}};
+    Trade::MeshData interleaved = MeshTools::interleave(
+        MeshPrimitive::TriangleStrip,
+        Trade::MeshIndexData{Containers::stridedArrayView(indices).slice(&Index::index)}, {
+            Trade::MeshAttributeData{Trade::MeshAttribute::Position, Containers::arrayView(positions)},
+            Trade::MeshAttributeData{4}
+        });
+
+    CORRADE_VERIFY(MeshTools::isInterleaved(interleaved));
+    CORRADE_COMPARE(interleaved.primitive(), MeshPrimitive::TriangleStrip);
+
+    CORRADE_VERIFY(interleaved.isIndexed());
+    CORRADE_COMPARE(interleaved.indexDataFlags(), Trade::DataFlag::Mutable|Trade::DataFlag::Owned);
+    /* Indices get copied and made tightly packed */
+    CORRADE_COMPARE(interleaved.indexStride(), 2);
+    CORRADE_COMPARE_AS(interleaved.indices<UnsignedShort>(),
+        Containers::stridedArrayView(indices).slice(&Index::index),
+        TestSuite::Compare::Container);
+
+    CORRADE_COMPARE(interleaved.vertexDataFlags(), Trade::DataFlag::Mutable|Trade::DataFlag::Owned);
+    CORRADE_COMPARE(interleaved.attributeCount(), 1);
+    CORRADE_COMPARE(interleaved.attributeStride(0), sizeof(Vector2) + 4);
+    CORRADE_COMPARE_AS(interleaved.attribute<Vector2>(Trade::MeshAttribute::Position),
+        Containers::stridedArrayView(positions),
+        TestSuite::Compare::Container);
+}
+
+void InterleaveTest::interleaveMeshDataLooseAttributesInvalid() {
+    CORRADE_SKIP_IF_NO_ASSERT();
+
+    UnsignedShort indices[]{3, 6, 7, 9};
+
+    /* Null views are fine */
+    CORRADE_COMPARE(MeshTools::interleave(MeshPrimitive::Triangles, {
+        Trade::MeshAttributeData{Trade::MeshAttribute::Position, Containers::ArrayView<Vector3>{nullptr, 3}}
+    }).vertexCount(), 3);
+    CORRADE_COMPARE(MeshTools::interleave(MeshPrimitive::Triangles, {
+        Trade::MeshAttributeData{Trade::MeshAttribute::Position, Containers::ArrayView<Vector3>{nullptr, 0}}
+    }).vertexCount(), 0);
+
+    Containers::String out;
+    Error redirectError{&out};
+    MeshTools::interleave(MeshPrimitive::Triangles,
+        Trade::MeshIndexData{indices}, {
+            Trade::MeshAttributeData{4}
+        });
+    MeshTools::interleave(MeshPrimitive::Triangles, {
+            Trade::MeshAttributeData{4},
+            Trade::MeshAttributeData{4}
+        });
+    MeshTools::interleave(MeshPrimitive::Triangles,
+        Trade::MeshIndexData{meshIndexTypeWrap(0xcece), Containers::stridedArrayView(indices)}, {
+            Trade::MeshAttributeData{Trade::MeshAttribute::Position, Containers::ArrayView<Vector3>{nullptr, 3}}
+        });
+    CORRADE_COMPARE_AS(out,
+        "MeshTools::interleave(): only padding found among 1 attributes, can't infer vertex count\n"
+        "MeshTools::interleave(): only padding found among 2 attributes, can't infer vertex count\n"
+        "MeshTools::interleave(): implementation-specific index type 0xcece\n",
+        TestSuite::Compare::String);
 }
 
 }}}}

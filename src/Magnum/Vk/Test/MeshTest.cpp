@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/ArrayView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Mesh.h"
 #include "Magnum/Vk/Buffer.h"
@@ -105,11 +106,11 @@ void MeshTest::mapIndexTypeImplementationSpecific() {
 void MeshTest::mapIndexTypeInvalid() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     meshIndexType(Magnum::MeshIndexType(0x0));
     meshIndexType(Magnum::MeshIndexType(0x12));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Vk::meshIndexType(): invalid type MeshIndexType(0x0)\n"
         "Vk::meshIndexType(): invalid type MeshIndexType(0x12)\n");
 }
@@ -184,9 +185,9 @@ void MeshTest::addVertexBuffer() {
 
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
-    mesh.addVertexBuffer(5, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xdead)), 15);
+    mesh.addVertexBuffer(5, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xdead})), 15);
     CORRADE_COMPARE_AS(mesh.vertexBuffers(), Containers::arrayView({
-        VkBuffer{}, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xdead))
+        VkBuffer{}, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xdead}))
     }), TestSuite::Compare::Container);
     CORRADE_COMPARE_AS(mesh.vertexBufferOffsets(), Containers::arrayView<UnsignedLong>({
         0, 15
@@ -195,10 +196,10 @@ void MeshTest::addVertexBuffer() {
         0, 3
     }), TestSuite::Compare::Container);
 
-    mesh.addVertexBuffer(1, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xbeef)), 37);
+    mesh.addVertexBuffer(1, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xbeef})), 37);
     CORRADE_COMPARE_AS(mesh.vertexBuffers(), Containers::arrayView({
-        reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xbeef)),
-        reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xdead))
+        reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xbeef})),
+        reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xdead}))
     }), TestSuite::Compare::Container);
     CORRADE_COMPARE_AS(mesh.vertexBufferOffsets(), Containers::arrayView<UnsignedLong>({
         37, 15
@@ -217,16 +218,16 @@ void MeshTest::addVertexBufferOwned() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
     Device device{NoCreate};
-    Buffer a = Buffer::wrap(device, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xdead)));
-    Buffer b = Buffer::wrap(device, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xbeef)));
+    Buffer a = Buffer::wrap(device, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xdead})));
+    Buffer b = Buffer::wrap(device, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xbeef})));
     mesh.addVertexBuffer(5, Utility::move(a), 15)
         .addVertexBuffer(1, Utility::move(b), 37);
     CORRADE_VERIFY(!a.handle());
     CORRADE_VERIFY(!b.handle());
 
     CORRADE_COMPARE_AS(mesh.vertexBuffers(), Containers::arrayView({
-        reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xbeef)),
-        reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xdead))
+        reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xbeef})),
+        reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xdead}))
     }), TestSuite::Compare::Container);
     CORRADE_COMPARE_AS(mesh.vertexBufferOffsets(), Containers::arrayView<UnsignedLong>({
         37, 15
@@ -244,11 +245,11 @@ void MeshTest::addVertexBufferNoSuchBinding() {
         .addBinding(1, 2)
         .addInstancedBinding(5, 3)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     noBindings.addVertexBuffer(2, VkBuffer{}, 0);
     differentBindings.addVertexBuffer(3, Buffer{NoCreate}, 5);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Vk::Mesh::addVertexBuffer(): binding 2 not present among 0 bindings in the layout\n"
         "Vk::Mesh::addVertexBuffer(): binding 3 not present among 2 bindings in the layout\n");
 }
@@ -261,9 +262,9 @@ template<class T> void MeshTest::setIndexBuffer() {
 
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
-    mesh.setIndexBuffer(reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xdead)), 15, T::UnsignedByte);
+    mesh.setIndexBuffer(reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xdead})), 15, T::UnsignedByte);
     CORRADE_VERIFY(mesh.isIndexed());
-    CORRADE_COMPARE(mesh.indexBuffer(), reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xdead)));
+    CORRADE_COMPARE(mesh.indexBuffer(), reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xdead})));
     CORRADE_COMPARE(mesh.indexBufferOffset(), 15);
     CORRADE_COMPARE(mesh.indexType(), MeshIndexType::UnsignedByte);
 }
@@ -274,13 +275,13 @@ template<class T> void MeshTest::setIndexBufferOwned() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
     Device device{NoCreate};
-    Buffer a = Buffer::wrap(device, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xdead)));
+    Buffer a = Buffer::wrap(device, reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xdead})));
 
     Mesh mesh{MeshLayout{MeshPrimitive::Triangles}};
     mesh.setIndexBuffer(Utility::move(a), 15, T::UnsignedByte);
     CORRADE_VERIFY(!a.handle());
     CORRADE_VERIFY(mesh.isIndexed());
-    CORRADE_COMPARE(mesh.indexBuffer(), reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xdead)));
+    CORRADE_COMPARE(mesh.indexBuffer(), reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xdead})));
     CORRADE_COMPARE(mesh.indexBufferOffset(), 15);
     CORRADE_COMPARE(mesh.indexType(), MeshIndexType::UnsignedByte);
 }
@@ -291,21 +292,21 @@ void MeshTest::indexPropertiesNotIndexed() {
     Mesh mesh{MeshLayout{MeshPrimitive::Triangles}};
     CORRADE_VERIFY(!mesh.isIndexed());
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     mesh.indexBuffer();
     mesh.indexBufferOffset();
     mesh.indexType();
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Vk::Mesh::indexBuffer(): the mesh is not indexed\n"
         "Vk::Mesh::indexBufferOffset(): the mesh is not indexed\n"
         "Vk::Mesh::indexType(): the mesh is not indexed\n");
 }
 
 void MeshTest::debugIndexType() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << MeshIndexType::UnsignedShort << MeshIndexType(-10007655);
-    CORRADE_COMPARE(out.str(), "Vk::MeshIndexType::UnsignedShort Vk::MeshIndexType(-10007655)\n");
+    CORRADE_COMPARE(out, "Vk::MeshIndexType::UnsignedShort Vk::MeshIndexType(-10007655)\n");
 }
 
 }}}}

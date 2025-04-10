@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,16 +25,13 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Iterable.h>
 #include <Corrade/Containers/Pair.h>
 #include <Corrade/Containers/Reference.h>
 #include <Corrade/Containers/StridedArrayView.h>
-#include <Corrade/Containers/StringStl.h> /* StringHasPrefix / StringHasSuffix */
 #include <Corrade/TestSuite/Compare/Container.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
 #include <Corrade/TestSuite/Compare/String.h>
-#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Resource.h>
 #include <Corrade/Utility/System.h>
 
@@ -77,7 +75,7 @@ struct AbstractShaderProgramGLTest: OpenGLTester {
 
     void create();
     void createMultipleOutputs();
-    #ifndef MAGNUM_TARGET_GLES
+    #ifndef MAGNUM_TARGET_GLES2
     void createMultipleOutputsIndexed();
     #endif
     void createAsync();
@@ -179,7 +177,7 @@ AbstractShaderProgramGLTest::AbstractShaderProgramGLTest() {
 
     addInstancedTests({
         &AbstractShaderProgramGLTest::createMultipleOutputs,
-        #ifndef MAGNUM_TARGET_GLES
+        #ifndef MAGNUM_TARGET_GLES2
         &AbstractShaderProgramGLTest::createMultipleOutputsIndexed,
         #endif
     }, Containers::arraySize(CreateMultipleOutputsData));
@@ -292,7 +290,7 @@ void AbstractShaderProgramGLTest::label() {
 struct MyPublicShader: AbstractShaderProgram {
     using AbstractShaderProgram::attachShaders;
     using AbstractShaderProgram::bindAttributeLocation;
-    #ifndef MAGNUM_TARGET_GLES
+    #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
     using AbstractShaderProgram::bindFragmentDataLocationIndexed;
     using AbstractShaderProgram::bindFragmentDataLocation;
     #endif
@@ -452,14 +450,21 @@ void AbstractShaderProgramGLTest::createMultipleOutputs() {
     auto&& data = CreateMultipleOutputsData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
+    #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
     #ifndef MAGNUM_TARGET_GLES
     if(!GL::Context::current().isExtensionSupported<GL::Extensions::EXT::gpu_shader4>())
         CORRADE_SKIP(GL::Extensions::EXT::gpu_shader4::string() << "is not supported.");
+    #else
+    if(!GL::Context::current().isExtensionSupported<GL::Extensions::EXT::blend_func_extended>())
+        CORRADE_SKIP(GL::Extensions::EXT::blend_func_extended::string() << "is not supported.");
+    #endif
 
     Utility::Resource rs("AbstractShaderProgramGLTest");
 
     Shader vert(
-        #ifndef CORRADE_TARGET_APPLE
+        #ifdef MAGNUM_TARGET_GLES
+        Version::GLES300
+        #elif !defined(CORRADE_TARGET_APPLE)
         Version::GL210
         #else
         Version::GL310
@@ -469,7 +474,9 @@ void AbstractShaderProgramGLTest::createMultipleOutputs() {
     const bool vertCompiled = vert.compile();
 
     Shader frag(
-        #ifndef CORRADE_TARGET_APPLE
+        #ifdef MAGNUM_TARGET_GLES
+        Version::GLES300
+        #elif !defined(CORRADE_TARGET_APPLE)
         Version::GL300
         #else
         Version::GL310
@@ -496,34 +503,49 @@ void AbstractShaderProgramGLTest::createMultipleOutputs() {
     const bool valid = program.validate().first();
 
     MAGNUM_VERIFY_NO_GL_ERROR();
-    CORRADE_VERIFY(linked);
     {
+        #ifdef MAGNUM_TARGET_GLES
+        CORRADE_EXPECT_FAIL_IF(Context::current().detectedDriver() & Context::DetectedDriver::NVidia,
+            "NVidia drivers don't take glBindFragDataLocationEXT() into account on ES.");
+        #endif
+        CORRADE_VERIFY(linked);
+        if(!linked)
+            return;
+    } {
         #ifdef CORRADE_TARGET_APPLE
         CORRADE_EXPECT_FAIL("macOS drivers need insane amount of state to validate properly.");
         #endif
         CORRADE_VERIFY(valid);
     }
-    #elif !defined(MAGNUM_TARGET_GLES2)
-    CORRADE_SKIP("Only explicit location specification supported in ES 3.0.");
+    #elif defined(MAGNUM_TARGET_WEBGL)
+    CORRADE_SKIP("Only explicit location specification supported in WebGL 2.0.");
     #else
     CORRADE_SKIP("Only gl_FragData[n] supported in ES 2.0.");
     #endif
 }
 
-#ifndef MAGNUM_TARGET_GLES
+#ifndef MAGNUM_TARGET_GLES2
 void AbstractShaderProgramGLTest::createMultipleOutputsIndexed() {
     auto&& data = CreateMultipleOutputsData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
+    #ifndef MAGNUM_TARGET_WEBGL
+    #ifndef MAGNUM_TARGET_GLES
     if(!GL::Context::current().isExtensionSupported<GL::Extensions::EXT::gpu_shader4>())
         CORRADE_SKIP(GL::Extensions::EXT::gpu_shader4::string() << "is not supported.");
     if(!GL::Context::current().isExtensionSupported<GL::Extensions::ARB::blend_func_extended>())
         CORRADE_SKIP(GL::Extensions::ARB::blend_func_extended::string() << "is not supported.");
+    #else
+    if(!GL::Context::current().isExtensionSupported<GL::Extensions::EXT::blend_func_extended>())
+        CORRADE_SKIP(GL::Extensions::EXT::blend_func_extended::string() << "is not supported.");
+    #endif
 
     Utility::Resource rs("AbstractShaderProgramGLTest");
 
     Shader vert(
-        #ifndef CORRADE_TARGET_APPLE
+        #ifdef MAGNUM_TARGET_GLES
+        Version::GLES300
+        #elif !defined(CORRADE_TARGET_APPLE)
         Version::GL210
         #else
         Version::GL310
@@ -533,7 +555,9 @@ void AbstractShaderProgramGLTest::createMultipleOutputsIndexed() {
     const bool vertCompiled = vert.compile();
 
     Shader frag(
-        #ifndef CORRADE_TARGET_APPLE
+        #ifdef MAGNUM_TARGET_GLES
+        Version::GLES300
+        #elif !defined(CORRADE_TARGET_APPLE)
         Version::GL300
         #else
         Version::GL310
@@ -558,13 +582,23 @@ void AbstractShaderProgramGLTest::createMultipleOutputsIndexed() {
     const bool valid = program.validate().first();
 
     MAGNUM_VERIFY_NO_GL_ERROR();
-    CORRADE_VERIFY(linked);
     {
+        #ifdef MAGNUM_TARGET_GLES
+        CORRADE_EXPECT_FAIL_IF(Context::current().detectedDriver() & Context::DetectedDriver::NVidia,
+            "NVidia drivers don't take glBindFragDataLocationEXT() into account on ES.");
+        #endif
+        CORRADE_VERIFY(linked);
+        if(!linked)
+            return;
+    } {
         #ifdef CORRADE_TARGET_APPLE
         CORRADE_EXPECT_FAIL("macOS drivers need insane amount of state to validate properly.");
         #endif
         CORRADE_VERIFY(valid);
     }
+    #else
+    CORRADE_SKIP("Only explicit location specification supported in WebGL 2.0.");
+    #endif
 }
 #endif
 
@@ -593,7 +627,7 @@ void AbstractShaderProgramGLTest::linkFailure() {
 
     /* And thus linking as well, saying something like "error: linking with
        uncompiled/unspecialized shader" */
-    std::ostringstream out;
+    Containers::String out;
     {
         Error redirectError{&out};
         CORRADE_VERIFY(!program.link());
@@ -603,12 +637,12 @@ void AbstractShaderProgramGLTest::linkFailure() {
     CORRADE_VERIFY(program.isLinkFinished());
 
     /* There's a driver-specific message after */
-    CORRADE_COMPARE_AS(out.str(), "GL::AbstractShaderProgram::link(): linking failed with the following message:",
+    CORRADE_COMPARE_AS(out, "GL::AbstractShaderProgram::link(): linking failed with the following message:",
         TestSuite::Compare::StringHasPrefix);
     /* No stray \0 should be anywhere */
-    CORRADE_COMPARE_AS(out.str(), "\0"_s, TestSuite::Compare::StringNotContains);
+    CORRADE_COMPARE_AS(out, "\0"_s, TestSuite::Compare::StringNotContains);
     /* The message should end with a newline */
-    CORRADE_COMPARE_AS(out.str(), "\n"_s, TestSuite::Compare::StringHasSuffix);
+    CORRADE_COMPARE_AS(out, "\n"_s, TestSuite::Compare::StringHasSuffix);
 }
 
 void AbstractShaderProgramGLTest::linkFailureAsync() {
@@ -635,7 +669,7 @@ void AbstractShaderProgramGLTest::linkFailureAsync() {
     program.attachShaders({shader});
 
     /* The link submission should not print anything ... */
-    std::ostringstream out;
+    Containers::String out;
     {
         Error redirectError{&out};
         program.submitLink();
@@ -644,7 +678,7 @@ void AbstractShaderProgramGLTest::linkFailureAsync() {
     while(!program.isLinkFinished())
         Utility::System::sleep(100);
 
-    CORRADE_VERIFY(out.str().empty());
+    CORRADE_COMPARE(out, "");
 
     /* ... only the final check should. In this case it's "error: linking with
        uncompiled/unspecialized shader" as well, but if the shaders would be
@@ -655,7 +689,7 @@ void AbstractShaderProgramGLTest::linkFailureAsync() {
         CORRADE_VERIFY(!program.checkLink({}));
     }
     CORRADE_VERIFY(program.isLinkFinished());
-    CORRADE_COMPARE_AS(out.str(), "GL::AbstractShaderProgram::link(): linking failed with the following message:",
+    CORRADE_COMPARE_AS(out, "GL::AbstractShaderProgram::link(): linking failed with the following message:",
         TestSuite::Compare::StringHasPrefix);
 
     /* Not testing presence of \0 etc., as that's tested well enough in
@@ -698,26 +732,26 @@ void AbstractShaderProgramGLTest::linkFailureAsyncShaderList() {
 
     /* The link submission should not print anything ... */
     {
-        std::ostringstream out;
+        Containers::String out;
         Error redirectError{&out};
         program.submitLink();
-        CORRADE_VERIFY(out.str().empty());
+        CORRADE_COMPARE(out, "");
     }
 
     /* ... only the final check should. Vertex shader should be fine, but
        fragment should fail. */
-    std::ostringstream out;
+    Containers::String out;
     {
         Error redirectError{&out};
         CORRADE_VERIFY(!program.checkLink({vert, frag}));
     }
-    CORRADE_COMPARE_AS(out.str(), "GL::Shader::compile(): compilation of fragment shader failed with the following message:",
+    CORRADE_COMPARE_AS(out, "GL::Shader::compile(): compilation of fragment shader failed with the following message:",
         TestSuite::Compare::StringHasPrefix);
 
     /* The linker error (which would most probably say something like "error:
        linking with uncompiled/unspecialized shader") should not be even
        printed */
-    CORRADE_COMPARE_AS(out.str(), "GL::AbstractShaderProgram::link(): linking failed with the following message:",
+    CORRADE_COMPARE_AS(out, "GL::AbstractShaderProgram::link(): linking failed with the following message:",
         TestSuite::Compare::StringNotContains);
 }
 
@@ -785,11 +819,14 @@ void main() {
 
     Containers::Pair<bool, Containers::String> result = program.validate();
     MAGNUM_VERIFY_NO_GL_ERROR();
-    CORRADE_VERIFY(!result.first());
-    /* The message shouldn't be empty */
-    CORRADE_COMPARE_AS(result.second(),
-        "",
-        TestSuite::Compare::NotEqual);
+    {
+        CORRADE_EXPECT_FAIL_IF(Context::current().detectedDriver() & Context::DetectedDriver::NVidia, "NVidia doesn't treat conflicting sampler locations as a failure.");
+        CORRADE_VERIFY(!result.first());
+        /* The message shouldn't be empty */
+        CORRADE_COMPARE_AS(result.second(),
+            "",
+            TestSuite::Compare::NotEqual);
+    }
     /* No stray \0 or \n should be anywhere */
     CORRADE_COMPARE_AS(result.second(), "\0"_s, TestSuite::Compare::StringNotContains);
     CORRADE_COMPARE_AS(result.second(), "\n"_s, TestSuite::Compare::StringNotContains);
@@ -836,10 +873,10 @@ void AbstractShaderProgramGLTest::uniformNotFound() {
     program.attachShaders({vert, frag});
     CORRADE_VERIFY(program.link());
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     program.uniformLocation("nonexistent");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram: location of uniform 'nonexistent' cannot be retrieved\n");
 }
 
@@ -854,7 +891,6 @@ struct MyShader: AbstractShaderProgram {
         additionsUniform;
 };
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 MyShader::MyShader() {
     Utility::Resource rs("AbstractShaderProgramGLTest");
 
@@ -895,7 +931,6 @@ MyShader::MyShader() {
     colorUniform = uniformLocation("color");
     additionsUniform = uniformLocation("additions");
 }
-#endif
 
 void AbstractShaderProgramGLTest::uniform() {
     MyShader shader;
@@ -958,7 +993,6 @@ struct MyDoubleShader: AbstractShaderProgram {
         additionsUniform;
 };
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 MyDoubleShader::MyDoubleShader() {
     Utility::Resource rs("AbstractShaderProgramGLTest");
 
@@ -979,7 +1013,6 @@ MyDoubleShader::MyDoubleShader() {
     colorUniform = uniformLocation("color");
     additionsUniform = uniformLocation("additions");
 }
-#endif
 
 void AbstractShaderProgramGLTest::uniformDouble() {
     if(!Context::current().isExtensionSupported<Extensions::ARB::gpu_shader_fp64>())
@@ -1134,10 +1167,10 @@ void AbstractShaderProgramGLTest::uniformBlockIndexNotFound() {
     program.attachShaders({vert, frag});
     CORRADE_VERIFY(program.link());
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     program.uniformBlockIndex("nonexistent");
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram: index of uniform block 'nonexistent' cannot be retrieved\n");
 }
 
@@ -1150,7 +1183,6 @@ struct UniformBlockShader: AbstractShaderProgram {
         materialUniformBlock;
 };
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 UniformBlockShader::UniformBlockShader() {
     Utility::Resource rs("AbstractShaderProgramGLTest");
 
@@ -1180,7 +1212,6 @@ UniformBlockShader::UniformBlockShader() {
     matricesUniformBlock = uniformBlockIndex("matrices");
     materialUniformBlock = uniformBlockIndex("material");
 }
-#endif
 
 void AbstractShaderProgramGLTest::uniformBlock() {
     #ifndef MAGNUM_TARGET_GLES

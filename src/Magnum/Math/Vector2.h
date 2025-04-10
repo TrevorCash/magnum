@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -66,7 +67,8 @@ template<class T> inline T cross(const Vector2<T>& a, const Vector2<T>& b) {
 @brief Two-component vector
 @tparam T   Data type
 
-See @ref matrix-vector for brief introduction.
+See @ref matrix-vector for brief introduction. The vectors are columns, see
+@ref Matrix2x1 for a row vector.
 @see @ref Magnum::Vector2, @ref Magnum::Vector3h, @ref Magnum::Vector2d,
     @ref Magnum::Vector2ub, @ref Magnum::Vector2b, @ref Magnum::Vector2us,
     @ref Magnum::Vector2s, @ref Magnum::Vector2ui, @ref Magnum::Vector2i
@@ -79,7 +81,7 @@ template<class T> class Vector2: public Vector<2, T> {
          *
          * Usable for translation in given axis, for example:
          *
-         * @snippet MagnumMath.cpp Vector2-xAxis
+         * @snippet Math.cpp Vector2-xAxis
          *
          * @see @ref yAxis(), @ref xScale(), @ref Matrix3::right()
          */
@@ -98,7 +100,7 @@ template<class T> class Vector2: public Vector<2, T> {
          *
          * Usable for scaling along given direction, for example:
          *
-         * @snippet MagnumMath.cpp Vector2-xScale
+         * @snippet Math.cpp Vector2-xScale
          *
          * @see @ref yScale(), @ref xAxis()
          */
@@ -137,11 +139,22 @@ template<class T> class Vector2: public Vector<2, T> {
          */
         constexpr /*implicit*/ Vector2(T x, T y) noexcept: Vector<2, T>(x, y) {}
 
+        /** @copydoc Vector::Vector(const T(&)[size_]) */
+        #if !defined(CORRADE_TARGET_GCC) || defined(CORRADE_TARGET_CLANG) || __GNUC__ >= 5
+        template<std::size_t size_> constexpr explicit Vector2(const T(&data)[size_]) noexcept: Vector<2, T>{data} {}
+        #else
+        /* GCC 4.8 workaround, see the Vector base for details */
+        constexpr explicit Vector2(const T(&data)[2]) noexcept: Vector<2, T>{data} {}
+        #endif
+
         /** @copydoc Vector::Vector(const Vector<size, U>&) */
         template<class U> constexpr explicit Vector2(const Vector<2, U>& other) noexcept: Vector<2, T>(other) {}
 
+        /** @copydoc Vector::Vector(const BitVector<size>&) */
+        constexpr explicit Vector2(const BitVector2& other) noexcept: Vector<2, T>{other} {}
+
         /** @brief Construct a vector from external representation */
-        template<class U, class V =
+        template<class U, class =
             #ifndef CORRADE_MSVC2015_COMPATIBILITY /* Causes ICE */
             decltype(Implementation::VectorConverter<2, T, U>::from(std::declval<U>()))
             #else
@@ -159,7 +172,7 @@ template<class T> class Vector2: public Vector<2, T> {
          * @see @ref r()
          */
         T& x() { return Vector<2, T>::_data[0]; }
-        constexpr T x() const { return Vector<2, T>::_data[0]; } /**< @overload */
+        constexpr const T& x() const { return Vector<2, T>::_data[0]; } /**< @overload */
 
         /**
          * @brief Y component
@@ -167,7 +180,7 @@ template<class T> class Vector2: public Vector<2, T> {
          * @see @ref g()
          */
         T& y() { return Vector<2, T>::_data[1]; }
-        constexpr T y() const { return Vector<2, T>::_data[1]; } /**< @overload */
+        constexpr const T& y() const { return Vector<2, T>::_data[1]; } /**< @overload */
 
         /**
          * @brief R component
@@ -180,7 +193,7 @@ template<class T> class Vector2: public Vector<2, T> {
          * @overload
          * @m_since_latest
          */
-        constexpr T r() const { return Vector<2, T>::_data[0]; }
+        constexpr const T& r() const { return Vector<2, T>::_data[0]; }
 
         /**
          * @brief Y component
@@ -193,7 +206,7 @@ template<class T> class Vector2: public Vector<2, T> {
          * @overload
          * @m_since_latest
          */
-        constexpr T g() const { return Vector<2, T>::_data[1]; }
+        constexpr const T& g() const { return Vector<2, T>::_data[1]; }
 
         /**
          * @brief Perpendicular vector
@@ -207,12 +220,10 @@ template<class T> class Vector2: public Vector<2, T> {
          *      @ref Vector::operator-() const "operator-() const"
          */
         /* For some reason @ref operator-() const doesn't work since 1.8.17 */
-        #ifdef DOXYGEN_GENERATING_OUTPUT
-        Vector2<T>
-        #else
-        template<class U = T> typename std::enable_if<std::is_signed<U>::value, Vector2<T>>::type
+        #ifndef DOXYGEN_GENERATING_OUTPUT
+        template<class U = T, typename std::enable_if<std::is_signed<U>::value, int>::type = 0>
         #endif
-        perpendicular() const { return {-y(), x()}; }
+        Vector2<T> perpendicular() const { return {-y(), x()}; }
 
         /**
          * @brief Aspect ratio
@@ -222,12 +233,10 @@ template<class T> class Vector2: public Vector<2, T> {
          *      a = \frac{v_x}{v_y}
          * @f]
          */
-        #ifdef DOXYGEN_GENERATING_OUTPUT
-        T
-        #else
-        template<class U = T> typename std::enable_if<std::is_floating_point<U>::value, T>::type
+        #ifndef DOXYGEN_GENERATING_OUTPUT
+        template<class U = T, typename std::enable_if<std::is_floating_point<U>::value, int>::type = 0>
         #endif
-        aspectRatio() const { return x()/y(); }
+        T aspectRatio() const { return x()/y(); }
 
         MAGNUM_VECTOR_SUBCLASS_IMPLEMENTATION(2, Vector2)
 
@@ -235,7 +244,7 @@ template<class T> class Vector2: public Vector<2, T> {
         template<class U> friend U cross(const Vector2<U>&, const Vector2<U>&);
 };
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
+#ifdef CORRADE_MSVC2015_COMPATIBILITY
 MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION(2, Vector2)
 #endif
 

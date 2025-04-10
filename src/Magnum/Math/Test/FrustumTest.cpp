@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2016, 2020 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,11 +25,11 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
 #include <Corrade/Containers/ArrayView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Frustum.h"
 #include "Magnum/Math/StrictWeakOrdering.h"
@@ -357,11 +358,11 @@ void FrustumTest::dataOutOfRange() {
     Frustum a;
     constexpr Frustum ca;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     a[6];
     ca[6];
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::Frustum::operator[](): index 6 out of range\n"
         "Math::Frustum::operator[](): index 6 out of range\n");
 }
@@ -451,9 +452,9 @@ void FrustumTest::debug() {
         {-7.0f,  8.0f, -9.0f, 0.5f},
         { 7.0f, -8.0f,  9.0f, 0.6f}};
 
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << frustum;
-    CORRADE_COMPARE(out.str(), "Frustum({-1, 2, -3, 0.1},\n"
+    CORRADE_COMPARE(out, "Frustum({-1, 2, -3, 0.1},\n"
                                "        {1, -2, 3, 0.2},\n"
                                "        {-4, 5, -6, 0.3},\n"
                                "        {4, -5, 6, 0.4},\n"

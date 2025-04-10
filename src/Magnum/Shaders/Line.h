@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -45,6 +46,9 @@ namespace Magnum { namespace Shaders {
 @see @ref LineGL::capStyle(), @ref LineGL::Configuration::setCapStyle()
 */
 enum class LineCapStyle: UnsignedByte {
+    /* Keep these in sync with Ui::LineCapStyle (except for the related links,
+       of course). The images are used directly from there. */
+
     /**
      * [Butt cap](https://en.wikipedia.org/wiki/Butt_joint). The line is cut
      * off right at the endpoint. Lines of zero length will be invisible.
@@ -94,6 +98,9 @@ enum class LineCapStyle: UnsignedByte {
 @see @ref LineGL::joinStyle(), @ref LineGL::Configuration::setJoinStyle()
 */
 enum class LineJoinStyle: UnsignedByte {
+    /* Keep these in sync with Ui::LineJoinStyle (except for the related links,
+       of course). The images are used directly from there. */
+
     /**
      * [Miter join](https://en.wikipedia.org/wiki/Miter_joint). The outer edges
      * of both line segments extend until they intersect.
@@ -101,10 +108,10 @@ enum class LineJoinStyle: UnsignedByte {
      * @htmlinclude line-join-miter.svg
      *
      * In this style, the points `A`, `B` and `C` collapse to a zero-area
-     * triangle. If the miter length `l` would be larger than the limit set in
+     * triangle. If the miter length `l` would be larger than the limit set via
      * @ref LineGL::setMiterLengthLimit() /
      * @ref LineMaterialUniform::setMiterLengthLimit() or the angle between the
-     * two segments `α` would be less than the limit set in
+     * two segments `α` would be less than the limit set via
      * @ref LineGL::setMiterAngleLimit() /
      * @ref LineMaterialUniform::setMiterAngleLimit(), it switches to
      * @ref LineJoinStyle::Bevel instead.
@@ -155,6 +162,9 @@ The type is 32-bit in order to match the default type of the
 bits.
 */
 enum class LineVertexAnnotation: UnsignedInt {
+    /* Keep these in sync with the internal Ui::LineLayer LineVertexAnnotation*
+       constants and ANNOTATION_* defines in Line.in.vert. */
+
     /**
      * The point extends upwards assuming a left-to-right direction of the line
      * segment. If not set, it extends downwards. Visualized as `U` in the
@@ -379,6 +389,19 @@ struct MAGNUM_SHADERS_EXPORT LineMaterialUniform {
     }
 
     /**
+     * @brief Set the @ref miterLimit field
+     * @return Reference to self (for method chaining)
+     *
+     * For convenience it's recommended to use the @ref setMiterLengthLimit()
+     * and @ref setMiterAngleLimit() helpers instead of setting this value
+     * directly.
+     */
+    LineMaterialUniform& setMiterLimit(Float limit) {
+        miterLimit = limit;
+        return *this;
+    }
+
+    /**
      * @brief Set the @ref miterLimit field to a length value
      * @return Reference to self (for method chaining)
      *
@@ -466,7 +489,8 @@ struct MAGNUM_SHADERS_EXPORT LineMaterialUniform {
      *
      * For convenience it's recommended to use the @ref setMiterLengthLimit()
      * and @ref setMiterAngleLimit() helpers instead of setting this value
-     * directly.
+     * directly. Default value is @cpp 0.875f @ce, which corresponds to a
+     * length of @cpp 4.0f @ce and angle of approximately @cpp 28.955_degf @ce.
      * @see @ref LineGL::setMiterLengthLimit(),
      *      @ref LineGL::setMiterAngleLimit()
      */

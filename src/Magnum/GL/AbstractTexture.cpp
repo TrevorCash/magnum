@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -32,6 +33,7 @@
 
 #include "Magnum/Image.h"
 #include "Magnum/ImageView.h"
+#include "Magnum/Implementation/ImageProperties.h"
 #ifndef MAGNUM_TARGET_GLES2
 #include "Magnum/GL/BufferImage.h"
 #endif
@@ -169,8 +171,7 @@ void AbstractTexture::bindImplementationFallback(const GLint firstTextureUnit, c
 }
 
 #ifndef MAGNUM_TARGET_GLES
-/** @todoc const Containers::ArrayView makes Doxygen grumpy */
-void AbstractTexture::bindImplementationMulti(const GLint firstTextureUnit, Containers::ArrayView<AbstractTexture* const> textures) {
+void AbstractTexture::bindImplementationMulti(const GLint firstTextureUnit, const Containers::ArrayView<AbstractTexture* const> textures) {
     Implementation::TextureState& textureState = Context::current().state().texture;
 
     /* Create array of IDs and also update bindings in state tracker */
@@ -498,9 +499,15 @@ void AbstractTexture::setCompareFunction(const SamplerCompareFunction function) 
 }
 #endif
 
-#if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
+#ifndef MAGNUM_TARGET_GLES2
 void AbstractTexture::setDepthStencilMode(const SamplerDepthStencilMode mode) {
-    Context::current().state().texture.parameteriImplementation(*this, GL_DEPTH_STENCIL_TEXTURE_MODE, GLenum(mode));
+    Context::current().state().texture.parameteriImplementation(*this,
+        #ifndef MAGNUM_TARGET_WEBGL
+        GL_DEPTH_STENCIL_TEXTURE_MODE
+        #else
+        GL_DEPTH_STENCIL_TEXTURE_MODE_ANGLE
+        #endif
+        , GLenum(mode));
 }
 #endif
 
@@ -1585,8 +1592,7 @@ void AbstractTexture::subImage2DImplementationDefault(AbstractTexture& self, GLi
     glTexSubImage2D(self._target, level, offset.x(), offset.y(), size.x(), size.y(), GLenum(format), GLenum(type), data);
 }
 
-/* Doxygen gets confused by the template parameter */
-#if !defined(DOXYGEN_GENERATING_OUTPUT) && !defined(MAGNUM_TARGET_GLES)
+#ifndef MAGNUM_TARGET_GLES
 template<void(*original)(AbstractTexture&, GLint, const Vector2i&, const Vector2i&, PixelFormat, PixelType, const GLvoid*, const PixelStorage&)> void AbstractTexture::subImageImplementationSvga3DSliceBySlice(AbstractTexture& self, GLint level, const Vector2i& offset, const Vector2i& size, PixelFormat format, PixelType type, const GLvoid* const data, const PixelStorage& storage) {
     /* Upload the data slice by slice only if this is an array texture and we
        are copying from user memory (not from a buffer) */
@@ -1663,8 +1669,7 @@ void AbstractTexture::subImage3DImplementationDefault(AbstractTexture& self, GLi
     #endif
 }
 
-/* Doxygen gets confused by the template parameter */
-#if !defined(DOXYGEN_GENERATING_OUTPUT) && !defined(MAGNUM_TARGET_WEBGL)
+#ifndef MAGNUM_TARGET_WEBGL
 template<void(*original)(AbstractTexture&, GLint, const Vector3i&, const Vector3i&, PixelFormat, PixelType, const GLvoid*, const PixelStorage&)> void AbstractTexture::subImageImplementationSvga3DSliceBySlice(AbstractTexture& self, GLint level, const Vector3i& offset, const Vector3i& size, PixelFormat format, PixelType type, const GLvoid* const data, const PixelStorage& storage) {
     /* Upload the data slice by slice only if this is an array texture and we
        are copying from user memory (not from a buffer) */
@@ -1728,7 +1733,6 @@ void AbstractTexture::invalidateSubImageImplementationARB(AbstractTexture& self,
 }
 #endif
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 #ifndef MAGNUM_TARGET_GLES
 template<UnsignedInt dimensions> void AbstractTexture::image(const GLint level, Image<dimensions>& image, const ImageFlags<dimensions> flags) {
     const Math::Vector<dimensions, Int> size = DataHelper<dimensions>::imageSize(*this, level);
@@ -1908,6 +1912,8 @@ template<UnsignedInt dimensions> void AbstractTexture::subImage(const GLint leve
     CORRADE_ASSERT(image.size() == range.size(),
         "GL::AbstractTexture::subImage(): expected image view size" << range.size() << "but got" << image.size(), );
 
+    /* Explicitly create if not already because the texture might have been
+       created w/ the DSA extension disabled but below a DSA API is used */
     createIfNotAlready();
 
     const Math::Vector<dimensions, Int> size = range.size();
@@ -1924,6 +1930,8 @@ template void MAGNUM_GL_EXPORT AbstractTexture::subImage<2>(GLint, const Range2D
 template void MAGNUM_GL_EXPORT AbstractTexture::subImage<3>(GLint, const Range3Di&, const BasicMutableImageView<3>&);
 
 template<UnsignedInt dimensions> void AbstractTexture::subImage(const GLint level, const RangeTypeFor<dimensions, Int>& range, BufferImage<dimensions>& image, const BufferUsage usage) {
+    /* Explicitly create if not already because the texture might have been
+       created w/ the DSA extension disabled but below a DSA API is used */
     createIfNotAlready();
 
     const Math::Vector<dimensions, Int> size = range.size();
@@ -1959,6 +1967,8 @@ template std::size_t MAGNUM_GL_EXPORT AbstractTexture::compressedSubImageSize<2>
 template std::size_t MAGNUM_GL_EXPORT AbstractTexture::compressedSubImageSize<3>(TextureFormat format, const Math::Vector<3, Int>& size);
 
 template<UnsignedInt dimensions> void AbstractTexture::compressedSubImage(const GLint level, const RangeTypeFor<dimensions, Int>& range, CompressedImage<dimensions>& image, const ImageFlags<dimensions> flags) {
+    /* Explicitly create if not already because the texture might have been
+       created w/ the DSA extension disabled but below a DSA API is used */
     createIfNotAlready();
 
     const Math::Vector<dimensions, Int> size = range.size();
@@ -1998,6 +2008,8 @@ template<UnsignedInt dimensions> void AbstractTexture::compressedSubImage(const 
     CORRADE_ASSERT(image.size() == range.size(),
         "GL::AbstractTexture::compressedSubImage(): expected image view size" << range.size() << "but got" << image.size(), );
 
+    /* Explicitly create if not already because the texture might have been
+       created w/ the DSA extension disabled but below a DSA API is used */
     createIfNotAlready();
 
     const Math::Vector<dimensions, Int> size = range.size();
@@ -2035,6 +2047,8 @@ template void MAGNUM_GL_EXPORT AbstractTexture::compressedSubImage<2>(GLint, con
 template void MAGNUM_GL_EXPORT AbstractTexture::compressedSubImage<3>(GLint, const Range3Di&, const BasicMutableCompressedImageView<3>&);
 
 template<UnsignedInt dimensions> void AbstractTexture::compressedSubImage(const GLint level, const RangeTypeFor<dimensions, Int>& range, CompressedBufferImage<dimensions>& image, const BufferUsage usage) {
+    /* Explicitly create if not already because the texture might have been
+       created w/ the DSA extension disabled but below a DSA API is used */
     createIfNotAlready();
 
     const Math::Vector<dimensions, Int> size = range.size();
@@ -2068,9 +2082,7 @@ template void MAGNUM_GL_EXPORT AbstractTexture::compressedSubImage<1>(GLint, con
 template void MAGNUM_GL_EXPORT AbstractTexture::compressedSubImage<2>(GLint, const Range2Di&, CompressedBufferImage<2>&, BufferUsage);
 template void MAGNUM_GL_EXPORT AbstractTexture::compressedSubImage<3>(GLint, const Range3Di&, CompressedBufferImage<3>&, BufferUsage);
 #endif
-#endif
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 #ifndef MAGNUM_TARGET_GLES
 Math::Vector<1, GLint> AbstractTexture::DataHelper<1>::compressedBlockSize(const GLenum target, const TextureFormat format) {
     GLint value;
@@ -2087,7 +2099,10 @@ Vector2i AbstractTexture::DataHelper<2>::compressedBlockSize(const GLenum target
 
 Vector3i AbstractTexture::DataHelper<3>::compressedBlockSize(const GLenum target, const TextureFormat format) {
     /** @todo use real value when OpenGL has proper queries for 3D compression formats */
-    return Vector3i{DataHelper<2>::compressedBlockSize(target, format), 1};
+    const Vector2i value = DataHelper<2>::compressedBlockSize(target, format);
+    /* If the 2D size is zero (e.g. when the format is uncompressed), return a
+       zero in 3D as well */
+    return value == Vector2i{} ? Vector3i{} : Vector3i{value, 1};
 }
 #endif
 
@@ -2158,7 +2173,7 @@ void AbstractTexture::DataHelper<1>::setCompressedImage(AbstractTexture& texture
     Buffer::unbindInternal(Buffer::TargetHint::PixelUnpack);
     Context::current().state().renderer.applyPixelStorageUnpack(image.storage());
     texture.bindInternal();
-    glCompressedTexImage1D(texture._target, level, GLenum(image.format()), image.size()[0], 0, Magnum::Implementation::occupiedCompressedImageDataSize(image, image.data().size()), image.data());
+    glCompressedTexImage1D(texture._target, level, GLenum(compressedPixelFormat(image.format())), image.size()[0], 0, Magnum::Implementation::occupiedCompressedImageDataSize(image, image.data().size()), image.data());
 }
 
 void AbstractTexture::DataHelper<1>::setImage(AbstractTexture& texture, const GLint level, const TextureFormat internalFormat, BufferImage1D& image) {
@@ -2389,7 +2404,6 @@ void AbstractTexture::DataHelper<3>::setWrapping(AbstractTexture& texture, const
     state.parameteriImplementation(texture, GL_TEXTURE_WRAP_R_OES, GLint(wrapping.z()));
     #endif
 }
-#endif
 #endif
 
 }}

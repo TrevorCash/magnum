@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Pair.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/GL/Version.h"
 
@@ -102,7 +102,7 @@ void VersionTest::compare() {
 }
 
 void VersionTest::debug() {
-    std::ostringstream out;
+    Containers::String out;
 
     #ifndef MAGNUM_TARGET_GLES
     Debug(&out) << Version::GL210 << Version(0xdead);
@@ -111,20 +111,20 @@ void VersionTest::debug() {
     #endif
 
     #ifdef MAGNUM_TARGET_WEBGL
-    CORRADE_COMPARE(out.str(), "WebGL 1.0 Invalid(0xdead)\n");
+    CORRADE_COMPARE(out, "WebGL 1.0 Invalid(0xdead)\n");
     #elif defined(MAGNUM_TARGET_GLES)
-    CORRADE_COMPARE(out.str(), "OpenGL ES 2.0 Invalid(0xdead)\n");
+    CORRADE_COMPARE(out, "OpenGL ES 2.0 Invalid(0xdead)\n");
     #else
-    CORRADE_COMPARE(out.str(), "OpenGL 2.1 Invalid(0xdead)\n");
+    CORRADE_COMPARE(out, "OpenGL 2.1 Invalid(0xdead)\n");
     #endif
 }
 
 #ifndef MAGNUM_TARGET_GLES
 void VersionTest::debugES() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << Version::GLES310;
-    CORRADE_COMPARE(out.str(), "OpenGL ES 3.1\n");
+    CORRADE_COMPARE(out, "OpenGL ES 3.1\n");
 }
 #endif
 

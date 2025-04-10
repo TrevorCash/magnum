@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -1583,6 +1584,28 @@ typedef void (APIENTRY *GLDEBUGPROCKHR)(GLenum source,GLenum type,GLuint id,GLen
 
 #define GL_SRG8_EXT 0x8FBE
 
+/* GL_EXT_buffer_storage */
+
+#define GL_MAP_READ_BIT 0x0001
+#define GL_MAP_WRITE_BIT 0x0002
+#define GL_MAP_PERSISTENT_BIT_EXT 0x0040
+#define GL_MAP_COHERENT_BIT_EXT 0x0080
+#define GL_DYNAMIC_STORAGE_BIT_EXT 0x0100
+#define GL_CLIENT_STORAGE_BIT_EXT 0x0200
+#define GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT_EXT 0x00004000
+#define GL_BUFFER_IMMUTABLE_STORAGE_EXT 0x821F
+#define GL_BUFFER_STORAGE_FLAGS_EXT 0x8220
+
+/* GL_EXT_blend_func_extended */
+
+#define GL_SRC1_COLOR_EXT 0x88F9
+#define GL_SRC1_ALPHA_EXT 0x8589
+#define GL_ONE_MINUS_SRC1_COLOR_EXT 0x88FA
+#define GL_ONE_MINUS_SRC1_ALPHA_EXT 0x88FB
+#define GL_SRC_ALPHA_SATURATE_EXT 0x0308
+#define GL_LOCATION_INDEX_EXT 0x930F
+#define GL_MAX_DUAL_SOURCE_DRAW_BUFFERS_EXT 0x88FC
+
 /* GL_EXT_polygon_offset_clamp */
 
 #define GL_POLYGON_OFFSET_CLAMP_EXT 0x8E1B
@@ -1631,6 +1654,10 @@ typedef void (APIENTRY *GLDEBUGPROCKHR)(GLenum source,GLenum type,GLuint id,GLen
 #define GL_CLIP_ORIGIN_EXT 0x935C
 #define GL_CLIP_DEPTH_MODE_EXT 0x935D
 
+/* GL_EXT_texture_mirror_clamp_to_edge */
+
+#define GL_MIRROR_CLAMP_TO_EDGE_EXT 0x8743
+
 /* GL_EXT_depth_clamp */
 
 #define GL_DEPTH_CLAMP_EXT 0x864F
@@ -1641,6 +1668,10 @@ typedef void (APIENTRY *GLDEBUGPROCKHR)(GLenum source,GLenum type,GLuint id,GLen
 #define GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG 0x8C01
 #define GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG 0x8C02
 #define GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG 0x8C03
+
+/* GL_INTEL_blackhole_render */
+
+#define GL_BLACKHOLE_RENDER_INTEL 0x83FC
 
 /* GL_KHR_blend_equation_advanced_coherent */
 
@@ -1712,6 +1743,19 @@ typedef void (APIENTRY *GLDEBUGPROCKHR)(GLenum source,GLenum type,GLuint id,GLen
 #define GL_MAX_VIEWS_OVR 0x9631
 #define GL_FRAMEBUFFER_INCOMPLETE_VIEW_TARGETS_OVR 0x9633
 
+/* GL_ANGLE_provoking_vertex */
+
+#define GL_FIRST_VERTEX_CONVENTION_ANGLE 0x8E4D
+#define GL_LAST_VERTEX_CONVENTION_ANGLE 0x8E4E
+#define GL_PROVOKING_VERTEX_ANGLE 0x8E4F
+
+/* GL_ANGLE_polygon_mode */
+
+#define GL_POLYGON_MODE_ANGLE 0x0B40
+#define GL_LINE_ANGLE 0x1B01
+#define GL_FILL_ANGLE 0x1B02
+#define GL_POLYGON_OFFSET_LINE_ANGLE 0x2A02
+
 /* Function prototypes. First an intersection of GL 1.0 / 1.1 functions that
    are also available in ES, which we can access directly. ES 3.2 doesn't add
    anything new that would be in GL 1.1, so that section is omitted here. */
@@ -1781,16 +1825,24 @@ struct FlextGL {
     /* GL_ANGLE_base_vertex_base_instance */
 
     void(APIENTRY *DrawArraysInstancedBaseInstanceANGLE)(GLenum, GLint, GLsizei, GLsizei, GLuint);
-    void(APIENTRY *DrawElementsInstancedBaseVertexBaseInstanceANGLE)(GLenum, GLsizei, GLenum, const GLvoid *, GLsizei, GLint, GLuint);
+    void(APIENTRY *DrawElementsInstancedBaseVertexBaseInstanceANGLE)(GLenum, GLsizei, GLenum, const void *, GLsizei, GLint, GLuint);
     void(APIENTRY *MultiDrawArraysInstancedBaseInstanceANGLE)(GLenum, const GLint *, const GLsizei *, const GLsizei *, const GLuint *, GLsizei);
-    void(APIENTRY *MultiDrawElementsInstancedBaseVertexBaseInstanceANGLE)(GLenum, const GLsizei *, GLenum, const GLvoid *const*, const GLsizei *, const GLint *, const GLuint *, GLsizei);
+    void(APIENTRY *MultiDrawElementsInstancedBaseVertexBaseInstanceANGLE)(GLenum, const GLsizei *, GLenum, const void *const*, const GLsizei *, const GLint *, const GLuint *, GLsizei);
 
     /* GL_ANGLE_multi_draw */
 
     void(APIENTRY *MultiDrawArraysANGLE)(GLenum, const GLint *, const GLsizei *, GLsizei);
     void(APIENTRY *MultiDrawArraysInstancedANGLE)(GLenum, const GLint *, const GLsizei *, const GLsizei *, GLsizei);
-    void(APIENTRY *MultiDrawElementsANGLE)(GLenum, const GLsizei *, GLenum, const GLvoid *const*, GLsizei);
-    void(APIENTRY *MultiDrawElementsInstancedANGLE)(GLenum, const GLsizei *, GLenum, const GLvoid *const*, const GLsizei*, GLsizei);
+    void(APIENTRY *MultiDrawElementsANGLE)(GLenum, const GLsizei *, GLenum, const void *const*, GLsizei);
+    void(APIENTRY *MultiDrawElementsInstancedANGLE)(GLenum, const GLsizei *, GLenum, const void *const*, const GLsizei*, GLsizei);
+
+    /* GL_ANGLE_polygon_mode */
+
+    void(APIENTRY *PolygonModeANGLE)(GLenum, GLenum);
+
+    /* GL_ANGLE_provoking_vertex */
+
+    void(APIENTRY *ProvokingVertexANGLE)(GLenum);
 
     /* GL_ES_VERSION_2_0 */
 
@@ -2114,6 +2166,17 @@ struct FlextGL {
     void(APIENTRY *TexParameterIuiv)(GLenum, GLenum, const GLuint *);
     void(APIENTRY *TexStorage3DMultisample)(GLenum, GLsizei, GLenum, GLsizei, GLsizei, GLsizei, GLboolean);
 
+    /* GL_EXT_blend_func_extended */
+
+    void(APIENTRY *BindFragDataLocationEXT)(GLuint, GLuint, const GLchar *);
+    void(APIENTRY *BindFragDataLocationIndexedEXT)(GLuint, GLuint, GLuint, const GLchar *);
+    GLint(APIENTRY *GetFragDataIndexEXT)(GLuint, const GLchar *);
+    GLint(APIENTRY *GetProgramResourceLocationIndexEXT)(GLuint, GLenum, const GLchar *);
+
+    /* GL_EXT_buffer_storage */
+
+    void(APIENTRY *BufferStorageEXT)(GLenum, GLsizeiptr, const void *, GLbitfield);
+
     /* GL_EXT_clip_control */
 
     void(APIENTRY *ClipControlEXT)(GLenum, GLenum);
@@ -2333,6 +2396,7 @@ struct FlextGL {
     /* GL_OVR_multiview */
 
     void(APIENTRY *FramebufferTextureMultiviewOVR)(GLenum, GLenum, GLuint, GLint, GLint, GLsizei);
+    void(APIENTRY *NamedFramebufferTextureMultiviewOVR)(GLuint, GLenum, GLuint, GLint, GLint, GLsizei);
 };
 
 extern FLEXTGL_EXPORT FlextGL flextGL;
@@ -2350,6 +2414,14 @@ extern FLEXTGL_EXPORT FlextGL flextGL;
 #define glMultiDrawArraysInstancedANGLE flextGL.MultiDrawArraysInstancedANGLE
 #define glMultiDrawElementsANGLE flextGL.MultiDrawElementsANGLE
 #define glMultiDrawElementsInstancedANGLE flextGL.MultiDrawElementsInstancedANGLE
+
+/* GL_ANGLE_polygon_mode */
+
+#define glPolygonModeANGLE flextGL.PolygonModeANGLE
+
+/* GL_ANGLE_provoking_vertex */
+
+#define glProvokingVertexANGLE flextGL.ProvokingVertexANGLE
 
 /* GL_ES_VERSION_2_0 */
 
@@ -2673,6 +2745,17 @@ extern FLEXTGL_EXPORT FlextGL flextGL;
 #define glTexParameterIuiv flextGL.TexParameterIuiv
 #define glTexStorage3DMultisample flextGL.TexStorage3DMultisample
 
+/* GL_EXT_blend_func_extended */
+
+#define glBindFragDataLocationEXT flextGL.BindFragDataLocationEXT
+#define glBindFragDataLocationIndexedEXT flextGL.BindFragDataLocationIndexedEXT
+#define glGetFragDataIndexEXT flextGL.GetFragDataIndexEXT
+#define glGetProgramResourceLocationIndexEXT flextGL.GetProgramResourceLocationIndexEXT
+
+/* GL_EXT_buffer_storage */
+
+#define glBufferStorageEXT flextGL.BufferStorageEXT
+
 /* GL_EXT_clip_control */
 
 #define glClipControlEXT flextGL.ClipControlEXT
@@ -2892,6 +2975,7 @@ extern FLEXTGL_EXPORT FlextGL flextGL;
 /* GL_OVR_multiview */
 
 #define glFramebufferTextureMultiviewOVR flextGL.FramebufferTextureMultiviewOVR
+#define glNamedFramebufferTextureMultiviewOVR flextGL.NamedFramebufferTextureMultiviewOVR
 
 #ifdef __cplusplus
 }

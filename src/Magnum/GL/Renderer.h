@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -83,6 +84,20 @@ class MAGNUM_GL_EXPORT Renderer {
          * @m_enum_values_as_keywords
          */
         enum class Feature: GLenum {
+            #ifndef MAGNUM_TARGET_WEBGL
+            /**
+             * Disable all rendering operations.
+             *
+             * @requires_extension OpenGL 3.0 and extension
+             *      @gl_extension{INTEL,blackhole_render}
+             * @requires_es_extension Extension
+             *      @gl_extension{INTEL,blackhole_render}
+             * @requires_gles Blackhole render is not available in WebGL.
+             * @m_since_latest
+             */
+            BlackholeRender = GL_BLACKHOLE_RENDER_INTEL,
+            #endif
+
             #ifndef MAGNUM_TARGET_WEBGL
             /**
              * Coherent advanced blending. Enabled by default if desktop/ES
@@ -332,18 +347,16 @@ class MAGNUM_GL_EXPORT Renderer {
             #endif
             #endif
 
-            #ifndef MAGNUM_TARGET_WEBGL
             /**
              * Depth clamping. If enabled, ignores near and far clipping plane.
              * @requires_gl32 Extension @gl_extension{ARB,depth_clamp}
              * @requires_es_extension Extension @gl_extension{EXT,depth_clamp}
-             * @requires_gles Depth clamping is not available in WebGL.
+             * @requires_webgl_extension Extension @webgl_extension{EXT,depth_clamp}
              */
             #ifndef MAGNUM_TARGET_GLES
             DepthClamp = GL_DEPTH_CLAMP,
             #else
             DepthClamp = GL_DEPTH_CLAMP_EXT,
-            #endif
             #endif
 
             /**
@@ -405,7 +418,6 @@ class MAGNUM_GL_EXPORT Renderer {
              */
             PolygonOffsetFill = GL_POLYGON_OFFSET_FILL,
 
-            #ifndef MAGNUM_TARGET_WEBGL
             /**
              * Offset lines. Note that this affects only filled polygons
              * rendered with @ref setPolygonMode() set to
@@ -413,15 +425,21 @@ class MAGNUM_GL_EXPORT Renderer {
              * @see @ref Feature::PolygonOffsetFill, @ref Feature::PolygonOffsetPoint,
              *      @ref setPolygonOffset()
              * @requires_es_extension Extension @gl_extension{NV,polygon_offset}
-             * @requires_gles Only @ref Feature::PolygonOffsetFill is available
-             *      in WebGL.
+             *      or @m_class{m-doc-external} [ANGLE_polygon_mode](https://chromium.googlesource.com/angle/angle/+/HEAD/extensions/ANGLE_polygon_mode.txt)
+             * @requires_webgl_extension Extension @webgl_extension{WEBGL,polygon_mode}.
+             *      Note that this extension is only implemented since
+             *      Emscripten 3.1.66 and thus it's not even advertised on
+             *      older versions.
              */
             #ifndef MAGNUM_TARGET_GLES
             PolygonOffsetLine = GL_POLYGON_OFFSET_LINE,
-            #else
+            #elif !defined(MAGNUM_TARGET_WEBGL)
             PolygonOffsetLine = GL_POLYGON_OFFSET_LINE_NV,
+            #else
+            PolygonOffsetLine = GL_POLYGON_OFFSET_LINE_WEBGL,
             #endif
 
+            #ifndef MAGNUM_TARGET_WEBGL
             /**
              * Offset points. Note that this affects only filled polygons
              * rendered with @ref setPolygonMode() set to
@@ -429,8 +447,8 @@ class MAGNUM_GL_EXPORT Renderer {
              * @see @ref Feature::PolygonOffsetFill, @ref Feature::PolygonOffsetLine,
              *      @ref setPolygonOffset()
              * @requires_es_extension Extension @gl_extension{NV,polygon_offset}
-             * @requires_gles Only @ref Feature::PolygonOffsetFill is available
-             *      in WebGL.
+             * @requires_gles Only @ref Feature::PolygonOffsetFill and
+             *      @ref Feature::PolygonOffsetPoint is available in WebGL.
              */
             #ifndef MAGNUM_TARGET_GLES
             PolygonOffsetPoint = GL_POLYGON_OFFSET_POINT,
@@ -603,7 +621,7 @@ class MAGNUM_GL_EXPORT Renderer {
          *
          * Convenience equivalent to the following:
          *
-         * @snippet MagnumGL.cpp Renderer-setFeature
+         * @snippet GL.cpp Renderer-setFeature
          *
          * Prefer to use @ref enable() and @ref disable() directly to avoid
          * unnecessary branching.
@@ -798,7 +816,7 @@ class MAGNUM_GL_EXPORT Renderer {
          */
         static void setFaceCullingMode(PolygonFacing mode);
 
-        #ifndef MAGNUM_TARGET_GLES
+        #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
         /**
          * @brief Provoking vertex
          *
@@ -806,15 +824,27 @@ class MAGNUM_GL_EXPORT Renderer {
          * @m_enum_values_as_keywords
          * @requires_gl32 Extension @gl_extension{ARB,provoking_vertex}. Older
          *      versions behave always like @ref ProvokingVertex::LastVertexConvention.
-         * @requires_gl OpenGL ES and WebGL behave always like
+         * @requires_es_extension OpenGL ES 3.0 and extension
+         *      @m_class{m-doc-external} [ANGLE_provoking_vertex](https://chromium.googlesource.com/angle/angle/+/main/extensions/ANGLE_provoking_vertex.txt).
+         *      Without the extension behaves always like
+         *      @ref ProvokingVertex::LastVertexConvention.
+         * @requires_gles WebGL behaves always like
          *      @ref ProvokingVertex::LastVertexConvention.
          */
         enum class ProvokingVertex: GLenum {
             /** Use first vertex of each polygon. */
+            #ifndef MAGNUM_TARGET_GLES
             FirstVertexConvention = GL_FIRST_VERTEX_CONVENTION,
+            #else
+            FirstVertexConvention = GL_FIRST_VERTEX_CONVENTION_ANGLE,
+            #endif
 
             /** Use last vertex of each polygon (default). */
+            #ifndef MAGNUM_TARGET_GLES
             LastVertexConvention = GL_LAST_VERTEX_CONVENTION
+            #else
+            LastVertexConvention = GL_LAST_VERTEX_CONVENTION_ANGLE
+            #endif
         };
 
         /**
@@ -824,22 +854,27 @@ class MAGNUM_GL_EXPORT Renderer {
          * @see @fn_gl_keyword{ProvokingVertex}
          * @requires_gl32 Extension @gl_extension{ARB,provoking_vertex}. Older
          *      versions behave always like the default.
-         * @requires_gl OpenGL ES and WebGL behave always like the default.
+         * @requires_es_extension OpenGL ES 3.0 and extension
+         *      @m_class{m-doc-external} [ANGLE_provoking_vertex](https://chromium.googlesource.com/angle/angle/+/main/extensions/ANGLE_provoking_vertex.txt)
+         * @requires_gles WebGL behaves always like the default.
          */
         static void setProvokingVertex(ProvokingVertex mode);
         #endif
 
-        #ifndef MAGNUM_TARGET_WEBGL
         /**
          * @brief Polygon mode
          *
          * @see @ref setPolygonMode()
          * @m_enum_values_as_keywords
-         * @requires_es_extension Extension @gl_extension{NV,polygon_mode}.
+         * @requires_es_extension Extension @gl_extension{NV,polygon_mode} or
+         *      @m_class{m-doc-external} [ANGLE_polygon_mode](https://chromium.googlesource.com/angle/angle/+/HEAD/extensions/ANGLE_polygon_mode.txt).
          *      Otherwise behaves always like @ref PolygonMode::Fill. See
-         *      @ref Mesh::setPrimitive() for possible workaround.
-         * @requires_gles WebGL behaves always like @ref PolygonMode::Fill. See
-         *      @ref Mesh::setPrimitive() for possible workaround.
+         *      @ref Mesh::setPrimitive() for a possible workaround.
+         * @requires_webgl_extension Extension @webgl_extension{WEBGL,polygon_mode}.
+         *      Note that this extension is only implemented since Emscripten
+         *      3.1.66 and thus it's not even advertised on older versions.
+         *      Otherwise behaves always like @ref PolygonMode::Fill. See
+         *      @ref Mesh::setPrimitive() for a possible workaround.
          */
         enum class PolygonMode: GLenum {
             /**
@@ -847,8 +882,10 @@ class MAGNUM_GL_EXPORT Renderer {
              */
             #ifndef MAGNUM_TARGET_GLES
             Fill = GL_FILL,
-            #else
+            #elif !defined(MAGNUM_TARGET_WEBGL)
             Fill = GL_FILL_NV,
+            #else
+            Fill = GL_FILL_WEBGL,
             #endif
 
             /**
@@ -856,18 +893,25 @@ class MAGNUM_GL_EXPORT Renderer {
              */
             #ifndef MAGNUM_TARGET_GLES
             Line = GL_LINE,
-            #else
+            #elif !defined(MAGNUM_TARGET_WEBGL)
             Line = GL_LINE_NV,
+            #else
+            Line = GL_LINE_WEBGL,
             #endif
 
+            #ifndef MAGNUM_TARGET_WEBGL
             /**
              * Starts of boundary edges are drawn as points. See also
              * @ref setPointSize().
+             * @requires_es_extension Extension @gl_extension{NV,polygon_mode},
+             *      not available with @m_class{m-doc-external} [ANGLE_polygon_mode](https://chromium.googlesource.com/angle/angle/+/HEAD/extensions/ANGLE_polygon_mode.txt)
+             * @requires_gles Not available in @webgl_extension{WEBGL,polygon_mode}
              */
             #ifndef MAGNUM_TARGET_GLES
             Point = GL_POINT
             #else
             Point = GL_POINT_NV
+            #endif
             #endif
         };
 
@@ -876,14 +920,17 @@ class MAGNUM_GL_EXPORT Renderer {
          *
          * Initial value is @ref PolygonMode::Fill.
          * @see @fn_gl_keyword{PolygonMode}
-         * @requires_es_extension Extension @gl_extension{NV,polygon_mode}.
+         * @requires_es_extension Extension @gl_extension{NV,polygon_mode} or
+         *      @m_class{m-doc-external} [ANGLE_polygon_mode](https://chromium.googlesource.com/angle/angle/+/HEAD/extensions/ANGLE_polygon_mode.txt).
          *      Otherwise behaves always like the default. See
          *      @ref Mesh::setPrimitive() for possible workaround.
-         * @requires_gles WebGL behaves always like the default. See
+         * @requires_webgl_extension Extension @webgl_extension{WEBGL,polygon_mode}.
+         *      Note that this extension is only implemented since Emscripten
+         *      3.1.66 and thus it's not even advertised on older versions.
+         *      Otherwise behaves always like the default. See
          *      @ref Mesh::setPrimitive() for possible workaround.
          */
         static void setPolygonMode(PolygonMode mode);
-        #endif
 
         /**
          * @brief Set polygon offset
@@ -1203,7 +1250,6 @@ class MAGNUM_GL_EXPORT Renderer {
 
         /** @{ @name Depth testing and clip control */
 
-        #ifndef MAGNUM_TARGET_WEBGL
         /**
          * @brief Clip origin
          * @m_since_latest
@@ -1212,7 +1258,9 @@ class MAGNUM_GL_EXPORT Renderer {
          * @m_enum_values_as_keywords
          * @requires_gl45 Extension @gl_extension{ARB,clip_control}
          * @requires_es_extension Extension @gl_extension{EXT,clip_control}
-         * @requires_gles Clip control is not available in WebGL.
+         * @requires_webgl_extension Extension @webgl_extension{EXT,clip_control}.
+         *      Note that this extension is only implemented since Emscripten
+         *      3.1.66 and thus it's not even advertised on older versions.
          */
         enum class ClipOrigin: GLenum {
             /** Lower left */
@@ -1238,7 +1286,9 @@ class MAGNUM_GL_EXPORT Renderer {
          * @m_enum_values_as_keywords
          * @requires_gl45 Extension @gl_extension{ARB,clip_control}
          * @requires_es_extension Extension @gl_extension{EXT,clip_control}
-         * @requires_gles Clip control is not available in WebGL.
+         * @requires_webgl_extension Extension @webgl_extension{EXT,clip_control}.
+         *      Note that this extension is only implemented since Emscripten
+         *      3.1.66 and thus it's not even advertised on older versions.
          */
         enum class ClipDepth: GLenum {
             /** -1 to 1 */
@@ -1255,7 +1305,6 @@ class MAGNUM_GL_EXPORT Renderer {
             ZeroToOne = GL_ZERO_TO_ONE_EXT,
             #endif
         };
-        #endif
 
         /**
          * @brief Depth function
@@ -1304,7 +1353,6 @@ class MAGNUM_GL_EXPORT Renderer {
          */
         static void setDepthRange(Float near, Float far);
 
-        #ifndef MAGNUM_TARGET_WEBGL
         /**
          * @brief Set clipping behavior
          * @m_since_latest
@@ -1314,10 +1362,11 @@ class MAGNUM_GL_EXPORT Renderer {
          * @see @fn_gl_keyword{ClipControl}
          * @requires_gl45 Extension @gl_extension{ARB,clip_control}
          * @requires_es_extension Extension @gl_extension{EXT,clip_control}
-         * @requires_gles Clip control is not available in WebGL.
+         * @requires_webgl_extension Extension @webgl_extension{EXT,clip_control}.
+         *      Note that this extension is only implemented since Emscripten
+         *      3.1.66 and thus it's not even advertised on older versions.
          */
         static void setClipControl(ClipOrigin origin, ClipDepth depth);
-        #endif
 
         /* Since 1.8.17, the original short-hand group closing doesn't work
            anymore. FFS. */
@@ -1636,7 +1685,13 @@ class MAGNUM_GL_EXPORT Renderer {
              * @requires_webgl_extension Extension
              *      @webgl_extension{WEBGL,blend_equation_advanced_coherent}
              */
-            HslLuminosity = GL_HSL_LUMINOSITY_KHR
+            HslLuminosity = GL_HSL_LUMINOSITY_KHR,
+
+            #ifdef Magnum_British_h
+            ColourDodge = ColorDodge,
+            ColourBurn = ColorBurn,
+            HslColour = HslColor
+            #endif
         };
 
         /**
@@ -1683,16 +1738,20 @@ class MAGNUM_GL_EXPORT Renderer {
             /** Source color (@f$ RGB = (R_{s0}, G_{s0}, B_{s0}); A = A_{s0} @f$) */
             SourceColor = GL_SRC_COLOR,
 
-            #ifndef MAGNUM_TARGET_GLES
             /**
              * Second source color (@f$ RGB = (R_{s1}, G_{s1}, B_{s1}); A = A_{s1} @f$)
              *
              * @see @ref AbstractShaderProgram::bindFragmentDataLocationIndexed()
              * @requires_gl33 Extension @gl_extension{ARB,blend_func_extended}
-             * @requires_gl Multiple blending inputs are not available in
-             *      OpenGL ES and WebGL.
+             * @requires_es_extension Extension
+             *      @gl_extension{EXT,blend_func_extended}
+             * @requires_webgl_extension Extension
+             *      @webgl_extension{WEBGL,blend_func_extended}
              */
+            #ifndef MAGNUM_TARGET_GLES
             SecondSourceColor = GL_SRC1_COLOR,
+            #else
+            SecondSourceColor = GL_SRC1_COLOR_EXT,
             #endif
 
             /**
@@ -1700,16 +1759,20 @@ class MAGNUM_GL_EXPORT Renderer {
              */
             OneMinusSourceColor = GL_ONE_MINUS_SRC_COLOR,
 
-            #ifndef MAGNUM_TARGET_GLES
             /**
              * One minus second source color (@f$ RGB = (1.0 - R_{s1}, 1.0 - G_{s1}, 1.0 - B_{s1}); A = 1.0 - A_{s1} @f$)
              *
              * @see @ref AbstractShaderProgram::bindFragmentDataLocationIndexed()
              * @requires_gl33 Extension @gl_extension{ARB,blend_func_extended}
-             * @requires_gl Multiple blending inputs are not available in
-             *      OpenGL ES and WebGL.
+             * @requires_es_extension Extension
+             *      @gl_extension{EXT,blend_func_extended}
+             * @requires_webgl_extension Extension
+             *      @webgl_extension{WEBGL,blend_func_extended}
              */
+            #ifndef MAGNUM_TARGET_GLES
             OneMinusSecondSourceColor = GL_ONE_MINUS_SRC1_COLOR,
+            #else
+            OneMinusSecondSourceColor = GL_ONE_MINUS_SRC1_COLOR_EXT,
             #endif
 
             /** Source alpha (@f$ RGB = (A_{s0}, A_{s0}, A_{s0}); A = A_{s0} @f$) */
@@ -1722,16 +1785,20 @@ class MAGNUM_GL_EXPORT Renderer {
              */
             SourceAlphaSaturate = GL_SRC_ALPHA_SATURATE,
 
-            #ifndef MAGNUM_TARGET_GLES
             /**
              * Second source alpha (@f$ RGB = (A_{s1}, A_{s1}, A_{s1}); A = A_{s1} @f$)
              *
              * @see @ref AbstractShaderProgram::bindFragmentDataLocationIndexed()
              * @requires_gl33 Extension @gl_extension{ARB,blend_func_extended}
-             * @requires_gl Multiple blending inputs are not available in
-             *      OpenGL ES and WebGL.
+             * @requires_es_extension Extension
+             *      @gl_extension{EXT,blend_func_extended}
+             * @requires_webgl_extension Extension
+             *      @webgl_extension{WEBGL,blend_func_extended}
              */
+            #ifndef MAGNUM_TARGET_GLES
             SecondSourceAlpha = GL_SRC1_ALPHA,
+            #else
+            SecondSourceAlpha = GL_SRC1_ALPHA_EXT,
             #endif
 
             /**
@@ -1739,16 +1806,20 @@ class MAGNUM_GL_EXPORT Renderer {
              */
             OneMinusSourceAlpha = GL_ONE_MINUS_SRC_ALPHA,
 
-            #ifndef MAGNUM_TARGET_GLES
             /**
              * One minus second source alpha (@f$ RGB = (1.0 - A_{s1}, 1.0 - A_{s1}, 1.0 - A_{s1}); A = 1.0 - A_{s1} @f$)
              *
              * @see @ref AbstractShaderProgram::bindFragmentDataLocationIndexed()
              * @requires_gl33 Extension @gl_extension{ARB,blend_func_extended}
-             * @requires_gl Multiple blending inputs are not available in
-             *      OpenGL ES and WebGL.
+             * @requires_es_extension Extension
+             *      @gl_extension{EXT,blend_func_extended}
+             * @requires_webgl_extension Extension
+             *      @webgl_extension{WEBGL,blend_func_extended}
              */
+            #ifndef MAGNUM_TARGET_GLES
             OneMinusSecondSourceAlpha = GL_ONE_MINUS_SRC1_ALPHA,
+            #else
+            OneMinusSecondSourceAlpha = GL_ONE_MINUS_SRC1_ALPHA_EXT,
             #endif
 
             /** Destination color (@f$ RGB = (R_d, G_d, B_d); A = A_d @f$) */
@@ -1765,7 +1836,18 @@ class MAGNUM_GL_EXPORT Renderer {
             /**
              * One minus source alpha (@f$ RGB = (1.0 - A_d, 1.0 - A_d, 1.0 - A_d); A = 1.0 - A_d @f$)
              */
-            OneMinusDestinationAlpha = GL_ONE_MINUS_DST_ALPHA
+            OneMinusDestinationAlpha = GL_ONE_MINUS_DST_ALPHA,
+
+            #ifdef Magnum_British_h
+            ConstantColour = ConstantColor,
+            OneMinusConstantColour = OneMinusConstantColor,
+            SourceColour = SourceColor,
+            SecondSourceColour = SecondSourceColor,
+            OneMinusSourceColour = OneMinusSourceColor,
+            OneMinusSecondSourceColour = OneMinusSecondSourceColor,
+            DestinationColour = DestinationColor,
+            OneMinusDestinationColour = OneMinusDestinationColor
+            #endif
         };
 
         /**
@@ -1842,7 +1924,7 @@ class MAGNUM_GL_EXPORT Renderer {
          * whether your colors / textures have a [premultiplied alpha](https://developer.nvidia.com/content/alpha-blending-pre-or-not-pre)
          * (RGB channels always less than or equal to the alpha) or not:
          *
-         * @snippet MagnumGL.cpp Renderer-setBlendFunction
+         * @snippet GL.cpp Renderer-setBlendFunction
          *
          * Note that in 3D you need to sort and render transparent objects
          * back-to-front after all opaque objects in order for them to appear

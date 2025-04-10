@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2019 Marco Melorio <m.melorio@icloud.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -302,12 +303,30 @@ template<class T> class Quaternion {
          * Expects that the rotation axis is normalized. @f[
          *      q = [\boldsymbol a \cdot \sin(\frac{\theta}{2}), \cos(\frac{\theta}{2})]
          * @f]
-         * @see @ref angle(), @ref axis(), @ref DualQuaternion::rotation(),
+         * @see @ref rotation(const Vector3<T>&, const Vector3<T>&),
+         *      @ref angle(), @ref axis(), @ref DualQuaternion::rotation(),
          *      @ref Matrix4::rotation(), @ref Complex::rotation(),
          *      @ref Vector3::xAxis(), @ref Vector3::yAxis(),
          *      @ref Vector3::zAxis(), @ref Vector::isNormalized()
          */
         static Quaternion<T> rotation(Rad<T> angle, const Vector3<T>& normalizedAxis);
+
+        /**
+         * @brief Quaternion rotating from a vector to another
+         * @param normalizedFrom    Normalized vector from which to rotate
+         * @param normalizedTo      Normalized vector to which to rotate
+         * @m_since_latest
+         *
+         * Returns a quaternion that transforms @p normalizedFrom into
+         * @p normalizedTo. Expects that both vectors are normalized. If the
+         * vectors are parallel, returns an identity quaternion, if they're
+         * antiparallel, picks an arbitrary rotation axis.
+         *
+         * Based on *The Shortest Arc Quaternion* by Stan Melax,
+         * [Game Programming Gems 1, page 214](https://archive.org/details/game-programming-gems-1/page/214/mode/2up).
+         * @see @ref rotation(Rad<T>, const Vector3<T>&)
+         */
+        static Quaternion<T> rotation(const Vector3<T>& normalizedFrom, const Vector3<T>& normalizedTo);
 
         /**
          * @brief Reflection quaternion
@@ -389,11 +408,11 @@ template<class T> class Quaternion {
          */
         template<class U> constexpr explicit Quaternion(const Quaternion<U>& other) noexcept: _vector{other._vector}, _scalar{T(other._scalar)} {}
 
-        /** @brief Construct quaternion from external representation */
-        template<class U, class V = decltype(Implementation::QuaternionConverter<T, U>::from(std::declval<U>()))> constexpr explicit Quaternion(const U& other): Quaternion{Implementation::QuaternionConverter<T, U>::from(other)} {}
+        /** @brief Construct a quaternion from external representation */
+        template<class U, class = decltype(Implementation::QuaternionConverter<T, U>::from(std::declval<U>()))> constexpr explicit Quaternion(const U& other): Quaternion{Implementation::QuaternionConverter<T, U>::from(other)} {}
 
-        /** @brief Convert quaternion to external representation */
-        template<class U, class V = decltype(Implementation::QuaternionConverter<T, U>::to(std::declval<Quaternion<T>>()))> constexpr explicit operator U() const {
+        /** @brief Convert the quaternion to external representation */
+        template<class U, class = decltype(Implementation::QuaternionConverter<T, U>::to(std::declval<Quaternion<T>>()))> constexpr explicit operator U() const {
             return Implementation::QuaternionConverter<T, U>::to(*this);
         }
 
@@ -428,12 +447,20 @@ template<class T> class Quaternion {
         }
         #endif
 
-        /** @brief Equality comparison */
+        /**
+         * @brief Equality comparison
+         *
+         * Done using @ref TypeTraits::equals(), i.e. with fuzzy compare.
+         */
         bool operator==(const Quaternion<T>& other) const {
             return _vector == other._vector && TypeTraits<T>::equals(_scalar, other._scalar);
         }
 
-        /** @brief Non-equality comparison */
+        /**
+         * @brief Non-equality comparison
+         *
+         * Done using @ref TypeTraits::equals(), i.e. with fuzzy compare.
+         */
         bool operator!=(const Quaternion<T>& other) const {
             return !operator==(other);
         }
@@ -450,15 +477,49 @@ template<class T> class Quaternion {
             return Implementation::isNormalizedSquared(dot());
         }
 
-        /** @brief Vector part (@f$ \boldsymbol{q}_V @f$) */
+        /**
+         * @brief Vector part (@f$ \boldsymbol{q}_V @f$)
+         *
+         * @see @ref xyzw(), @ref wxyz()
+         */
         Vector3<T>& vector() { return _vector; }
         /* Returning const so it's possible to call constexpr functions on the
            result. WTF, C++?! */
         constexpr const Vector3<T> vector() const { return _vector; } /**< @overload */
 
-        /** @brief Scalar part (@f$ q_S @f$) */
+        /**
+         * @brief Scalar part (@f$ q_S @f$)
+         *
+         * @see @ref xyzw(), @ref wxyz()
+         */
         T& scalar() { return _scalar; }
         constexpr T scalar() const { return _scalar; } /**< @overload */
+
+        /**
+         * @brief Quaternion components in a XYZW order
+         * @m_since_latest
+         *
+         * Returns a four-component vector containing @ref vector() in the XYZ
+         * components and @ref scalar() in W: @f[
+         *      \boldsymbol v = [q_{V_x}, q_{V_y}, q_{V_z}, s]
+         * @f]
+         * @see @ref Complex::operator Vector2<T>()
+         */
+        constexpr Vector4<T> xyzw() const { return {_vector, _scalar}; }
+
+        /**
+         * @brief Quaternion components in a WXYZ order
+         * @m_since_latest
+         *
+         * Returns a four-component vector containing @ref scalar() in the X
+         * component and @ref vector() in YZW: @f[
+         *      \boldsymbol v = [s, q_{V_x}, q_{V_y}, q_{V_z}]
+         * @f]
+         * @see @ref Complex::operator Vector2<T>()
+         */
+        constexpr Vector4<T> wxyz() const {
+            return {_scalar, _vector.x(), _vector.y(), _vector.z()};
+        }
 
         /**
          * @brief Rotation angle of a unit quaternion
@@ -484,7 +545,7 @@ template<class T> class Quaternion {
          * back, you do the following, replace it with an X axis for a zero
          * angle:
          *
-         * @snippet MagnumMath.cpp Quaternion-axis-nan
+         * @snippet Math.cpp Quaternion-axis-nan
          *
          * @see @ref isNormalized(), @ref rotation()
          */
@@ -505,7 +566,7 @@ template<class T> class Quaternion {
          * Expects that the quaternion is normalized. Returns the angles in an
          * XYZ order, you can combine them back to a quaternion like this:
          *
-         * @snippet MagnumMath.cpp Quaternion-fromEuler
+         * @snippet Math.cpp Quaternion-fromEuler
          *
          * @see @ref rotation(), @ref DualQuaternion::rotation()
          */
@@ -695,7 +756,7 @@ template<class T> class Quaternion {
          *
          * See @ref transformVectorNormalized(), which is faster for normalized
          * quaternions. @f[
-         *      v' = qvq^{-1} = q [\boldsymbol v, 0] q^{-1}
+         *      \boldsymbol v' = q\boldsymbol{v}q^{-1} = q [\boldsymbol v, 0] q^{-1}
          * @f]
          * Note that this function will not give the correct result for
          * quaternions created with @ref reflection(), for those use
@@ -721,7 +782,7 @@ template<class T> class Quaternion {
          * @f]
          * Which is equivalent to the common equation (source:
          * https://molecularmusings.wordpress.com/2013/05/24/a-faster-quaternion-vector-multiplication/): @f[
-         *      v' = qvq^{-1} = qvq^* = q [\boldsymbol v, 0] q^*
+         *      \boldsymbol v' = q\boldsymbol{v}q^{-1} = q\boldsymbol{v}q^* = q [\boldsymbol v, 0] q^*
          * @f]
          * @see @ref isNormalized(), @ref Quaternion(const Vector3<T>&),
          *      @ref vector(), @ref Matrix4::transformVector(),
@@ -737,7 +798,7 @@ template<class T> class Quaternion {
          * Compared to the usual vector transformation performed with
          * rotation quaternions and @ref transformVector(), the reflection is
          * done like this: @f[
-         *      v' = qvq = q [\boldsymbol v, 0] q
+         *      \boldsymbol v' = qvq = q [\boldsymbol v, 0] q
          * @f]
          * You can use @ref reflection() to create a quaternion reflecting
          * along given normal. Note that it's **not possible to combine
@@ -745,7 +806,7 @@ template<class T> class Quaternion {
          * Assuming a (normalized) rotation quaternion @f$ r @f$, a combined
          * rotation and reflection of vector @f$ v @f$ would look like this
          * instead: @f[
-         *      v' = rqvqr^{-1} = rqvqr^* = rq [\boldsymbol v, 0] qr^*
+         *      \boldsymbol v' = rq\boldsymbol{v}qr^{-1} = rq\boldsymbol{v}qr^* = rq [\boldsymbol v, 0] qr^*
          * @f]
          * See also [quaternion reflection at Euclidean Space](https://www.euclideanspace.com/maths/geometry/affine/reflection/quaternion/index.htm).
          * @see @ref Quaternion(const Vector3<T>&), @ref vector(),
@@ -852,10 +913,46 @@ template<class T> inline Quaternion<T> Quaternion<T>::rotation(const Rad<T> angl
     return {normalizedAxis*std::sin(T(angle)/2), std::cos(T(angle)/2)};
 }
 
+template<class T> Quaternion<T> Quaternion<T>::rotation(const Vector3<T>& normalizedFrom, const Vector3<T>& normalizedTo) {
+    CORRADE_DEBUG_ASSERT(normalizedFrom.isNormalized() && normalizedTo.isNormalized(),
+        "Math::Quaternion::rotation(): vectors" << normalizedFrom << "and" << normalizedTo << "are not normalized", {});
+
+    const T cosHalfAngle = Math::dot(normalizedFrom, normalizedTo);
+
+    /* Vectors point in (almost) the same direction, don't need to rotate
+       anything */
+    if(cosHalfAngle > T(1) - TypeTraits<T>::epsilon())
+        return Quaternion<T>{IdentityInit};
+
+    /* Vectors point in an (almost) opposite direction, pick some arbitrary
+       axis as there's no single solution */
+    if(cosHalfAngle < T(-1) + TypeTraits<T>::epsilon()) {
+        /* Try rotating around Y. If Y is parallel with the input vector,
+           rotate around X instead. */
+        Vector3<T> rotationAxis = cross(Vector3<T>::yAxis(), normalizedFrom);
+        T dot = rotationAxis.dot();
+        if(dot < TypeTraits<T>::epsilon()) {
+            rotationAxis = cross(Vector3<T>::xAxis(), normalizedFrom);
+            dot = rotationAxis.dot();
+        }
+
+        /* Reuse the dot product to normalize the axis */
+        rotationAxis /= std::sqrt(dot);
+
+        /* Same as Quaternion::rotation(axis, 180°) */
+        return {rotationAxis, T(0.0)};
+    }
+
+    /* Vectors are not colinear, calculate a rotation axis */
+    const Vector3<T> rotationAxis = cross(normalizedFrom, normalizedTo);
+    const T sqrt = std::sqrt((T(1) + cosHalfAngle)*T(2));
+    return {rotationAxis/sqrt, T(0.5)*sqrt};
+}
+
 template<class T> inline Quaternion<T> Quaternion<T>::reflection(const Vector3<T>& normal) {
     CORRADE_DEBUG_ASSERT(normal.isNormalized(),
         "Math::Quaternion::reflection(): normal" << normal << "is not normalized", {});
-    return {normal, 0.0f};
+    return {normal, T(0)};
 }
 
 template<class T> inline Quaternion<T> Quaternion<T>::fromMatrix(const Matrix3x3<T>& matrix) {

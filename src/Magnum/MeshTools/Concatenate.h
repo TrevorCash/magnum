@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -50,16 +51,27 @@ namespace Implementation {
 @param flags            Flags to pass to @ref interleavedLayout()
 @m_since{2020,06}
 
-The returned mesh contains vertices from all meshes concatenated together. If
-any mesh is indexed (expected to not have an implementation-specific index
-type), the resulting mesh is indexed as well, with indices adjusted for vertex
-offsets of particular meshes. The behavior is undefined if any mesh has indices
-out of range for its particular vertex count. Meshes with
-@ref MeshPrimitive::LineStrip, @ref MeshPrimitive::LineLoop,
-@ref MeshPrimitive::TriangleStrip and @ref MeshPrimitive::TriangleFan can't be
-concatenated --- use @ref generateIndices() to turn them into
-@ref MeshPrimitive::Lines or @ref MeshPrimitive::Triangles first. The @p meshes
-array is expected to have at least one item.
+Returns a mesh that contains index and vertex data from all input meshes
+concatenated together. Usage example:
+
+@snippet MeshTools.cpp concatenate
+
+Relative order of passed meshes is preserved in the resulting index and vertex
+data, meaning you can directly calculate their offsets for example if it's
+desirable to render or modify them separately. If any mesh is indexed, the
+resulting mesh is indexed as well, with indices adjusted for vertex offsets of
+particular meshes.
+
+@snippet MeshTools.cpp concatenate-offsets
+
+The indices, if present, are expected to not have an implementation-specific
+index type. The behavior is undefined if any mesh has indices out of range for
+its particular vertex count. Meshes with @ref MeshPrimitive::LineStrip,
+@ref MeshPrimitive::LineLoop, @ref MeshPrimitive::TriangleStrip and
+@ref MeshPrimitive::TriangleFan can't be concatenated --- use
+@ref generateIndices() to turn them into @ref MeshPrimitive::Lines or
+@ref MeshPrimitive::Triangles first. The @p meshes array is expected to have at
+least one item.
 
 All attributes from the first mesh are taken, expected to not have an
 implementation-specific format. For each following mesh attributes present in
@@ -84,7 +96,7 @@ to compress it to a smaller type, if desired.
 @see @ref concatenateInto(), @ref isMeshIndexTypeImplementationSpecific(),
     @ref isVertexFormatImplementationSpecific(),
     @ref SceneTools::flattenMeshHierarchy2D(),
-    @ref SceneTools::flattenMeshHierarchy3D()
+    @ref SceneTools::flattenMeshHierarchy3D(), @ref meshtools-concatenate
 */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData concatenate(const Containers::Iterable<const Trade::MeshData>& meshes, InterleaveFlags flags = InterleaveFlag::PreserveInterleavedAttributes);
 
@@ -111,7 +123,7 @@ template<template<class> class Allocator = Containers::ArrayAllocator> void conc
     for(std::size_t i = 0; i != destination.attributeCount(); ++i) {
         const VertexFormat format = destination.attributeFormat(i);
         CORRADE_ASSERT(!isVertexFormatImplementationSpecific(format),
-            "MeshTools::concatenateInto(): attribute" << i << "of the destination mesh has an implementation-specific format" << reinterpret_cast<void*>(vertexFormatUnwrap(format)), );
+            "MeshTools::concatenateInto(): attribute" << i << "of the destination mesh has an implementation-specific format" << Debug::hex << vertexFormatUnwrap(format), );
     }
     #endif
 

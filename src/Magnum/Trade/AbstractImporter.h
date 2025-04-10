@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -40,8 +41,6 @@
 #ifdef MAGNUM_BUILD_DEPRECATED
 /* For APIs that used to take or return a std::string */
 #include <Corrade/Containers/StringStl.h>
-
-#include "Magnum/FileCallback.h"
 #endif
 
 namespace Magnum { namespace Trade {
@@ -90,13 +89,6 @@ MAGNUM_TRADE_EXPORT Debug& operator<<(Debug& debug, ImporterFeature value);
 
 /** @debugoperatorenum{ImporterFeatures} */
 MAGNUM_TRADE_EXPORT Debug& operator<<(Debug& debug, ImporterFeatures value);
-
-#ifdef MAGNUM_BUILD_DEPRECATED
-/** @brief @copybrief InputFileCallbackPolicy
- * @m_deprecated_since{2019,10} Use @ref InputFileCallbackPolicy instead.
- */
-typedef CORRADE_DEPRECATED("use InputFileCallbackPolicy instead") InputFileCallbackPolicy ImporterFileCallbackPolicy;
-#endif
 
 /**
 @brief Importer flag
@@ -238,12 +230,12 @@ treated as a programmer error and will produce the usual assertions.
 In the following example an image is loaded from the filesystem using the
 @ref AnyImageImporter plugin, completely with all needed error handling:
 
-@snippet MagnumTrade.cpp AbstractImporter-usage
+@snippet Trade.cpp AbstractImporter-usage
 
 See @ref plugins for more information about general plugin usage,
 @ref file-formats to compare implementations of common file formats and the
-list of @m_class{m-doc} [derived classes](#derived-classes) for all available
-importer plugins.
+list of @m_class{m-doc} <a href="#derived-classes">derived classes</a> for all
+available importer plugins.
 
 @m_class{m-note m-success}
 
@@ -260,7 +252,7 @@ data from memory (for example from @relativeref{Corrade,Utility::Resource}).
 Note that the particular importer implementation has to support
 @ref ImporterFeature::OpenData for this method to work:
 
-@snippet MagnumTrade.cpp AbstractImporter-usage-data
+@snippet Trade.cpp AbstractImporter-usage-data
 
 Complex scene files often reference other files such as images and in that case
 you may want to intercept those references and load them in a custom way as
@@ -276,7 +268,7 @@ well --- you don't have to load the top-level file manually and pass it to
 @ref openData(), any importer supporting the callback feature handles that
 correctly.
 
-@snippet MagnumTrade.cpp AbstractImporter-usage-callbacks
+@snippet Trade.cpp AbstractImporter-usage-callbacks
 
 For importers that don't support @ref ImporterFeature::FileCallback directly,
 the base @ref openFile() implementation will use the file callback to pass the
@@ -613,7 +605,7 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * See the overload below for a more convenient type-safe way to pass
          * the user data pointer.
          *
-         * @snippet MagnumTrade.cpp AbstractImporter-setFileCallback
+         * @snippet Trade.cpp AbstractImporter-setFileCallback
          *
          * @see @ref Trade-AbstractImporter-usage-callbacks
          */
@@ -628,7 +620,7 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @ref Corrade::Utility::Resource instance to avoid a potentially slow
          * resource group lookup every time:
          *
-         * @snippet MagnumTrade.cpp AbstractImporter-setFileCallback-template
+         * @snippet Trade.cpp AbstractImporter-setFileCallback-template
          *
          * @see @ref Trade-AbstractImporter-usage-callbacks
          */
@@ -812,7 +804,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @param id        Scene ID, from range [0, @ref sceneCount()).
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref scene(Containers::StringView), @ref sceneName(),
          *      @ref objectName(), @ref sceneFieldName()
          */
@@ -825,8 +818,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref sceneForName() and
          * @ref scene(UnsignedInt). If @ref sceneForName() returns @cpp -1 @ce,
          * prints a message to @relativeref{Magnum,Error} and returns
-         * @ref Containers::NullOpt, otherwise propagates the result from
-         * @ref scene(UnsignedInt). Expects that a file is opened.
+         * @relativeref{Corrade,Containers::NullOpt}, otherwise propagates the
+         * result from @ref scene(UnsignedInt). Expects that a file is opened.
          */
         Containers::Optional<SceneData> scene(Containers::StringView name);
 
@@ -890,7 +883,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @param id    Animation ID, from range [0, @ref animationCount()).
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref animation(Containers::StringView), @ref animationName(),
          *      @ref animationTrackTargetName()
          */
@@ -903,8 +897,9 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref animationForName() and
          * @ref animation(UnsignedInt). If @ref animationForName() returns
          * @cpp -1 @ce, prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt, otherwise propagates the result
-         * from @ref animation(UnsignedInt). Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}, otherwise
+         * propagates the result from @ref animation(UnsignedInt). Expects that
+         * a file is opened.
          */
         Containers::Optional<AnimationData> animation(Containers::StringView name);
 
@@ -971,7 +966,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @param id        Light ID, from range [0, @ref lightCount()).
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref light(Containers::StringView)
          */
         Containers::Optional<LightData> light(UnsignedInt id);
@@ -983,8 +979,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref lightForName() and
          * @ref light(UnsignedInt). If @ref lightForName() returns @cpp -1 @ce,
          * prints a message to @relativeref{Magnum,Error} and returns
-         * @ref Containers::NullOpt, otherwise propagates the result from
-         * @ref light(UnsignedInt). Expects that a file is opened.
+         * @relativeref{Corrade,Containers::NullOpt}, otherwise propagates the
+         * result from @ref light(UnsignedInt). Expects that a file is opened.
          */
         Containers::Optional<LightData> light(Containers::StringView name);
 
@@ -1020,7 +1016,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @param id        Camera ID, from range [0, @ref cameraCount()).
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref camera(Containers::StringView)
          */
         Containers::Optional<CameraData> camera(UnsignedInt id);
@@ -1032,8 +1029,9 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref cameraForName() and
          * @ref camera(UnsignedInt). If @ref cameraForName() returns
          * @cpp -1 @ce, prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt, otherwise propagates the result
-         * from @ref camera(UnsignedInt). Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}, otherwise
+         * propagates the result from @ref camera(UnsignedInt). Expects that a
+         * file is opened.
          */
         Containers::Optional<CameraData> camera(Containers::StringView name);
 
@@ -1205,7 +1203,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @m_since_latest
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref skin2D(Containers::StringView), @ref skin2DName()
          */
         Containers::Optional<SkinData2D> skin2D(UnsignedInt id);
@@ -1217,8 +1216,9 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref skin2DForName() and
          * @ref skin2D(UnsignedInt). If @ref skin2DForName() returns
          * @cpp -1 @ce, prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt, otherwise propagates the result
-         * from @ref skin2D(UnsignedInt). Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}, otherwise
+         * propagates the result from @ref skin2D(UnsignedInt). Expects that a
+         * file is opened.
          */
         Containers::Optional<SkinData2D> skin2D(Containers::StringView name);
 
@@ -1258,7 +1258,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @m_since_latest
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref skin3D(Containers::StringView), @ref skin3DName()
          */
         Containers::Optional<SkinData3D> skin3D(UnsignedInt id);
@@ -1270,8 +1271,9 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref skin3DForName() and
          * @ref skin3D(UnsignedInt). If @ref skin3DForName() returns
          * @cpp -1 @ce, prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt, otherwise propagates the result
-         * from @ref skin3D(UnsignedInt). Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}, otherwise
+         * propagates the result from @ref skin3D(UnsignedInt). Expects that a
+         * file is opened.
          */
         Containers::Optional<SkinData3D> skin3D(Containers::StringView name);
 
@@ -1323,10 +1325,10 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @m_since{2020,06}
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. The @p level parameter allows
-         * access to additional data and is largely left as importer-specific
-         * --- for example allowing access to per-instance, per-face or
-         * per-edge data. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. The @p level
+         * parameter allows access to additional data and is largely left as
+         * importer-specific --- for example allowing access to per-instance,
+         * per-face or per-edge data. Expects that a file is opened.
          * @see @ref mesh(Containers::StringView, UnsignedInt),
          *      @ref MeshPrimitive::Instances, @ref MeshPrimitive::Faces,
          *      @ref MeshPrimitive::Edges, @ref meshName(),
@@ -1341,9 +1343,9 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref meshForName() and
          * @ref mesh(UnsignedInt, UnsignedInt). If @ref meshForName() returns
          * @cpp -1 @ce, prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt, otherwise propagates the result
-         * from @ref mesh(UnsignedInt, UnsignedInt). Expects that a file is
-         * opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}, otherwise
+         * propagates the result from @ref mesh(UnsignedInt, UnsignedInt).
+         * Expects that a file is opened.
          */
         Containers::Optional<MeshData> mesh(Containers::StringView name, UnsignedInt level = 0);
 
@@ -1408,8 +1410,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @brief Two-dimensional mesh
          * @param id        Mesh ID, from range [0, @ref mesh2DCount()).
          *
-         * Returns given mesh or @ref Containers::NullOpt if importing failed.
-         * Expects that a file is opened.
+         * Returns given mesh or @relativeref{Corrade,Containers::NullOpt} if
+         * importing failed. Expects that a file is opened.
          * @m_deprecated_since{2020,06} Use @ref mesh() instead.
          */
         CORRADE_IGNORE_DEPRECATED_PUSH /* Clang doesn't warn, but GCC does */
@@ -1448,8 +1450,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @brief Three-dimensional mesh
          * @param id        Mesh ID, from range [0, @ref mesh3DCount()).
          *
-         * Returns given mesh or @ref Containers::NullOpt if importing failed.
-         * Expects that a file is opened.
+         * Returns given mesh or @relativeref{Corrade,Containers::NullOpt} if
+         * importing failed. Expects that a file is opened.
          * @m_deprecated_since{2020,06} Use @ref meshName() instead.
          */
         CORRADE_IGNORE_DEPRECATED_PUSH /* Clang doesn't warn, but GCC does */
@@ -1489,7 +1491,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @param id        Material ID, from range [0, @ref materialCount()).
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref material(Containers::StringView), @ref materialName()
          */
         #if !defined(MAGNUM_BUILD_DEPRECATED) || defined(DOXYGEN_GENERATING_OUTPUT)
@@ -1506,8 +1509,9 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref materialForName() and
          * @ref material(UnsignedInt). If @ref materialForName() returns
          * @cpp -1 @ce, prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt, otherwise propagates the result
-         * from @ref material(UnsignedInt). Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}, otherwise
+         * propagates the result from @ref material(UnsignedInt). Expects that
+         * a file is opened.
          */
         #if !defined(MAGNUM_BUILD_DEPRECATED) || defined(DOXYGEN_GENERATING_OUTPUT)
         Containers::Optional<MaterialData>
@@ -1548,7 +1552,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @param id        Texture ID, from range [0, @ref textureCount()).
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref texture(Containers::StringView), @ref textureName()
          */
         Containers::Optional<TextureData> texture(UnsignedInt id);
@@ -1560,8 +1565,9 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref textureForName() and
          * @ref texture(UnsignedInt). If @ref textureForName() returns
          * @cpp -1 @ce, prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt, otherwise propagates the result
-         * from @ref texture(UnsignedInt). Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}, otherwise
+         * propagates the result from @ref texture(UnsignedInt). Expects that a
+         * file is opened.
          */
         Containers::Optional<TextureData> texture(Containers::StringView name);
 
@@ -1609,7 +1615,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @param level     Mip level, from range [0, @ref image1DLevelCount())
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref image1D(Containers::StringView, UnsignedInt),
          *      @ref image1DName()
          */
@@ -1622,9 +1629,9 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref image1DForName() and
          * @ref image1D(UnsignedInt, UnsignedInt). If @ref image1DForName()
          * returns @cpp -1 @ce, prints a message to @relativeref{Magnum,Error}
-         * and returns @ref Containers::NullOpt, otherwise propagates the
-         * result from @ref image1D(UnsignedInt, UnsignedInt). Expects that a
-         * file is opened.
+         * and returns @relativeref{Corrade,Containers::NullOpt}, otherwise
+         * propagates the result from @ref image1D(UnsignedInt, UnsignedInt).
+         * Expects that a file is opened.
          */
         Containers::Optional<ImageData1D> image1D(Containers::StringView name, UnsignedInt level = 0);
 
@@ -1672,7 +1679,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @param level     Mip level, from range [0, @ref image2DLevelCount())
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref image2D(Containers::StringView, UnsignedInt),
          *      @ref image2DName()
          */
@@ -1685,9 +1693,9 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref image2DForName() and
          * @ref image2D(UnsignedInt, UnsignedInt). If @ref image2DForName()
          * returns @cpp -1 @ce, prints a message to @relativeref{Magnum,Error}
-         * and returns @ref Containers::NullOpt, otherwise propagates the
-         * result from @ref image2D(UnsignedInt, UnsignedInt). Expects that a
-         * file is opened.
+         * and returns @relativeref{Corrade,Containers::NullOpt}, otherwise
+         * propagates the result from @ref image2D(UnsignedInt, UnsignedInt).
+         * Expects that a file is opened.
          */
         Containers::Optional<ImageData2D> image2D(Containers::StringView name, UnsignedInt level = 0);
 
@@ -1735,7 +1743,8 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * @param level     Mip level, from range [0, @ref image3DLevelCount())
          *
          * On failure prints a message to @relativeref{Magnum,Error} and
-         * returns @ref Containers::NullOpt. Expects that a file is opened.
+         * returns @relativeref{Corrade,Containers::NullOpt}. Expects that a
+         * file is opened.
          * @see @ref image3D(Containers::StringView, UnsignedInt),
          *      @ref image3DName()
          */
@@ -1748,9 +1757,9 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * A convenience API combining @ref image3DForName() and
          * @ref image3D(UnsignedInt, UnsignedInt). If @ref image3DForName()
          * returns @cpp -1 @ce, prints a message to @relativeref{Magnum,Error}
-         * and returns @ref Containers::NullOpt, otherwise propagates the
-         * result from @ref image3D(UnsignedInt, UnsignedInt). Expects that a
-         * file is opened.
+         * and returns @relativeref{Corrade,Containers::NullOpt}, otherwise
+         * propagates the result from @ref image3D(UnsignedInt, UnsignedInt).
+         * Expects that a file is opened.
          */
         Containers::Optional<ImageData3D> image3D(Containers::StringView name, UnsignedInt level = 0);
 
@@ -1861,7 +1870,7 @@ class MAGNUM_TRADE_EXPORT AbstractImporter: public PluginManager::AbstractManagi
          * Example workflow in a plugin that needs to preserve access to the
          * input data but wants to avoid allocating a copy if possible:
          *
-         * @snippet MagnumTrade.cpp AbstractImporter-doOpenData-ownership
+         * @snippet Trade.cpp AbstractImporter-doOpenData-ownership
          *
          * The @p dataFlags can never be @ref DataFlag::Mutable without
          * any other flag set. The case of @ref DataFlag::Mutable with
@@ -2628,7 +2637,7 @@ Same string as returned by
 used inside @ref CORRADE_PLUGIN_REGISTER() to avoid having to update the
 interface string by hand every time the version gets bumped:
 
-@snippet MagnumTrade.cpp MAGNUM_TRADE_ABSTRACTIMPORTER_PLUGIN_INTERFACE
+@snippet Trade.cpp MAGNUM_TRADE_ABSTRACTIMPORTER_PLUGIN_INTERFACE
 
 The interface string version gets increased on every ABI break to prevent
 silent crashes and memory corruption. Plugins built against the previous

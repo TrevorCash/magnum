@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -24,9 +25,8 @@
 */
 
 #include <new>
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Vk/DescriptorPoolCreateInfo.h"
 #include "Magnum/Vk/DescriptorType.h"
@@ -81,31 +81,31 @@ void DescriptorPoolTest::createInfoConstruct() {
 void DescriptorPoolTest::createInfoConstructNoSets() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DescriptorPoolCreateInfo{0, {}};
-    CORRADE_COMPARE(out.str(), "Vk::DescriptorPoolCreateInfo: there has to be at least one set\n");
+    CORRADE_COMPARE(out, "Vk::DescriptorPoolCreateInfo: there has to be at least one set\n");
 }
 
 void DescriptorPoolTest::createInfoConstructNoPools() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DescriptorPoolCreateInfo{5, {}};
-    CORRADE_COMPARE(out.str(), "Vk::DescriptorPoolCreateInfo: there has to be at least one pool\n");
+    CORRADE_COMPARE(out, "Vk::DescriptorPoolCreateInfo: there has to be at least one pool\n");
 }
 
 void DescriptorPoolTest::createInfoConstructEmptyPool() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DescriptorPoolCreateInfo{5, {
         {DescriptorType::InputAttachment, 2},
         {DescriptorType::UniformBuffer, 0},
     }};
-    CORRADE_COMPARE(out.str(), "Vk::DescriptorPoolCreateInfo: pool 1 of Vk::DescriptorType::UniformBuffer has no descriptors\n");
+    CORRADE_COMPARE(out, "Vk::DescriptorPoolCreateInfo: pool 1 of Vk::DescriptorType::UniformBuffer has no descriptors\n");
 }
 
 void DescriptorPoolTest::createInfoConstructNoInit() {

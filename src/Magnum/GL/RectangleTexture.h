@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -54,7 +55,7 @@ See also @ref AbstractTexture documentation for more information.
 Common usage is to fully configure all texture parameters and then set the
 data from e.g. @ref Image2D. Example configuration:
 
-@snippet MagnumGL.cpp RectangleTexture-usage
+@snippet GL.cpp RectangleTexture-usage
 
 In a shader, the texture is used via @glsl sampler2DRect @ce,
 @glsl sampler2DRectShadow @ce, @glsl isampler2DRect @ce or @glsl usampler2DRect @ce.
@@ -393,7 +394,7 @@ class MAGNUM_GL_EXPORT RectangleTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp RectangleTexture-image1
+         * @snippet GL.cpp RectangleTexture-image1
          */
         Image2D image(Image2D&& image);
 
@@ -425,7 +426,7 @@ class MAGNUM_GL_EXPORT RectangleTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp RectangleTexture-image2
+         * @snippet GL.cpp RectangleTexture-image2
          */
         BufferImage2D image(BufferImage2D&& image, BufferUsage usage);
 
@@ -445,7 +446,7 @@ class MAGNUM_GL_EXPORT RectangleTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp RectangleTexture-compressedImage1
+         * @snippet GL.cpp RectangleTexture-compressedImage1
          */
         CompressedImage2D compressedImage(CompressedImage2D&& image);
 
@@ -480,7 +481,7 @@ class MAGNUM_GL_EXPORT RectangleTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp RectangleTexture-compressedImage2
+         * @snippet GL.cpp RectangleTexture-compressedImage2
          */
         CompressedBufferImage2D compressedImage(CompressedBufferImage2D&& image, BufferUsage usage);
 
@@ -499,7 +500,7 @@ class MAGNUM_GL_EXPORT RectangleTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp RectangleTexture-subImage1
+         * @snippet GL.cpp RectangleTexture-subImage1
          */
         Image2D subImage(const Range2Di& range, Image2D&& image);
 
@@ -532,7 +533,7 @@ class MAGNUM_GL_EXPORT RectangleTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp RectangleTexture-subImage2
+         * @snippet GL.cpp RectangleTexture-subImage2
          */
         BufferImage2D subImage(const Range2Di& range, BufferImage2D&& image, BufferUsage usage);
 
@@ -557,7 +558,7 @@ class MAGNUM_GL_EXPORT RectangleTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp RectangleTexture-compressedSubImage1
+         * @snippet GL.cpp RectangleTexture-compressedSubImage1
          */
         CompressedImage2D compressedSubImage(const Range2Di& range, CompressedImage2D&& image);
 
@@ -597,7 +598,7 @@ class MAGNUM_GL_EXPORT RectangleTexture: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp RectangleTexture-compressedSubImage2
+         * @snippet GL.cpp RectangleTexture-compressedSubImage2
          */
         CompressedBufferImage2D compressedSubImage(const Range2Di& range, CompressedBufferImage2D&& image, BufferUsage usage);
 

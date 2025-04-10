@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Array.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Vk/Device.h"
 #include "Magnum/Vk/MemoryAllocateInfo.h"
@@ -117,10 +117,10 @@ void MemoryTest::requirementsAlignedSizeZeroAlignement() {
     VkMemoryRequirements2 vkRequirements{};
     vkRequirements.memoryRequirements.size = 16384;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MemoryRequirements{vkRequirements}.alignedSize(0);
-    CORRADE_COMPARE(out.str(), "Vk::MemoryRequirements::alignedSize(): alignment can't be zero\n");
+    CORRADE_COMPARE(out, "Vk::MemoryRequirements::alignedSize(): alignment can't be zero\n");
 }
 
 void MemoryTest::allocateInfoConstruct() {
@@ -170,25 +170,25 @@ void MemoryTest::mapWrappedUnknownSize() {
     Device device{NoCreate};
     Memory memory = Memory::wrap(device, {}, 0);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     memory.map();
     memory.mapRead();
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Vk::Memory::map(): the memory has unknown size, you have to specify it explicitly\n"
         "Vk::Memory::mapRead(): the memory has unknown size, you have to specify it explicitly\n");
 }
 
 void MemoryTest::debugMemoryFlag() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << MemoryFlag::HostCached << MemoryFlag(0xdeadcafe);
-    CORRADE_COMPARE(out.str(), "Vk::MemoryFlag::HostCached Vk::MemoryFlag(0xdeadcafe)\n");
+    CORRADE_COMPARE(out, "Vk::MemoryFlag::HostCached Vk::MemoryFlag(0xdeadcafe)\n");
 }
 
 void MemoryTest::debugMemoryFlags() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << (MemoryFlag::HostCached|MemoryFlag::LazilyAllocated) << MemoryFlags{};
-    CORRADE_COMPARE(out.str(), "Vk::MemoryFlag::HostCached|Vk::MemoryFlag::LazilyAllocated Vk::MemoryFlags{}\n");
+    CORRADE_COMPARE(out, "Vk::MemoryFlag::HostCached|Vk::MemoryFlag::LazilyAllocated Vk::MemoryFlags{}\n");
 }
 
 }}}}

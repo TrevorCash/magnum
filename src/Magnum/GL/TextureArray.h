@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -66,13 +67,13 @@ See @ref Texture documentation for introduction.
 Common usage is to fully configure all texture parameters and then set the
 data. Example configuration:
 
-@snippet MagnumGL.cpp TextureArray-usage1
+@snippet GL.cpp TextureArray-usage1
 
 It is often more convenient to first allocate the memory for all layers by
 calling @ref setStorage() and then specify each layer separately using
 @ref setSubImage():
 
-@snippet MagnumGL.cpp TextureArray-usage2
+@snippet GL.cpp TextureArray-usage2
 
 In shader, the texture is used via @glsl sampler1DArray @ce / @glsl sampler2DArray @ce,
 @glsl sampler1DArrayShadow @ce / @glsl sampler1DArrayShadow @ce, @glsl isampler1DArray @ce
@@ -198,7 +199,7 @@ TextureArray: public AbstractTexture {
          * @requires_gles Texture views are not available in WebGL.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 2>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 2, int>::type = 0>
         #endif
         static TextureArray<dimensions> view(CubeMapTexture& original, TextureFormat internalFormat, Int levelOffset, Int levelCount, Int layerOffset, Int layerCount);
 
@@ -219,7 +220,7 @@ TextureArray: public AbstractTexture {
          * @requires_gles Texture views are not available in WebGL.
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 2>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 2, int>::type = 0>
         #endif
         static TextureArray<dimensions> view(CubeMapTextureArray& original, TextureFormat internalFormat, Int levelOffset, Int levelCount, Int layerOffset, Int layerCount);
         #endif
@@ -558,22 +559,21 @@ TextureArray: public AbstractTexture {
             return *this;
         }
 
-        #ifndef MAGNUM_TARGET_WEBGL
         /**
          * @brief @copybrief Texture::setDepthStencilMode()
          * @return Reference to self (for method chaining)
          *
          * See @ref Texture::setDepthStencilMode() for more information.
          * @requires_gl43 Extension @gl_extension{ARB,stencil_texturing}
-         * @requires_gles31 Stencil texturing is not available in OpenGL ES 3.0
-         *      and older.
-         * @requires_gles Stencil texturing is not available in WebGL.
+         * @requires_gles31 Extension @m_class{m-doc-external} [ANGLE_stencil_texturing](https://chromium.googlesource.com/angle/angle/+/HEAD/extensions/ANGLE_stencil_texturing.txt)
+         *      in OpenGL ES 3.0.
+         * @requires_webgl_extension WebGL 2.0 and extension
+         *      @webgl_extension{WEBGL,stencil_texturing}
          */
         TextureArray<dimensions>& setDepthStencilMode(SamplerDepthStencilMode mode) {
             AbstractTexture::setDepthStencilMode(mode);
             return *this;
         }
-        #endif
 
         /**
          * @brief @copybrief Texture::setStorage()
@@ -621,7 +621,7 @@ TextureArray: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp TextureArray-image1
+         * @snippet GL.cpp TextureArray-image1
          */
         Image<dimensions+1> image(Int level, Image<dimensions+1>&& image);
 
@@ -657,7 +657,7 @@ TextureArray: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp TextureArray-image2
+         * @snippet GL.cpp TextureArray-image2
          */
         BufferImage<dimensions+1> image(Int level, BufferImage<dimensions+1>&& image, BufferUsage usage);
 
@@ -682,7 +682,7 @@ TextureArray: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp TextureArray-compressedImage1
+         * @snippet GL.cpp TextureArray-compressedImage1
          */
         CompressedImage<dimensions+1> compressedImage(Int level, CompressedImage<dimensions+1>&& image);
 
@@ -721,7 +721,7 @@ TextureArray: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp TextureArray-compressedImage2
+         * @snippet GL.cpp TextureArray-compressedImage2
          */
         CompressedBufferImage<dimensions+1> compressedImage(Int level, CompressedBufferImage<dimensions+1>&& image, BufferUsage usage);
 
@@ -745,7 +745,7 @@ TextureArray: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp TextureArray-subImage1
+         * @snippet GL.cpp TextureArray-subImage1
          */
         Image<dimensions+1> subImage(Int level, const RangeTypeFor<dimensions+1, Int>& range, Image<dimensions+1>&& image);
 
@@ -782,7 +782,7 @@ TextureArray: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp TextureArray-subImage2
+         * @snippet GL.cpp TextureArray-subImage2
          */
         BufferImage<dimensions+1> subImage(Int level, const RangeTypeFor<dimensions+1, Int>& range, BufferImage<dimensions+1>&& image, BufferUsage usage);
 
@@ -812,7 +812,7 @@ TextureArray: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp TextureArray-compressedSubImage1
+         * @snippet GL.cpp TextureArray-compressedSubImage1
          */
         CompressedImage<dimensions+1> compressedSubImage(Int level, const RangeTypeFor<dimensions+1, Int>& range, CompressedImage<dimensions+1>&& image);
 
@@ -855,7 +855,7 @@ TextureArray: public AbstractTexture {
          *
          * Convenience alternative to the above, example usage:
          *
-         * @snippet MagnumGL.cpp TextureArray-compressedSubImage2
+         * @snippet GL.cpp TextureArray-compressedSubImage2
          */
         CompressedBufferImage<dimensions+1> compressedSubImage(Int level, const RangeTypeFor<dimensions+1, Int>& range, CompressedBufferImage<dimensions+1>&& image, BufferUsage usage);
         #endif

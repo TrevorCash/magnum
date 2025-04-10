@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -24,10 +25,9 @@
 */
 
 #include <new>
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/Containers/Array.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Vk/BufferCreateInfo.h"
 
@@ -155,10 +155,10 @@ void BufferTest::dedicatedMemoryNotDedicated() {
     Buffer buffer{NoCreate};
     CORRADE_VERIFY(!buffer.hasDedicatedMemory());
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     buffer.dedicatedMemory();
-    CORRADE_COMPARE(out.str(), "Vk::Buffer::dedicatedMemory(): buffer doesn't have a dedicated memory\n");
+    CORRADE_COMPARE(out, "Vk::Buffer::dedicatedMemory(): buffer doesn't have a dedicated memory\n");
 }
 
 void BufferTest::bufferCopyConstruct() {
@@ -210,17 +210,17 @@ void BufferTest::bufferCopyConvertDisallowed() {
     BufferCopy copy{0, 0, 0};
     copy->pNext = &copy;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     copy.vkBufferCopy();
-    CORRADE_COMPARE(out.str(), "Vk::BufferCopy: disallowing conversion to VkBufferCopy with non-empty pNext to prevent information loss\n");
+    CORRADE_COMPARE(out, "Vk::BufferCopy: disallowing conversion to VkBufferCopy with non-empty pNext to prevent information loss\n");
 }
 
 void BufferTest::copyBufferInfoConstruct() {
     /* The double reinterpret_cast is needed because the handle is an uint64_t
        instead of a pointer on 32-bit builds and only this works on both */
-    auto a = reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xdead));
-    auto b = reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(0xcafe));
+    auto a = reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xdead}));
+    auto b = reinterpret_cast<VkBuffer>(reinterpret_cast<void*>(std::size_t{0xcafe}));
 
     CopyBufferInfo info{a, b, {
         {3, 0, 0},

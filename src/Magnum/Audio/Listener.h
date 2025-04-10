@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2015 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -50,7 +51,7 @@ features, managed in one or more @ref PlayableGroup instances. In order to
 reflect transformation changes affecting the scene, you need to call
 @ref update() after each change (or simply every frame):
 
-@snippet MagnumAudio-scenegraph.cpp Listener-usage
+@snippet Audio-scenegraph.cpp Listener-usage
 
 For two-dimensional scenes simply replace all `3D` with `2D`. See @ref Playable
 for more info about how to set up and group audio sources.

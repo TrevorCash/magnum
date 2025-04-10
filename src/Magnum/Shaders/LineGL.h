@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -25,13 +26,16 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef MAGNUM_TARGET_GLES2
+#if defined(MAGNUM_TARGET_GL) && !defined(MAGNUM_TARGET_GLES2)
 /** @file
  * @brief Class @ref Magnum::Shaders::LineGL, typedef @ref Magnum::Shaders::LineGL2D, @ref Magnum::Shaders::LineGL3D
  * @m_since_latest
  */
 #endif
 
+#include "Magnum/configure.h"
+
+#if defined(MAGNUM_TARGET_GL) && !defined(MAGNUM_TARGET_GLES2)
 #include <Corrade/Utility/Move.h>
 
 #include "Magnum/DimensionTraits.h"
@@ -40,7 +44,6 @@
 #include "Magnum/Shaders/glShaderWrapper.h"
 #include "Magnum/Shaders/visibility.h"
 
-#ifndef MAGNUM_TARGET_GLES2
 namespace Magnum { namespace Shaders {
 
 namespace Implementation {
@@ -71,6 +74,10 @@ styles, and antialiased independently of MSAA being used or not.
 
 @experimental
 
+@note This class is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+
 @requires_gl30 Extension @gl_extension{EXT,gpu_shader4}
 @requires_gles30 Requires integer support in shaders which is not available in
     OpenGL ES 2.0.
@@ -92,13 +99,13 @@ to convert an existing line @ref Trade::MeshData to a form accepted by this
 shader with @ref MeshTools::generateLines() and then compile it to a
 @ref GL::Mesh with @ref MeshTools::compileLines():
 
-@snippet MagnumShaders-gl.cpp LineGL-usage
+@snippet Shaders-gl.cpp LineGL-usage
 
 For rendering use @ref setTransformationProjectionMatrix(),
 @ref setColor(), @ref setWidth() and others. It's important to pass viewport
 size in @ref setViewportSize() as the line width is interpreted relative to it.
 
-@snippet MagnumShaders-gl.cpp LineGL-usage2
+@snippet Shaders-gl.cpp LineGL-usage2
 
 @subsection Shaders-LineGL-usage-triangulation Line triangulation
 
@@ -166,7 +173,7 @@ single-color background, you can @ref setBackgroundColor() to a color matching
 the background and keep blending disabled, but note that you may get artifacts
 if the lines are self-overlapping.
 
-@snippet MagnumShaders-gl.cpp LineGL-usage-antialiasing
+@snippet Shaders-gl.cpp LineGL-usage-antialiasing
 
 @subsection Shaders-LineGL-usage-3d Lines in 3D
 
@@ -221,7 +228,7 @@ equivalent to the @ref Shaders-LineGL-usage "snippet at the top" would look
 like this --- note that @ref setViewportSize() is an immediate uniform
 here as well, as it's assumed to be set globally and rarely changed:
 
-@snippet MagnumShaders-gl.cpp LineGL-ubo
+@snippet Shaders-gl.cpp LineGL-ubo
 
 For a multidraw workflow enable @ref Flag::MultiDraw and supply desired
 material and draw count via @ref Configuration::setMaterialCount() and
@@ -1025,7 +1032,8 @@ template<UnsignedInt dimensions> class MAGNUM_SHADERS_EXPORT LineGL<dimensions>:
          *
          * Unlike for example the SVG specification that uses
          * @ref LineCapStyle::Butt by default, the default value is
-         * @ref LineCapStyle::Square, in order to make zero-length lines visible.
+         * @ref LineCapStyle::Square, in order to make zero-length lines
+         * visible.
          * @see @ref LineGL::capStyle()
          */
         Configuration& setCapStyle(LineCapStyle style) {
@@ -1142,12 +1150,20 @@ template<UnsignedInt dimensions> class LineGL<dimensions>::CompileState: public 
 /**
 @brief 2D line OpenGL shader
 @m_since_latest
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 */
 typedef LineGL<2> LineGL2D;
 
 /**
 @brief 3D LineGL OpenGL shader
 @m_since_latest
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 */
 typedef LineGL<3> LineGL3D;
 
@@ -1171,8 +1187,10 @@ namespace Implementation {
 #endif
 
 }}
-#else
+#elif defined(MAGNUM_TARGET_GLES2)
 #error this header is not available in the OpenGL ES 2.0 / WebGL 1.0 build
+#else
+#error this header is available only in the OpenGL build
 #endif
 
 #endif

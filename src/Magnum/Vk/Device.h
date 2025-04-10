@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -81,7 +82,7 @@ That's done by creating an empty @ref Queue instance and then referencing it
 from @ref DeviceCreateInfo::addQueues(). After the device is constructed, the
 queue gets populated and is ready to be used.
 
-@snippet MagnumVk.cpp Device-creation-construct-queue
+@snippet Vk.cpp Device-creation-construct-queue
 
 In the above snippet, we requested a graphics queue via a convenience API. The
 information about available queues and other device properties is stored in a
@@ -97,7 +98,7 @@ both string names as well as predefined *device* extensions from the
 @ref Extensions namespace. Later on, presence of predefined extensions can be
 checked with @ref isExtensionEnabled().
 
-@snippet MagnumVk.cpp Device-creation-extensions
+@snippet Vk.cpp Device-creation-extensions
 
 In addition to extensions, you'll be usually enabling features as well. These
 are all exposed in a giant @ref DeviceFeatures enum and you can simply OR them
@@ -107,7 +108,7 @@ enabled by adding a corresponding structure to the `pNext` chain. As with
 extensions, the set of enabled features can be later checked with
 @ref enabledFeatures().
 
-@snippet MagnumVk.cpp Device-creation-features
+@snippet Vk.cpp Device-creation-features
 
 However, usually you'll be checking for extension and feature availability
 first, which is doable through
@@ -118,7 +119,7 @@ make use of the enum set operations and simply mask away features that are not
 available --- however note that some features also require an extension to be
 explicitly enabled.
 
-@snippet MagnumVk.cpp Device-creation-check-supported
+@snippet Vk.cpp Device-creation-check-supported
 
 With both @ref Instance and @ref Device created, you can proceed to setting up
 a @ref CommandPool and a @ref Pipeline, which will then need a
@@ -150,7 +151,7 @@ implementations), and at runtime you query those features in appropriate cases
 other features, all APIs that require a particular Portability Subset feature
 are marked as such and also listed among others at @ref requires-vk-feature.
 
-@snippet MagnumVk.cpp Device-creation-portability-subset
+@snippet Vk.cpp Device-creation-portability-subset
 
 @see @ref vulkan-wrapping-optimizing-properties
 
@@ -186,7 +187,7 @@ In addition to the common properties explained in @ref vulkan-wrapping-raw,
 the @ref Device contains device-level Vulkan function pointers, accessible
 through @ref operator->():
 
-@snippet MagnumVk.cpp Device-function-pointers
+@snippet Vk.cpp Device-function-pointers
 
 These functions are by default not accessible globally (and neither there is a
 global "current instance"), which is done in order to avoid multiple
@@ -196,7 +197,7 @@ operate on the same instance, or when writing quick prototype code --- and then
 it's possible to populate those using @ref populateGlobalFunctionPointers().
 Compared to the above, the same custom code would then look like this:
 
-@snippet MagnumVk.cpp Device-global-function-pointers
+@snippet Vk.cpp Device-global-function-pointers
 
 Similarly you can use @ref Instance::populateGlobalFunctionPointers() to
 populate instance-level global function pointers.
@@ -212,7 +213,7 @@ empty instance (for example as a class member) and do a delayed creation by
 moving a new instance over the empty one. Here you have to use the
 @ref create() function instead:
 
-@snippet MagnumVk.cpp Device-delayed-creation
+@snippet Vk.cpp Device-delayed-creation
 
 Similar case is with @ref wrap() --- instead of being @cpp static @ce, you have
 to call it on a @ref Device(NoCreateT) "NoCreate"'d instance. The @ref Instance
@@ -427,7 +428,7 @@ class MAGNUM_VK_EXPORT Device {
          * also in the @ref vulkan-support "Vulkan support tables". Search
          * complexity is @f$ \mathcal{O}(1) @f$. Example usage:
          *
-         * @snippet MagnumVk.cpp Device-isExtensionEnabled
+         * @snippet Vk.cpp Device-isExtensionEnabled
          *
          * Note that this returns @cpp true @ce only if given extension is
          * supported by the driver *and* it was enabled via

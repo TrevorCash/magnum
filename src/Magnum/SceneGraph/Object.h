@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -61,18 +62,18 @@ for introduction.
 Common usage is to typedef @ref Object with desired transformation type to save
 unnecessary typing later, along with @ref Scene and possibly other types, e.g.:
 
-@snippet MagnumSceneGraph.cpp Object-typedef
+@snippet SceneGraph.cpp Object-typedef
 
 Uses @ref Corrade::Containers::LinkedList for efficient hierarchy management.
 Traversing through the list of child objects can be done using range-based for:
 
-@snippet MagnumSceneGraph.cpp Object-children-range
+@snippet SceneGraph.cpp Object-children-range
 
 Or, if you need more flexibility, like in the following code. It is also
 possible to go in reverse order using @ref Corrade::Containers::LinkedList::last()
 and @ref previousSibling().
 
-@snippet MagnumSceneGraph.cpp Object-children
+@snippet SceneGraph.cpp Object-children
 
 @section SceneGraph-Object-explicit-specializations Explicit template specializations
 
@@ -137,6 +138,18 @@ template<class Transformation> class Object: public AbstractObject<Transformatio
 
         /** @brief Moving is not allowed */
         Object<Transformation>& operator=(Object<Transformation>&&) = delete;
+
+        /**
+         * @brief Add a feature
+         * @m_since_latest
+         *
+         * Like @ref AbstractObject::addFeature(), but passing a concrete
+         * object type to the feature constructor, instead of just the base
+         * @ref AbstractObject.
+         */
+        template<class U, class ...Args> U& addFeature(Args&&... args) {
+            return *(new U{*this, std::forward<Args>(args)...});
+        }
 
         /**
          * @{ @name Scene hierarchy
@@ -400,8 +413,16 @@ template<class Transformation> class Object: public AbstractObject<Transformatio
 
         typedef Implementation::ObjectFlag Flag;
         typedef Implementation::ObjectFlags Flags;
-        UnsignedShort counter;
+        UnsignedInt counter;
         Flags flags;
+        /* 3 byte padding after flags. Assuming the object is pointer-aligned
+           on 64bit and the Transformation data are a multiple of 8 bytes
+           (which is the case for all except MatrixTransformation2D), we don't
+           save anything by making the counter just 16-bit, and only cause
+           unnecessary suffering for users that have large scenes. Most of the
+           memory overhead is from all those loose allocations anyway (i.e.,
+           causing the Object instance to be put in a multiple of 16 bytes
+           even, instead of 8). */
 };
 
 }}

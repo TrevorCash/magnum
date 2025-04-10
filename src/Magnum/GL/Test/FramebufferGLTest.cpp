@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Pablo Escobar <mail@rvrs.in>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,9 +25,7 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/TestSuite/Compare/Container.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Image.h"
 #include "Magnum/ImageView.h"
@@ -1714,10 +1713,10 @@ void FramebufferGLTest::readViewNullptr() {
 
     MutableImageView2D view{DataStorage, PixelFormat::RGBA, PixelType::UnsignedByte, {8, 16}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     framebuffer.read({{}, {8, 16}}, view);
-    CORRADE_COMPARE(out.str(), "GL::AbstractFramebuffer::read(): image view is nullptr\n");
+    CORRADE_COMPARE(out, "GL::AbstractFramebuffer::read(): image view is nullptr\n");
 }
 
 void FramebufferGLTest::readViewBadSize() {
@@ -1741,10 +1740,10 @@ void FramebufferGLTest::readViewBadSize() {
     char data[(DataOffset + 8*15)*sizeof(Color4ub)]{};
     MutableImageView2D view{DataStorage, PixelFormat::RGBA, PixelType::UnsignedByte, {8, 15}, data};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     framebuffer.read({{}, {8, 16}}, view);
-    CORRADE_COMPARE(out.str(), "GL::AbstractFramebuffer::read(): expected image view size Vector(8, 16) but got Vector(8, 15)\n");
+    CORRADE_COMPARE(out, "GL::AbstractFramebuffer::read(): expected image view size Vector(8, 16) but got Vector(8, 15)\n");
 }
 
 #ifndef MAGNUM_TARGET_GLES2

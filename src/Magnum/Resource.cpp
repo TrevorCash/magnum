@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -27,7 +28,6 @@
 
 namespace Magnum {
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 Debug& operator<<(Debug& debug, const ResourceState value) {
     debug << "ResourceState" << Debug::nospace;
 
@@ -46,12 +46,11 @@ Debug& operator<<(Debug& debug, const ResourceState value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(UnsignedByte(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << UnsignedByte(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const ResourceKey& value) {
     return debug << "ResourceKey(0x" << Debug::nospace << static_cast<const Utility::HashDigest<sizeof(std::size_t)>&>(value) << Debug::nospace << ")";
 }
-#endif
 
 }

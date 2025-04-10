@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -30,31 +31,25 @@
 
 namespace Magnum {
 
-template<UnsignedInt dimensions, class T> ImageView<dimensions, T>::ImageView(const PixelStorage storage, const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, const Containers::ArrayView<ErasedType> data, const ImageFlags<dimensions> flags) noexcept: ImageView{storage, format, {},  pixelFormatSize(format), size, data, flags} {}
+template<UnsignedInt dimensions, class T> ImageView<dimensions, T>::ImageView(const PixelStorage storage, const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, const Containers::ArrayView<ErasedType> data, const ImageFlags<dimensions> flags) noexcept: ImageView{storage, format, {}, (CORRADE_CONSTEXPR_ASSERT(!isPixelFormatImplementationSpecific(format), "ImageView: can't determine size of an implementation-specific pixel format" << Debug::hex << pixelFormatUnwrap(format) << Debug::nospace << ", pass it explicitly"), pixelFormatSize(format)), size, data, flags} {}
 
 template<UnsignedInt dimensions, class T> ImageView<dimensions, T>::ImageView(const PixelStorage storage, const UnsignedInt format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, const Containers::ArrayView<ErasedType> data, const ImageFlags<dimensions> flags) noexcept: ImageView{storage, pixelFormatWrap(format), formatExtra, pixelSize, size, data, flags} {}
 
-template<UnsignedInt dimensions, class T> ImageView<dimensions, T>::ImageView(const PixelStorage storage, const PixelFormat format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, const Containers::ArrayView<ErasedType> data, const ImageFlags<dimensions> flags) noexcept: _storage{storage}, _format{format}, _formatExtra{formatExtra}, _pixelSize{pixelSize}, _flags{flags}, _size{size}, _data{reinterpret_cast<Type*>(data.data()), data.size()} {
-    #ifdef MAGNUM_BUILD_DEPRECATED
+template<UnsignedInt dimensions, class T> ImageView<dimensions, T>::ImageView(const PixelStorage storage, const PixelFormat format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, const Containers::ArrayView<ErasedType> data, const ImageFlags<dimensions> flags) noexcept: _storage{storage}, _format{format}, _formatExtra{formatExtra}, _pixelSize{UnsignedByte(pixelSize)}, _flags{flags}, _size{size}, _data{reinterpret_cast<Type*>(data.data()), data.size()} {
     #ifndef CORRADE_NO_ASSERT
-    if(size.product() && !_data && !_data.size())
-        Warning{} << "ImageView: passing empty data to a non-empty view is deprecated, use a constructor without the data parameter instead";
-    #endif
-    CORRADE_ASSERT(!_data || Implementation::imageDataSize(*this) <= _data.size(), "ImageView: data too small, got" << _data.size() << "but expected at least" << Implementation::imageDataSize(*this) << "bytes", );
-    #else
+    Implementation::checkPixelSize("ImageView:", pixelSize);
     CORRADE_ASSERT(Implementation::imageDataSize(*this) <= _data.size(), "ImageView: data too small, got" << _data.size() << "but expected at least" << Implementation::imageDataSize(*this) << "bytes", );
-    #endif
-    #ifndef CORRADE_NO_ASSERT
     Implementation::checkImageFlagsForSize("ImageView:", flags, size);
     #endif
 }
 
-template<UnsignedInt dimensions, class T> ImageView<dimensions, T>::ImageView(const PixelStorage storage, const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, const ImageFlags<dimensions> flags) noexcept: ImageView{storage, format, {}, pixelFormatSize(format), size, flags} {}
+template<UnsignedInt dimensions, class T> ImageView<dimensions, T>::ImageView(const PixelStorage storage, const PixelFormat format, const VectorTypeFor<dimensions, Int>& size, const ImageFlags<dimensions> flags) noexcept: ImageView{storage, format, {}, (CORRADE_CONSTEXPR_ASSERT(!isPixelFormatImplementationSpecific(format), "ImageView: can't determine size of an implementation-specific pixel format" << Debug::hex << pixelFormatUnwrap(format) << Debug::nospace << ", pass it explicitly"), pixelFormatSize(format)), size, flags} {}
 
 template<UnsignedInt dimensions, class T> ImageView<dimensions, T>::ImageView(const PixelStorage storage, const UnsignedInt format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, const ImageFlags<dimensions> flags) noexcept: ImageView{storage, pixelFormatWrap(format), formatExtra, pixelSize, size, flags} {}
 
-template<UnsignedInt dimensions, class T> ImageView<dimensions, T>::ImageView(const PixelStorage storage, const PixelFormat format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, const ImageFlags<dimensions> flags) noexcept: _storage{storage}, _format{format}, _formatExtra{formatExtra}, _pixelSize{pixelSize}, _flags{flags}, _size{size}, _data{nullptr} {
+template<UnsignedInt dimensions, class T> ImageView<dimensions, T>::ImageView(const PixelStorage storage, const PixelFormat format, const UnsignedInt formatExtra, const UnsignedInt pixelSize, const VectorTypeFor<dimensions, Int>& size, const ImageFlags<dimensions> flags) noexcept: _storage{storage}, _format{format}, _formatExtra{formatExtra}, _pixelSize{UnsignedByte(pixelSize)}, _flags{flags}, _size{size}, _data{nullptr} {
     #ifndef CORRADE_NO_ASSERT
+    Implementation::checkPixelSize("ImageView:", pixelSize);
     Implementation::checkImageFlagsForSize("ImageView:", flags, size);
     #endif
 }
@@ -93,7 +88,6 @@ template<UnsignedInt dimensions, class T> std::pair<VectorTypeFor<dimensions, st
     return Implementation::compressedImageDataProperties<dimensions>(*this);
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 template class MAGNUM_EXPORT ImageView<1, const char>;
 template class MAGNUM_EXPORT ImageView<2, const char>;
 template class MAGNUM_EXPORT ImageView<3, const char>;
@@ -107,6 +101,5 @@ template class MAGNUM_EXPORT CompressedImageView<3, const char>;
 template class MAGNUM_EXPORT CompressedImageView<1, char>;
 template class MAGNUM_EXPORT CompressedImageView<2, char>;
 template class MAGNUM_EXPORT CompressedImageView<3, char>;
-#endif
 
 }

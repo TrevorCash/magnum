@@ -72,7 +72,7 @@ environment:
   - TARGET: desktop
     COMPILER: msvc
     # Same reasoning as in Corrade for /EHsc
-    COMPILER_EXTRA: -DCMAKE_CXX_FLAGS="/permissive- /EHsc" -DMSVC_COMPATIBILITY=OFF
+    COMPILER_EXTRA: -DCMAKE_CXX_FLAGS="/permissive- /EHsc" -DCORRADE_MSVC_COMPATIBILITY=OFF
     PLATFORM: x64
     APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
     APPVEYOR_JOB_NAME: windows-conforming-msvc2019
@@ -80,8 +80,11 @@ environment:
     ENABLE_VULKAN: ON
   - TARGET: desktop
     COMPILER: msvc
-    # Not playing with fire and using /EHsc on 2022 as well
-    COMPILER_EXTRA: -DCMAKE_CXX_FLAGS="/permissive- /EHsc" -DMSVC_COMPATIBILITY=OFF
+    # Not playing with fire and using /EHsc on 2022 as well. Testing with the
+    # conformant preprocessor also, but just on one of the two permissive
+    # builds to avoid a false impression that the differences are depending on
+    # /permissive- alone.
+    COMPILER_EXTRA: -DCMAKE_CXX_FLAGS="/permissive- /EHsc /Zc:preprocessor" -DCORRADE_MSVC_COMPATIBILITY=OFF
     PLATFORM: x64
     APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
     APPVEYOR_JOB_NAME: windows-conforming-msvc2022
@@ -120,8 +123,9 @@ install:
 - 7z x ninja-win.zip -oC:/tools
 - set PATH=C:/tools;%PATH%
 
-# Codecov uploader
-- IF "%TARGET%" == "desktop" IF "%COMPILER%" == "mingw" appveyor DownloadFile https://uploader.codecov.io/latest/windows/codecov.exe -FileName C:/tools/codecov.exe
+# Codecov uploader and grcov. Used for MinGW and clang-cl.
+- IF "%TARGET%" == "desktop" IF NOT "%COMPILER%" == "msvc" appveyor DownloadFile https://github.com/mozilla/grcov/releases/download/v0.8.20/grcov-x86_64-pc-windows-msvc.zip && 7z x grcov-x86_64-pc-windows-msvc.zip -oC:/tools
+- IF "%TARGET%" == "desktop" IF NOT "%COMPILER%" == "msvc" appveyor DownloadFile https://uploader.codecov.io/latest/windows/codecov.exe -FileName C:/tools/codecov.exe
 
 - IF "%TARGET_GLES2%" == "ON" set TARGET_GLES3=OFF
 - IF "%TARGET_GLES2%" == "OFF" set TARGET_GLES3=ON
@@ -139,11 +143,12 @@ install:
 - IF "%TARGET%" == "desktop" set BUILD_APPLICATIONS=YES
 - IF "%TARGET%" == "desktop-gles" set BUILD_APPLICATIONS=NO
 
-# SDL2
-- IF "%BUILD_APPLICATIONS%" == "YES" IF "%COMPILER:~0,4%" == "msvc" IF NOT EXIST %APPVEYOR_BUILD_FOLDER%\SDL2-devel-2.0.9-VC.zip appveyor DownloadFile http://www.libsdl.org/release/SDL2-devel-2.0.9-VC.zip
-- IF "%BUILD_APPLICATIONS%" == "YES" IF "%COMPILER:~0,4%" == "msvc" 7z x SDL2-devel-2.0.9-VC.zip && ren SDL2-2.0.9 SDL
-- IF "%BUILD_APPLICATIONS%" == "YES" IF "%COMPILER%" == "mingw" IF NOT EXIST %APPVEYOR_BUILD_FOLDER%\SDL2-devel-2.0.9-mingw.tar.gz appveyor DownloadFile http://libsdl.org/release/SDL2-devel-2.0.9-mingw.tar.gz
-- IF "%BUILD_APPLICATIONS%" == "YES" IF "%COMPILER%" == "mingw" 7z x SDL2-devel-2.0.9-mingw.tar.gz & 7z x SDL2-devel-2.0.9-mingw.tar & ren SDL2-2.0.9 SDL
+# SDL2. 2.24 is the oldest version that has CMake configs bundled in order to
+# verify that FindSDL2 does the correct thing.
+- IF "%BUILD_APPLICATIONS%" == "YES" IF "%COMPILER:~0,4%" == "msvc" appveyor DownloadFile https://github.com/libsdl-org/SDL/releases/download/release-2.24.0/SDL2-devel-2.24.0-VC.zip
+- IF "%BUILD_APPLICATIONS%" == "YES" IF "%COMPILER:~0,4%" == "msvc" 7z x SDL2-devel-2.24.0-VC.zip && ren SDL2-2.24.0 SDL
+- IF "%BUILD_APPLICATIONS%" == "YES" IF "%COMPILER%" == "mingw" appveyor DownloadFile https://github.com/libsdl-org/SDL/releases/download/release-2.24.0/SDL2-devel-2.24.0-mingw.zip
+- IF "%BUILD_APPLICATIONS%" == "YES" IF "%COMPILER%" == "mingw" 7z x SDL2-devel-2.24.0-mingw.zip && ren SDL2-2.24.0 SDL
 
 # GLFW
 - IF "%BUILD_APPLICATIONS%" == "YES" IF "%PLATFORM%" == "" IF NOT EXIST %APPVEYOR_BUILD_FOLDER%\glfw-3.2.1.bin.WIN32.zip appveyor DownloadFile https://github.com/glfw/glfw/releases/download/3.2.1/glfw-3.2.1.bin.WIN32.zip
@@ -174,7 +179,5 @@ build_script:
 
 cache:
 - ninja-win.zip -> package/ci/appveyor-cache-reset.txt
-- SDL2-devel-2.0.9-VC.zip -> package/ci/appveyor-cache-reset.txt
-- SDL2-devel-2.0.9-mingw.zip -> package/ci/appveyor-cache-reset.txt
 - openal-soft-1.19.1-bin.zip -> package/ci/appveyor-cache-reset.txt
 - glfw-3.2.1.bin.WIN64.zip -> package/ci/appveyor-cache-reset.txt

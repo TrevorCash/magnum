@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -29,6 +30,7 @@
 #include <Corrade/Containers/StringView.h>
 
 #include "Magnum/Text/Direction.h"
+#include "Magnum/Text/Feature.h"
 #include "Magnum/Text/Script.h"
 
 namespace Magnum { namespace Text {
@@ -131,6 +133,15 @@ void AbstractShaper::glyphOffsetsAdvancesInto(const Containers::StridedArrayView
        otherwise it might not yet have everything properly set up */
     if(_glyphCount)
         doGlyphOffsetsAdvancesInto(offsets, advances);
+}
+
+void AbstractShaper::glyphClustersInto(const Containers::StridedArrayView1D<UnsignedInt>& clusters) const {
+    CORRADE_ASSERT(clusters.size() == _glyphCount,
+        "Text::AbstractShaper::glyphClustersInto(): expected the clusters view to have a size of" << _glyphCount << "but got" << clusters.size(), );
+    /* Call into the implementation only if there's actually anything shaped,
+       otherwise it might not yet have everything properly set up */
+    if(_glyphCount)
+        doGlyphClustersInto(clusters);
 }
 
 }}

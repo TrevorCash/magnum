@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -715,8 +716,7 @@ class MAGNUM_GL_EXPORT Shader: public AbstractObject {
         #else
         /* Otherwise passing a char* is ambiguous between this and the
            StringView overload. Sigh, C++. */
-        template<class U, class = typename std::enable_if<std::is_same<U&&, Containers::String&&>::value>::type>
-        Shader& addSource(U&& source) {
+        template<class U, typename std::enable_if<std::is_same<U&&, Containers::String&&>::value, int>::type = 0> Shader& addSource(U&& source) {
             return addSourceInternal(Utility::move(source));
         }
         #endif

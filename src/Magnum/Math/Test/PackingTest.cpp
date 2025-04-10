@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -215,6 +216,9 @@ void PackingTest::packSigned() {
     {
         #if defined(CORRADE_TARGET_MSVC) || (defined(CORRADE_TARGET_ANDROID) && defined(CORRADE_TARGET_32BIT) && defined(CORRADE_TARGET_X86))
         CORRADE_EXPECT_FAIL("Long double (de)normalization is broken on MSVC and 32-bit x86 Android.");
+        #elif defined(CORRADE_TARGET_APPLE) && defined(CORRADE_TARGET_ARM)
+        /* Returns std::numeric_limits<Long>::min() */
+        CORRADE_EXPECT_FAIL("Negative signed long double (de)normalization is broken on ARM Mac.");
         #endif
         CORRADE_COMPARE(Math::pack<Long>(-1.0l), std::numeric_limits<Long>::min()+1);
     }

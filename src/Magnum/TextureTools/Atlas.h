@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -29,6 +30,7 @@
  * @brief Class @ref Magnum::TextureTools::AtlasLandfill, enum @ref Magnum::TextureTools::AtlasLandfillFlag, enum set @ref Magnum::TextureTools::AtlasLandfillFlags, function @ref Magnum::TextureTools::atlas(), @ref Magnum::TextureTools::atlasArrayPowerOfTwo()
  */
 
+#include <initializer_list>
 #include <Corrade/Containers/Pointer.h>
 
 #include "Magnum/Magnum.h"
@@ -104,7 +106,7 @@ MAGNUM_TEXTURETOOLS_EXPORT Debug& operator<<(Debug& output, AtlasLandfillFlag va
 @brief Landfill texture atlas packer behavior flags
 @m_since_latest
 
-@see @ref Flags, @ref AtlasLandfill::setFlags(), @ref AtlasLandfill::addFlags(),
+@see @ref AtlasLandfill::setFlags(), @ref AtlasLandfill::addFlags(),
     @ref AtlasLandfill::clearFlags()
 */
 typedef Containers::EnumSet<AtlasLandfillFlag> AtlasLandfillFlags;
@@ -135,7 +137,7 @@ width set to 1024 and height unbounded. The algorithm by default makes all
 images the same orientation as that significantly improves the layout
 efficiency while not making any difference for texture mapping.
 
-@snippet MagnumTextureTools.cpp AtlasLandfill-usage
+@snippet TextureTools.cpp AtlasLandfill-usage
 
 Calculating a texture coordinate transformation matrix for a particular image
 can then be done with @ref atlasTextureCoordinateTransformation(), see its
@@ -148,7 +150,7 @@ linear rasterizer later, they can be disabled by clearing appropriate
 @ref add(const Containers::StridedArrayView1D<const Vector2i>&, const Containers::StridedArrayView1D<Vector2i>&)
 overload without the rotations argument.
 
-@snippet MagnumTextureTools.cpp AtlasLandfill-usage-no-rotation
+@snippet TextureTools.cpp AtlasLandfill-usage-no-rotation
 
 @subsection TextureTools-AtlasLandfill-usage-atlas Array atlas
 
@@ -156,7 +158,7 @@ The packing can be extended to a third dimension as well, in which case the
 packing overflows to next slices instead of expanding to potentially unbounded
 height.
 
-@snippet MagnumTextureTools.cpp AtlasLandfill-usage-array
+@snippet TextureTools.cpp AtlasLandfill-usage-array
 
 The layer has to be taken into an account in addition to the texture coordinate
 transformation matrix calculated with @ref atlasTextureCoordinateTransformation(),
@@ -343,6 +345,8 @@ class MAGNUM_TEXTURETOOLS_EXPORT AtlasLandfill {
          * @param[in]  sizes        Texture sizes
          * @param[out] offsets      Resulting offsets in the atlas
          * @param[out] rotations    Which textures got rotated
+         * @return Range spanning all added items including padding or
+         *      @relativeref{Corrade,Containers::NullOpt} if they didn't fit
          *
          * The @p sizes, @p offsets and @p rotations views are expected to have
          * the same size. The @p sizes are all expected to be not larger than
@@ -362,17 +366,18 @@ class MAGNUM_TEXTURETOOLS_EXPORT AtlasLandfill {
          * height are treated as any others to make sure they don't overlap
          * other items.
          *
-         * On success returns @cpp true @ce and updates @ref filledSize(). If
-         * @ref size() is bounded, can return @cpp false @ce if the items
-         * didn't fit, in which case the internals and contents of @p offsets
-         * and @p rotations are left in an undefined state. For an unbounded
-         * @ref size() returns @cpp true @ce always.
+         * On success updates @ref filledSize() and returns a range spanning
+         * all added items including padding, which can be used for example to
+         * perform a partial GPU texture upload. If @ref size() is bounded, can
+         * return @relativeref{Corrade,Containers::NullOpt} if the items didn't
+         * fit, in which case the internals and contents of @p offsets and
+         * @p rotations are left in an undefined state. For an unbounded
+         * @ref size() the function never fails.
          * @see @ref setFlags(), @ref setPadding()
          */
-        bool add(const Containers::StridedArrayView1D<const Vector2i>& sizes, const Containers::StridedArrayView1D<Vector3i>& offsets, Containers::MutableBitArrayView rotations);
-
+        Containers::Optional<Range3Di> add(const Containers::StridedArrayView1D<const Vector2i>& sizes, const Containers::StridedArrayView1D<Vector3i>& offsets, Containers::MutableBitArrayView rotations);
         /** @overload */
-        bool add(std::initializer_list<Vector2i> sizes, const Containers::StridedArrayView1D<Vector3i>& offsets, Containers::MutableBitArrayView rotations);
+        Containers::Optional<Range3Di> add(std::initializer_list<Vector2i> sizes, const Containers::StridedArrayView1D<Vector3i>& offsets, Containers::MutableBitArrayView rotations);
 
         /**
          * @brief Add textures to the atlas with rotations disabled
@@ -383,20 +388,20 @@ class MAGNUM_TEXTURETOOLS_EXPORT AtlasLandfill {
          * @relativeref{AtlasLandfillFlag,RotateLandscape} is set.
          * @see @ref clearFlags()
          */
-        bool add(const Containers::StridedArrayView1D<const Vector2i>& sizes, const Containers::StridedArrayView1D<Vector3i>& offsets);
-
+        Containers::Optional<Range3Di> add(const Containers::StridedArrayView1D<const Vector2i>& sizes, const Containers::StridedArrayView1D<Vector3i>& offsets);
         /** @overload */
-        bool add(std::initializer_list<Vector2i> sizes, const Containers::StridedArrayView1D<Vector3i>& offsets);
+        Containers::Optional<Range3Di> add(std::initializer_list<Vector2i> sizes, const Containers::StridedArrayView1D<Vector3i>& offsets);
 
         /**
          * @brief Add textures to a non-array atlas
          *
-         * Can be called only if @ref size() depth is @cpp 1 @ce.
+         * Like @ref add(const Containers::StridedArrayView1D<const Vector2i>&, const Containers::StridedArrayView1D<Vector3i>&, Containers::MutableBitArrayView),
+         * but omitting the third dimension. Can be called only if @ref size()
+         * depth is @cpp 1 @ce.
          */
-        bool add(const Containers::StridedArrayView1D<const Vector2i>& sizes, const Containers::StridedArrayView1D<Vector2i>& offsets, Containers::MutableBitArrayView rotations);
-
+        Containers::Optional<Range2Di> add(const Containers::StridedArrayView1D<const Vector2i>& sizes, const Containers::StridedArrayView1D<Vector2i>& offsets, Containers::MutableBitArrayView rotations);
         /** @overload */
-        bool add(std::initializer_list<Vector2i> sizes, const Containers::StridedArrayView1D<Vector2i>& offsets, Containers::MutableBitArrayView rotations);
+        Containers::Optional<Range2Di> add(std::initializer_list<Vector2i> sizes, const Containers::StridedArrayView1D<Vector2i>& offsets, Containers::MutableBitArrayView rotations);
 
         /**
          * @brief Add textures to a non-array atlas with rotations disabled
@@ -408,10 +413,9 @@ class MAGNUM_TEXTURETOOLS_EXPORT AtlasLandfill {
          * @relativeref{AtlasLandfillFlag,RotateLandscape} is set.
          * @see @ref clearFlags()
          */
-        bool add(const Containers::StridedArrayView1D<const Vector2i>& sizes, const Containers::StridedArrayView1D<Vector2i>& offsets);
-
+        Containers::Optional<Range2Di> add(const Containers::StridedArrayView1D<const Vector2i>& sizes, const Containers::StridedArrayView1D<Vector2i>& offsets);
         /** @overload */
-        bool add(std::initializer_list<Vector2i> sizes, const Containers::StridedArrayView1D<Vector2i>& offsets);
+        Containers::Optional<Range2Di> add(std::initializer_list<Vector2i> sizes, const Containers::StridedArrayView1D<Vector2i>& offsets);
 
     private:
         Containers::Pointer<Implementation::AtlasLandfillState> _state;
@@ -461,7 +465,7 @@ matrix for a particular image can then be done with
 calculate and apply the matrix to either the mesh directly or to a material /
 shader.
 
-@snippet MagnumTextureTools.cpp atlasArrayPowerOfTwo
+@snippet TextureTools.cpp atlasArrayPowerOfTwo
 
 The algorithm first sorts the textures by size using @ref std::stable_sort(),
 which is usually @f$ \mathcal{O}(n \log{} n) @f$, and then performs the actual
@@ -514,13 +518,13 @@ With a concrete `atlasSize`, `sizes` being the input sizes passed to
 @ref AtlasLandfill::add() (i.e., without any potential rotations applied yet),
 and `offsets` and `rotations` being the output, the usage is as follows:
 
-@snippet MagnumTextureTools.cpp atlasTextureCoordinateTransformation
+@snippet TextureTools.cpp atlasTextureCoordinateTransformation
 
 The resulting matrix can be then directly used to adjust texture coordinates,
 like below with @ref MeshTools::transformTextureCoordinates2DInPlace() on a
 @link Trade::MeshData @endlink:
 
-@snippet MagnumTextureTools.cpp atlasTextureCoordinateTransformation-meshdata
+@snippet TextureTools.cpp atlasTextureCoordinateTransformation-meshdata
 
 Alternatively, for example in cases where a single mesh is used with several different textures, the transformation can be applied at draw time, such as
 with @ref Shaders::FlatGL::setTextureMatrix(). In case there's already a
@@ -529,7 +533,7 @@ transformation has to happen *after*, so multiplied from the left side. For
 example with a @ref Trade::MaterialData that contains a
 @link Trade::MaterialAttribute::TextureMatrix @endlink:
 
-@snippet MagnumTextureTools.cpp atlasTextureCoordinateTransformation-materialdata
+@snippet TextureTools.cpp atlasTextureCoordinateTransformation-materialdata
 */
 MAGNUM_TEXTURETOOLS_EXPORT Matrix3 atlasTextureCoordinateTransformation(const Vector2i& atlasSize, const Vector2i& size, const Vector2i& offset);
 

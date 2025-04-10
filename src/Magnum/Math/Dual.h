@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -80,22 +81,21 @@ template<class T> class Dual {
         #ifdef DOXYGEN_GENERATING_OUTPUT
         constexpr explicit Dual(ZeroInitT) noexcept;
         #else
-        /* MSVC 2015 can't handle {} instead of ::value */
-        template<class U = T, class = typename std::enable_if<std::is_standard_layout<U>::value && std::is_trivial<U>::value>::type> constexpr explicit Dual(ZeroInitT) noexcept: _real{}, _dual{} {}
-        template<class U = T, class V = T, class = typename std::enable_if<std::is_constructible<U, ZeroInitT>::value>::type> constexpr explicit Dual(ZeroInitT) noexcept: _real{ZeroInit}, _dual{ZeroInit} {}
+        template<class U = T, typename std::enable_if<std::is_standard_layout<U>::value && std::is_trivial<U>::value, int>::type = 0> constexpr explicit Dual(ZeroInitT) noexcept: _real{}, _dual{} {}
+        template<class U = T, typename std::enable_if<std::is_constructible<U, ZeroInitT>::value, int>::type = 0>
+        constexpr explicit Dual(ZeroInitT) noexcept: _real{ZeroInit}, _dual{ZeroInit} {}
         #endif
 
         /** @brief Construct without initializing the contents */
         #ifdef DOXYGEN_GENERATING_OUTPUT
         explicit Dual(NoInitT) noexcept;
         #else
-        /* MSVC 2015 can't handle {} instead of ::value */
-        template<class U = T, class = typename std::enable_if<std::is_standard_layout<U>::value && std::is_trivial<U>::value>::type> explicit Dual(Magnum::NoInitT) noexcept {}
-        template<class U = T, class V = T, class = typename std::enable_if<std::is_constructible<U, Magnum::NoInitT>::value>::type> explicit Dual(Magnum::NoInitT) noexcept: _real{Magnum::NoInit}, _dual{Magnum::NoInit} {}
+        template<class U = T, typename std::enable_if<std::is_standard_layout<U>::value && std::is_trivial<U>::value, int>::type = 0> explicit Dual(Magnum::NoInitT) noexcept {}
+        template<class U = T, typename std::enable_if<std::is_constructible<U, Magnum::NoInitT>::value, int>::type = 0> explicit Dual(Magnum::NoInitT) noexcept: _real{Magnum::NoInit}, _dual{Magnum::NoInit} {}
         #endif
 
         /**
-         * @brief Construct dual number from real and dual part
+         * @brief Construct a dual number from real and dual part
          *
          * @f[
          *      \hat a = a_0 + \epsilon a_\epsilon
@@ -111,12 +111,12 @@ template<class T> class Dual {
         #endif
 
         /**
-         * @brief Construct dual number from another of different type
+         * @brief Construct a dual number from another of different type
          *
          * Performs only default casting on the values, no rounding or anything
          * else. Example usage:
          *
-         * @snippet MagnumMath.cpp Dual-conversion
+         * @snippet Math.cpp Dual-conversion
          */
         template<class U> constexpr explicit Dual(const Dual<U>& other) noexcept: _real{T(other._real)}, _dual{T(other._dual)} {}
 
@@ -147,13 +147,23 @@ template<class T> class Dual {
         }
         #endif
 
-        /** @brief Equality comparison */
+        /**
+         * @brief Equality comparison
+         *
+         * Done using @ref TypeTraits::equals(), i.e. with fuzzy compare for
+         * floating-point types.
+         */
         bool operator==(const Dual<T>& other) const {
             return TypeTraits<T>::equals(_real, other._real) &&
                    TypeTraits<T>::equals(_dual, other._dual);
         }
 
-        /** @brief Non-equality comparison */
+        /**
+         * @brief Non-equality comparison
+         *
+         * Done using @ref TypeTraits::equals(), i.e. with fuzzy compare for
+         * floating-point types.
+         */
         bool operator!=(const Dual<T>& other) const {
             return !operator==(other);
         }
@@ -264,7 +274,11 @@ template<class T> class Dual {
          * @see @ref operator*(const Dual<U>&) const,
          *      @ref operator*(const T&, const Dual<U>&)
          */
-        template<class U, class V = typename std::enable_if<!Implementation::IsDual<U>::value, void>::type> Dual<decltype(std::declval<T>()*std::declval<U>())> operator*(const U& other) const {
+        template<class U
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!Implementation::IsDual<U>::value, int>::type = 0
+            #endif
+        > Dual<decltype(std::declval<T>()*std::declval<U>())> operator*(const U& other) const {
             return {_real*other, _dual*other};
         }
 
@@ -276,7 +290,7 @@ template<class T> class Dual {
          * @f]
          * @see @ref operator/(const U&) const
          */
-        template<class U> auto operator/(const Dual<U>& other) const -> Dual<decltype(std::declval<T>()/std::declval<U>())> {
+        template<class U> Dual<decltype(std::declval<T>()/std::declval<U>())> operator/(const Dual<U>& other) const {
             return {_real/other._real, (_dual*other._real - _real*other._dual)/(other._real*other._real)};
         }
 
@@ -289,7 +303,11 @@ template<class T> class Dual {
          * @f]
          * @see @ref operator/(const Dual<U>&) const
          */
-        template<class U, class V = typename std::enable_if<!Implementation::IsDual<U>::value, Dual<decltype(std::declval<T>()/std::declval<U>())>>::type> V operator/(const U& other) const {
+        template<class U,
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            typename std::enable_if<!Implementation::IsDual<U>::value, int>::type = 0
+            #endif
+        > Dual<decltype(std::declval<T>()/std::declval<U>())> operator/(const U& other) const {
             return {_real/other, _dual/other};
         }
 
@@ -317,7 +335,11 @@ Equivalent to @ref Dual::operator*(const Dual<U>&) const assuming that
      \hat a \hat b = a_0 b_0 + \epsilon (a_0 b_\epsilon + a_\epsilon b_0) = a_0 b_0 + \epsilon a_0 b_\epsilon
 @f]
 */
-template<class T, class U, class V = typename std::enable_if<!Implementation::IsDual<T>::value, Dual<decltype(std::declval<T>()*std::declval<U>())>>::type> inline V operator*(const T& a, const Dual<U>& b) {
+template<class T, class U
+    #ifndef DOXYGEN_GENERATING_OUTPUT
+    , typename std::enable_if<!Implementation::IsDual<T>::value, int>::type = 0
+    #endif
+> inline Dual<decltype(std::declval<T>()*std::declval<U>())> operator*(const T& a, const Dual<U>& b) {
     return {a*b.real(), a*b.dual()};
 }
 

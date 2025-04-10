@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -83,16 +84,13 @@ Supported formats:
     @ref BasisImporter is tried as a fallback.
 -   Multiple-image Network Graphics (`*.mng`), loaded with any plugin that
     provides `MngImporter`
--   Portable Bitmap (`*.pbm`), loaded with any plugin that provides `PbmImporter`
+-   Portable Bitmap, Graymap, Pixmap, Anymap (`*.pbm`, `*.pgm`, `*.ppm`,
+    `*.pnm`), loaded with any plugin that provides `PbmImporter`,
+    `PgmImporter`, `PpmImporter` or `PnmImporter`, respectively
 -   ZSoft PCX (`*.pcx`), loaded with any plugin that provides `PcxImporter`
--   Portable Graymap (`*.pgm`), loaded with any plugin that provides
-    `PgmImporter`
 -   Softimage PIC (`*.pic`), loaded with any plugin that provides `PicImporter`
--   Portable Anymap (`*.pnm`), loaded with any plugin that provides
-    `PnmImporter`
 -   Portable Network Graphics (`*.png` or data with corresponding signature),
     loaded with @ref PngImporter or any other plugin that provides it
--   Portable Pixmap (`*.ppm`), loaded with any plugin that provides `PpmImporter`
 -   Adobe Photoshop (`*.psd`), loaded with any plugin that provides `PsdImporter`
 -   Silicon Graphics (`*.sgi`, `*.bw`, `*.rgb`, `*.rgba`), loaded with any
     plugin that provides `SgiImporter`

@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -52,14 +53,14 @@ significantly reduces numerical error in the total. See the
 article on Wikipedia for an in-depth explanation. Example with summation of a
 hundred million ones:
 
-@snippet MagnumMathAlgorithms.cpp kahanSum
+@snippet MathAlgorithms.cpp kahanSum
 
 If required, it is also possible to use this algorithm on non-contiguous ranges
 or single values (for example when calculating sum of pixel values in an image
 with some row padding or when the inputs are generated / converted from other
 values):
 
-@snippet MagnumMathAlgorithms.cpp kahanSum-iterative
+@snippet MathAlgorithms.cpp kahanSum-iterative
 */
 template<class Iterator, class T = typename std::decay<decltype(*std::declval<Iterator>())>::type> T kahanSum(Iterator begin, Iterator end, T sum = T(0), T* compensation = nullptr) {
     T c = compensation ? *compensation : T(0);

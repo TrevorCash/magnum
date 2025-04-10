@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Color.h"
 #include "Magnum/Math/PackingBatch.h"
@@ -635,21 +635,21 @@ void GenerateLinesTest::notLines() {
 
     Vector3 positions[3]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     generateLines(Trade::MeshData{MeshPrimitive::TriangleFan, {}, positions, {
         Trade::MeshAttributeData{Trade::MeshAttribute::Position, Containers::stridedArrayView(positions)}
     }});
-    CORRADE_COMPARE(out.str(), "MeshTools::generateLines(): expected a line primitive, got MeshPrimitive::TriangleFan\n");
+    CORRADE_COMPARE(out, "MeshTools::generateLines(): expected a line primitive, got MeshPrimitive::TriangleFan\n");
 }
 
 void GenerateLinesTest::noAttributes() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     generateLines(Trade::MeshData{MeshPrimitive::Lines, 12});
-    CORRADE_COMPARE(out.str(), "MeshTools::generateLines(): the mesh has no positions\n");
+    CORRADE_COMPARE(out, "MeshTools::generateLines(): the mesh has no positions\n");
 }
 
 void GenerateLinesTest::noPositionAttribute() {
@@ -657,12 +657,12 @@ void GenerateLinesTest::noPositionAttribute() {
 
     Vector3 colors[2]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     generateLines(Trade::MeshData{MeshPrimitive::Lines, {}, colors, {
         Trade::MeshAttributeData{Trade::MeshAttribute::Color, Containers::stridedArrayView(colors)}
     }});
-    CORRADE_COMPARE(out.str(), "MeshTools::generateLines(): the mesh has no positions\n");
+    CORRADE_COMPARE(out, "MeshTools::generateLines(): the mesh has no positions\n");
 }
 
 }}}}

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2020 janos <janos.meny@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,11 +25,11 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Functions.h"
+#include "Magnum/Math/Time.h"
 #include "Magnum/Math/Vector4.h"
 
 namespace Magnum { namespace Math { namespace Test { namespace {
@@ -62,6 +63,8 @@ struct FunctionsTest: TestSuite::Tester {
     void sqrt();
     void sqrtInverted();
     void lerp();
+    void lerpLimits();
+    void lerpInfinity();
     void lerpBool();
     void lerpInverted();
     void select();
@@ -93,6 +96,7 @@ using namespace Literals;
 using Magnum::Constants;
 using Magnum::Deg;
 using Magnum::Rad;
+using Magnum::Seconds;
 using Magnum::Vector2;
 using Magnum::Vector3;
 using Magnum::Vector4;
@@ -126,6 +130,8 @@ FunctionsTest::FunctionsTest() {
               &FunctionsTest::sqrt,
               &FunctionsTest::sqrtInverted,
               &FunctionsTest::lerp,
+              &FunctionsTest::lerpLimits,
+              &FunctionsTest::lerpInfinity,
               &FunctionsTest::lerpBool,
               &FunctionsTest::lerpInverted,
               &FunctionsTest::select,
@@ -196,6 +202,7 @@ void FunctionsTest::min() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::min(5.0_degf, 9.0_degf), 5.0_degf);
+    CORRADE_COMPARE(Math::min(6.0_sec, 5500.0_msec), 5.5_sec);
 }
 
 void FunctionsTest::max() {
@@ -205,6 +212,7 @@ void FunctionsTest::max() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::max(5.0_degf, 9.0_degf), 9.0_degf);
+    CORRADE_COMPARE(Math::max(6.0_sec, 5500.0_msec), 6000.0_msec);
 }
 
 void FunctionsTest::minmax() {
@@ -220,6 +228,7 @@ void FunctionsTest::minmax() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::minmax(4.0_degf, 5.0_degf), Containers::pair(4.0_degf, 5.0_degf));
+    CORRADE_COMPARE(Math::minmax(6.0_sec, 5500.0_msec), Containers::pair(5.5_sec, 6.0_sec));
 }
 
 void FunctionsTest::clamp() {
@@ -237,6 +246,7 @@ void FunctionsTest::clamp() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::clamp(0.5_degf, 0.75_degf, 1.0_degf), 0.75_degf);
+    CORRADE_COMPARE(Math::clamp(0.5_sec, 0.75_sec, 799.9_msec), 0.75_sec);
 }
 
 void FunctionsTest::nanPropagation() {
@@ -263,8 +273,13 @@ void FunctionsTest::sign() {
     CORRADE_COMPARE(Math::sign(-3.7), -1.0);
     CORRADE_COMPARE(Math::sign(Vector3i(0, -3, 2)), Vector3i(0, -1, 1));
 
-    /* Wrapped types */
-    CORRADE_COMPARE(Math::sign(-3.7_degf), -1.0_degf);
+    /* Wrapped types. Returns the underlying type instead of the type itself as
+       it should be possible to do e.g. angle*Math::sign(angle) and get an
+       angle value back. With returning the type itself such operation wouldn't
+       have any definable unit. */
+    CORRADE_COMPARE(Math::sign(-3.7_degf), -1.0f);
+    CORRADE_COMPARE(Math::sign(-2.5_usec), -1.0f);
+    CORRADE_COMPARE(Math::sign(Math::Vector2<Deg>{3.5_degf, -1.9_degf}), (Vector2{1.0f, -1.0f}));
 }
 
 void FunctionsTest::abs() {
@@ -274,6 +289,7 @@ void FunctionsTest::abs() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::abs(-5.0_degf), 5.0_degf);
+    CORRADE_COMPARE(Math::abs(-5.0_msec), 5.0_msec);
 }
 
 void FunctionsTest::floor() {
@@ -282,6 +298,8 @@ void FunctionsTest::floor() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::floor(2.7_degf), 2.0_degf);
+    /* Nanoseconds are an integer type */
+    CORRADE_COMPARE(Math::floor(Seconds{2.7_sec}), Seconds{2.0_sec});
 }
 
 void FunctionsTest::round() {
@@ -299,6 +317,8 @@ void FunctionsTest::round() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::round(2.7_degf), 3.0_degf);
+    /* Nanoseconds are an integer type */
+    CORRADE_COMPARE(Math::round(Seconds{2.7_sec}), Seconds{3.0_sec});
 }
 
 void FunctionsTest::ceil() {
@@ -307,6 +327,8 @@ void FunctionsTest::ceil() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::ceil(2.7_degf), 3.0_degf);
+    /* Nanoseconds are an integer type */
+    CORRADE_COMPARE(Math::ceil(Seconds{2.7_sec}), Seconds{3.0_sec});
 }
 
 void FunctionsTest::binomialCoefficient() {
@@ -322,27 +344,30 @@ void FunctionsTest::binomialCoefficient() {
 void FunctionsTest::binomialCoefficientInvalidInput() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     Math::binomialCoefficient(15, 16);
-    CORRADE_COMPARE(out.str(), "Math::binomialCoefficient(): k can't be greater than n in (15 choose 16)\n");
+    CORRADE_COMPARE(out, "Math::binomialCoefficient(): k can't be greater than n in (15 choose 16)\n");
 }
 
 void FunctionsTest::binomialCoefficientOverflow() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     Math::binomialCoefficient(63, 31);
-    CORRADE_COMPARE(out.str(), "Math::binomialCoefficient(): overflow for (63 choose 31)\n");
+    CORRADE_COMPARE(out, "Math::binomialCoefficient(): overflow for (63 choose 31)\n");
 }
 
 void FunctionsTest::fmod() {
     CORRADE_COMPARE(Math::fmod(5.1f, 3.0f), 2.1f);
-    CORRADE_COMPARE(Math::fmod(Vector3(5.1f, -5.1f, 6.8f), Vector3(3.0f, 3.0f, 1.1f)), Vector3(2.1f, -2.1f, 0.2f));
+    CORRADE_COMPARE(Math::fmod(Vector3(5.1f, -5.1f, 6.8f), Vector3(3.0f, -2.0f, 1.1f)), Vector3(2.1f, -1.1f, 0.2f));
+    CORRADE_COMPARE(Math::fmod(Vector3(5.1f, -5.1f, 6.8f), 3.0f), Vector3(2.1f, -2.1f, 0.8f));
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::fmod(2.7_degf, 1.3_degf), 0.1_degf);
+    /* Nanoseconds are an integer type */
+    CORRADE_COMPARE(Math::fmod(Seconds{2.7_sec}, Seconds{1.3_sec}), Seconds{0.1_sec});
 }
 
 void FunctionsTest::sqrt() {
@@ -379,6 +404,45 @@ void FunctionsTest::lerp() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::lerp(2.0_degf, 5.0_degf, 0.5f), 3.5_degf);
+    CORRADE_COMPARE(Math::lerp(2.0_usec, 5.0_usec, 0.5f), 3.5_usec);
+}
+
+template<class T, class U> T lerpOptimized(const T& a, const T& b, U t) {
+    /* One multiplication and two additions, while `T((U(1) - t)*a + t*b)` is
+       two multiplications, addition and subtraction. Doesn't correctly
+       preserve boundary values. */
+    return t*(b - a) + a;
+}
+
+void FunctionsTest::lerpLimits() {
+    CORRADE_COMPARE(Math::lerp(1.0e10f, 1.0e-5f, 0.0f), 1.0e10f);
+    CORRADE_COMPARE(Math::lerp(1.0e10f, 1.0e-5f, 1.0f), 1.0e-5f);
+    CORRADE_COMPARE(Math::lerp(1.0e-5f, 1.0e10f, 0.0f), 1.0e-5f);
+    CORRADE_COMPARE(Math::lerp(1.0e-5f, 1.0e10f, 1.0f), 1.0e10f);
+
+    CORRADE_COMPARE(lerpOptimized(1.0e10f, 1.0e-5f, 0.0f), 1.0e10f);
+    {
+        CORRADE_EXPECT_FAIL("\"Optimized\" version of a lerp doesn't correctly preserve boundary values with wildly different magnitudes.");
+        CORRADE_COMPARE(lerpOptimized(1.0e10f, 1.0e-5f, 1.0f), 1.0e-5f);
+    }
+}
+
+void FunctionsTest::lerpInfinity() {
+    CORRADE_COMPARE(Math::lerp(Constants::inf(), 0.0f, 0.0f), Constants::inf());
+    CORRADE_COMPARE(Math::lerp(0.0f, Constants::inf(), 1.0f), Constants::inf());
+    {
+        CORRADE_EXPECT_FAIL("Lerp with infinity doesn't correctly preserve the other boundary value.");
+        CORRADE_COMPARE(Math::lerp(Constants::inf(), 0.0f, 1.0f), 0.0f);
+        CORRADE_COMPARE(Math::lerp(0.0f, Constants::inf(), 0.0f), 0.0f);
+    }
+
+    CORRADE_COMPARE(lerpOptimized(0.0f, Constants::inf(), 1.0f), Constants::inf());
+    {
+        CORRADE_EXPECT_FAIL("\"Optimized\" version of a lerp doesn't correctly preserve boundary values if an infinity is present.");
+        CORRADE_COMPARE(lerpOptimized(Constants::inf(), 0.0f, 0.0f), Constants::inf());
+        CORRADE_COMPARE(lerpOptimized(Constants::inf(), 0.0f, 1.0f), 0.0f);
+        CORRADE_COMPARE(lerpOptimized(0.0f, Constants::inf(), 0.0f), 0.0f);
+    }
 }
 
 void FunctionsTest::lerpBool() {
@@ -392,6 +456,7 @@ void FunctionsTest::lerpBool() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::lerp(2.0_degf, 5.0_degf, true), 5.0_degf);
+    CORRADE_COMPARE(Math::lerp(2.0_msec, 5.0_msec, true), 5.0_msec);
 }
 
 void FunctionsTest::lerpInverted() {
@@ -405,6 +470,12 @@ void FunctionsTest::lerpInverted() {
 
     /* Wrapped types */
     CORRADE_COMPARE(Math::lerpInverted(2.0_degf, 5.0_degf, 3.5_degf), 0.5f);
+    /* Nanoseconds are an integer type */
+    CORRADE_COMPARE(Math::lerpInverted(Seconds{2.0_sec}, Seconds{5.0_sec}, Seconds{3.5_sec}), 0.5f);
+    {
+        CORRADE_EXPECT_FAIL("This doesn't work correctly with (integer) Nanoseconds.");
+        CORRADE_COMPARE(Math::lerpInverted(2.0_sec, 5.0_sec, 3.5_sec), 0.5f);
+    }
 }
 
 void FunctionsTest::select() {
@@ -424,16 +495,14 @@ void FunctionsTest::select() {
     CORRADE_COMPARE(Math::select(a, b, Vector3(0.25f, 1.5f, 1.0f)), Vector3(-1.0f, -2.0f, 11.0f));
 
     /* Wrapped types */
-    CORRADE_COMPARE(Math::select(2.0_degf, 5.0_degf, 0.5_degf), 2.0_degf);
+    CORRADE_COMPARE(Math::select(2.0_degf, 5.0_degf, 0.5f), 2.0_degf);
+    CORRADE_COMPARE(Math::select(2.0_msec, 5.0_msec, 0.5f), 2.0_msec);
 }
 
 void FunctionsTest::selectBool() {
     CORRADE_COMPARE(Math::select(true, false, 0.5f), true);
     CORRADE_COMPARE(Math::select(Math::BitVector<4>{0xa}, Math::BitVector<4>{0x5}, 1.1f), Math::BitVector<4>{0x5});
     CORRADE_COMPARE(Math::select(Math::BitVector<4>{0xa}, Math::BitVector<4>{0x5}, Vector4{1.1f, -1.0f, 1.3f, 0.5f}), Math::BitVector<4>{0xf});
-
-    /* Wrapped types */
-    CORRADE_COMPARE(Math::select(true, false, 0.5_degf), true);
 }
 
 void FunctionsTest::fma() {
@@ -475,7 +544,10 @@ void FunctionsTest::isInf() {
 
     /* Wrapped types */
     CORRADE_VERIFY(Math::isInf(-Rad(Constants::inf())));
+    CORRADE_VERIFY(Math::isInf(Seconds{-Constants::inf()}));
     CORRADE_VERIFY(!Math::isInf(5.3_degf));
+    /* Nanoseconds are an integer type */
+    CORRADE_VERIFY(!Math::isInf(Seconds{5.3_msec}));
 }
 
 void FunctionsTest::isInfVector() {
@@ -491,7 +563,9 @@ void FunctionsTest::isNan() {
 
     /* Wrapped types */
     CORRADE_VERIFY(Math::isNan(-Rad(Constants::nan())));
+    CORRADE_VERIFY(Math::isNan(Seconds(Constants::nan())));
     CORRADE_VERIFY(!Math::isNan(5.3_degf));
+    CORRADE_VERIFY(!Math::isNan(Seconds{5.3_usec}));
 }
 
 void FunctionsTest::isNanfVector() {
@@ -515,10 +589,10 @@ void FunctionsTest::reflect() {
 void FunctionsTest::reflectNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     Math::reflect(Vector3{}, Vector3{1.0f});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::reflect(): normal Vector(1, 1, 1) is not normalized\n");
 }
 
@@ -542,10 +616,10 @@ void FunctionsTest::refract() {
 void FunctionsTest::refractNotNormalized() {
     CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     Math::refract(Vector3{}, Vector3{1.0f}, 0.0f);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::refract(): vectors Vector(0, 0, 0) and Vector(1, 1, 1) are not normalized\n");
 }
 

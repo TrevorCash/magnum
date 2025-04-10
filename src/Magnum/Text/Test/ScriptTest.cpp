@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,10 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
-#include <Corrade/Containers/StringView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Text/Script.h"
 
@@ -51,9 +50,9 @@ ScriptTest::ScriptTest() {
 }
 
 void ScriptTest::debug() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << Script::Latin << Text::script('M', 'a', '\xab', 'g');
-    CORRADE_COMPARE(out.str(), "Text::Script::Latin Text::Script('M', 'a', 0xab, 'g')\n");
+    CORRADE_COMPARE(out, "Text::Script::Latin Text::Script('M', 'a', 0xab, 'g')\n");
 }
 
 void ScriptTest::fromFourCC() {
@@ -72,13 +71,13 @@ void ScriptTest::fromString() {
 void ScriptTest::fromStringInvalid() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     Text::script("");
     Text::script("hahah");
     /* Non-ASCII values are allowed, as the constexpr script() allows them
        too */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Text::script(): expected a four-character code, got \n"
         "Text::script(): expected a four-character code, got hahah\n");
 }

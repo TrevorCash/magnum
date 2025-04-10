@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -53,7 +54,7 @@ descriptor counts for desired @ref DescriptorType "DescriptorTypes". The
 following snippet creates a pool allowing to allocate at most 8 descriptor sets
 with 24 sampler bindings and 16 uniform bindings:
 
-@snippet MagnumVk.cpp DescriptorPool-creation
+@snippet Vk.cpp DescriptorPool-creation
 
 With a descriptor pool created, you can allocate descriptor sets from it. See
 the @ref DescriptorSet class for details.
@@ -156,9 +157,10 @@ class MAGNUM_VK_EXPORT DescriptorPool {
          *
          * Compared to @ref allocate(VkDescriptorSetLayout), if the allocation
          * fails with @ref Result::ErrorOutOfPoolMemory or
-         * @ref Result::ErrorFragmentedPool, @ref Containers::NullOpt is
-         * returned instead of aborting to allow the application to recover and
-         * choose a different strategy.
+         * @ref Result::ErrorFragmentedPool,
+         * @relativeref{Corrade,Containers::NullOpt} is returned instead of
+         * aborting to allow the application to recover and choose a different
+         * strategy.
          *
          * If Vulkan 1.1 is not supported by the device and the
          * @vk_extension{KHR,maintenance1} extension isn't enabled on the
@@ -193,9 +195,10 @@ class MAGNUM_VK_EXPORT DescriptorPool {
          *
          * Compared to @ref allocate(VkDescriptorSetLayout, UnsignedInt), if
          * the allocation fails with @ref Result::ErrorOutOfPoolMemory or
-         * @ref Result::ErrorFragmentedPool, @ref Containers::NullOpt is
-         * returned instead of aborting to allow the application to recover and
-         * choose a different strategy.
+         * @ref Result::ErrorFragmentedPool,
+         * @relativeref{Corrade,Containers::NullOpt} is returned instead of
+         * aborting to allow the application to recover and choose a different
+         * strategy.
          *
          * If Vulkan 1.1 is not supported by the device and the
          * @vk_extension{KHR,maintenance1} extension isn't enabled on the

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,7 +24,6 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/StringIterable.h>
@@ -31,8 +31,7 @@
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/String.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/Math/Vector3.h"
@@ -48,6 +47,8 @@
 #include "Magnum/Trade/TextureData.h"
 
 #ifdef MAGNUM_BUILD_DEPRECATED
+#include <Corrade/Utility/DebugStl.h>
+
 #define _MAGNUM_NO_DEPRECATED_MESHDATA /* So it doesn't yell here */
 #define _MAGNUM_NO_DEPRECATED_OBJECTDATA
 
@@ -64,6 +65,7 @@ struct AnySceneImporterTest: TestSuite::Tester {
 
     void load();
     void detect();
+    void reject();
 
     void unknown();
 
@@ -116,22 +118,66 @@ const struct {
     {"OBJ", Utility::Path::join(OBJIMPORTER_TEST_DIR, "mesh-multiple.obj")},
 };
 
-constexpr struct {
+const struct {
     const char* name;
     const char* filename;
     const char* plugin;
 } DetectData[]{
-    {"Blender", "suzanne.blend", "BlenderImporter"},
-    {"COLLADA", "xml.dae", "ColladaImporter"},
+    /* Try to keep the order the same as in the documentation, and use all
+       variants if there are */
+    {"3ds Max", "autodesk.3ds", "3dsImporter"},
+    {"3ds Max ASE", "autodesk.ase", "3dsImporter"},
     {"3MF", "print.3mf", "3mfImporter"},
+    {"AC3D", "file.ac", "Ac3dImporter"},
+    {"Blender", "suzanne.blend", "BlenderImporter"},
+    {"Biovision BVH", "scene.bvh", "BvhImporter"},
+    {"CharacterStudio Motion", "motion.csm", "CsmImporter"},
+    {"COLLADA", "xml.dae", "ColladaImporter"},
+    {"DirectX X", "microsoft.x", "DirectXImporter"},
+    {"AutoCAD DXF", "autodesk.dxf", "DxfImporter"},
     {"FBX", "autodesk.fbx", "FbxImporter"},
     {"glTF", "khronos.gltf", "GltfImporter"},
     {"glTF binary", "khronos.glb", "GltfImporter"},
+    {"VRM", "humanoid.vrm", "GltfImporter"},
+    {"IFC", "step.ifc", "IfcImporter"},
+    {"Irrlicht", "venerable.irr", "IrrlichtImporter"},
+    {"Irrlicht Mesh", "venerable.irrmesh", "IrrlichtImporter"},
+    {"LightWave", "magnum.lwo", "LightWaveImporter"},
+    {"LightWave Scene", "magnum.lws", "LightWaveImporter"},
+    {"Modo", "magnum.lxo", "ModoImporter"},
+    {"Milkshape 3D", "latte.ms3d", "MilkshapeImporter"},
+    {"Ogre XML", "weapon.mesh.xml", "OgreImporter"},
     {"OpenGEX", "eric.ogex", "OpenGexImporter"},
     {"Stanford PLY", "bunny.ply", "StanfordImporter"},
     {"Stanford PLY uppercase", "ARMADI~1.PLY", "StanfordImporter"},
     {"STL", "robot.stl", "StlImporter"},
-    /* Not testing everything, only the most important ones */
+    {"TrueSpace COB", "huh.cob", "TrueSpaceImporter"},
+    {"TrueSpace SCN", "huh.scn", "TrueSpaceImporter"},
+    {"USD", "model.usd", "UsdImporter"},
+    {"USD ASCII", "model.usda", "UsdImporter"},
+    {"USD binary", "model.usdc", "UsdImporter"},
+    {"USD zipped", "model.usdz", "UsdImporter"},
+    {"Unreal", "tournament.3d", "UnrealImporter"},
+    {"Valve Model SMD", "hl3.smd", "ValveImporter"},
+    {"Valve Model VTA", "hl3.vta", "ValveImporter"},
+    {"XGL", "thingy.xgl", "XglImporter"},
+    {"XGL compressed", "thingy.zgl", "XglImporter"},
+};
+
+const struct {
+    const char* name;
+    const char* filename;
+} RejectData[]{
+    /* This lists pairs of filenames where, just based on extension, any
+       detection cannot be done */
+    {"COLLADA with a *.xml extension", "collada.xml"},
+    {"OGRE XML with just a *.xml extension", "mesh.xml"},
+    {"OGRE *.mesh", "ogre.mesh"},
+    {"Meshwork *.mesh", "foo.mesh"},
+    {"OBJ-like *.ter file", "terrain.ter"},
+    {"Terragen *.ter", "terragen.ter"},
+    {"Quake 1 *.mdl", "quake.mdl"},
+    {"3D Game Studio (3DGS) *.mdl", "3dgs.mdl"},
 };
 
 const struct {
@@ -149,6 +195,9 @@ AnySceneImporterTest::AnySceneImporterTest() {
 
     addInstancedTests({&AnySceneImporterTest::detect},
         Containers::arraySize(DetectData));
+
+    addInstancedTests({&AnySceneImporterTest::reject},
+        Containers::arraySize(RejectData));
 
     addTests({&AnySceneImporterTest::unknown,
 
@@ -229,29 +278,41 @@ void AnySceneImporterTest::detect() {
 
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("AnySceneImporter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile(data.filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnySceneImporter::openFile(): cannot load the {0} plugin\n",
         data.plugin));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnySceneImporter::openFile(): cannot load the {0} plugin\n",
         data.plugin));
     #endif
 }
 
+void AnySceneImporterTest::reject() {
+    auto&& data = RejectData[testCaseInstanceId()];
+    setTestCaseDescription(data.name);
+
+    Containers::Pointer<AbstractImporter> importer = _manager.instantiate("AnySceneImporter");
+
+    Containers::String out;
+    Error redirectError{&out};
+    CORRADE_VERIFY(!importer->openFile(data.filename));
+    CORRADE_COMPARE(out, Utility::format("Trade::AnySceneImporter::openFile(): cannot determine the format of {}\n", data.filename));
+}
+
 void AnySceneImporterTest::unknown() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("AnySceneImporter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile("mesh.wtf"));
-    CORRADE_COMPARE(out.str(), "Trade::AnySceneImporter::openFile(): cannot determine the format of mesh.wtf\n");
+    CORRADE_COMPARE(out, "Trade::AnySceneImporter::openFile(): cannot determine the format of mesh.wtf\n");
 }
 
 void AnySceneImporterTest::propagateFlags() {
@@ -270,14 +331,14 @@ void AnySceneImporterTest::propagateFlags() {
     Containers::Pointer<AbstractImporter> importer = manager.instantiate("AnySceneImporter");
     importer->setFlags(ImporterFlag::Verbose);
 
-    std::ostringstream out;
+    Containers::String out;
     {
         Debug redirectOutput{&out};
         CORRADE_VERIFY(importer->openFile(filename));
         CORRADE_VERIFY(importer->mesh(0));
     }
 
-    CORRADE_COMPARE_AS(out.str(), Utility::formatString(
+    CORRADE_COMPARE_AS(out, Utility::format(
         "Trade::AnySceneImporter::openFile(): using StanfordImporter (provided by AssimpImporter)\n"
         "Trade::AssimpImporter: Info,  T0: Load {}\n", filename),
         TestSuite::Compare::StringHasPrefix);
@@ -337,13 +398,13 @@ void AnySceneImporterTest::propagateConfigurationUnknown() {
     importer->configuration().group("postprocess")->addGroup("feh")->setValue("noHereNotEither", false);
     importer->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(importer->openFile(Utility::Path::join(ANYSCENEIMPORTER_TEST_DIR, "per-face-colors-be.ply")));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(),
+        CORRADE_COMPARE(out,
         "Trade::AnySceneImporter::openFile(): option noSuchOption not recognized by AssimpImporter\n"
         "Trade::AnySceneImporter::openFile(): option postprocess/notHere not recognized by AssimpImporter\n"
         "Trade::AnySceneImporter::openFile(): option postprocess/feh/noHereNotEither not recognized by AssimpImporter\n");
@@ -364,10 +425,10 @@ void AnySceneImporterTest::propagateConfigurationUnknownInEmptySubgroup() {
     importer->configuration().group("customSceneFieldTypes")->setValue("another", "Int");
     importer->configuration().group("customSceneFieldTypes")->addGroup("notFound")->setValue("noHereNotEither", false);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     CORRADE_VERIFY(importer->openFile(Utility::Path::join(ANYSCENEIMPORTER_TEST_DIR, "scenes.gltf")));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         /* Should not warn for values added to the empty customSceneFieldTypes
            group, but should warn if a subgroup is added there. This is
            consistent with how the magnum-*converter -i / -c options are

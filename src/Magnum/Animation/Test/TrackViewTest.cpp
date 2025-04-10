@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h> /** @todo remove once Debug is stream-free */
+#include <Corrade/Utility/DebugStl.h> /** @todo remove once TrackView is std::pair-free */
 
 #include "Magnum/Animation/Track.h"
 #include "Magnum/Math/Half.h"
@@ -570,10 +571,10 @@ void TrackViewTest::constructInconsistentViewSize() {
     Float keys[2]{};
     Vector3 values[3]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     TrackView<Float, Vector3>{keys, values, Math::select};
-    CORRADE_COMPARE(out.str(), "Animation::TrackView: expected key and value view to have the same size but got 2 and 3\n");
+    CORRADE_COMPARE(out, "Animation::TrackView: expected key and value view to have the same size but got 2 and 3\n");
 }
 
 void TrackViewTest::constructCopyStorage() {
@@ -588,7 +589,7 @@ void TrackViewTest::constructCopyStorage() {
     CORRADE_COMPARE(b.interpolator(), reinterpret_cast<void(*)()>(customLerp));
     CORRADE_COMPARE(b.keys().size(), 2);
     CORRADE_COMPARE(b.values().size(), 2);
-    CORRADE_COMPARE(Containers::arrayCast<Float>(b.keys())[1], 5.0f);
+    CORRADE_COMPARE(b.keys()[1], 5.0f);
     CORRADE_COMPARE(Containers::arrayCast<Vector3>(b.values())[1], (Vector3{0.3f, 0.6f, 1.0f}));
 
     auto& bv = *static_cast<const TrackView<Float, Vector3>*>(&b);

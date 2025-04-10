@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Color.h"
 #include "Magnum/Math/Matrix3.h"
@@ -311,13 +311,13 @@ void FlatMaterialDataTest::invalidTextures() {
 
     FlatMaterialData data{{}, {}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     data.texture();
     data.textureMatrix();
     data.textureCoordinates();
     data.textureLayer();
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Trade::FlatMaterialData::texture(): the material doesn't have a texture\n"
         "Trade::FlatMaterialData::textureMatrix(): the material doesn't have a texture\n"
         "Trade::FlatMaterialData::textureCoordinates(): the material doesn't have a texture\n"

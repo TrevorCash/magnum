@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -188,7 +189,7 @@ calling @ref CommandPool::reset(), or alternatively reset each buffer
 separately using @ref reset(), if the pool was created with
 @ref CommandPoolCreateInfo::Flag::ResetCommandBuffer.
 
-@snippet MagnumVk.cpp CommandBuffer-allocation
+@snippet Vk.cpp CommandBuffer-allocation
 
 @section Vk-CommandBuffer-usage Command buffer recording and submit
 
@@ -198,14 +199,14 @@ delimited with @ref beginRenderPass() and @ref endRenderPass(), see
 @ref Vk-RenderPass-usage for details. Once a recording is done, call
 @ref end(). You can (but don't have to) use method chaining:
 
-@snippet MagnumVk.cpp CommandBuffer-usage
+@snippet Vk.cpp CommandBuffer-usage
 
 Once recorded, call @ref Queue::submit() to submit the command buffer to a
 compatible @ref Queue that was set up at
 @ref Vk-Device-creation "device creation time". Usually you'd want to wait on
 the submit completion with a @link Fence @endlink:
 
-@snippet MagnumVk.cpp CommandBuffer-usage-submit
+@snippet Vk.cpp CommandBuffer-usage-submit
 */
 class MAGNUM_VK_EXPORT CommandBuffer {
     public:

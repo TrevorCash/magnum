@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -363,8 +364,8 @@ void AtlasBenchmark::landfill() {
     auto sizes16 = Containers::arrayCast<Vector2s>(*sizeData);
     Containers::Array<Vector2i> sizes{NoInit, sizes16.size()};
     Math::castInto(
-        Containers::arrayCast<2, const Short>(stridedArrayView(sizes16)),
-        Containers::arrayCast<2, Int>(stridedArrayView(sizes)));
+        stridedArrayView(sizes16).slice(&Vector2s::data),
+        stridedArrayView(sizes).slice(&Vector2i::data));
     _sizes = sizes;
 
     AtlasLandfill atlas{data.size};
@@ -395,8 +396,8 @@ void AtlasBenchmark::stbRectPack() {
     auto sizes16 = Containers::arrayCast<Vector2s>(*sizeData);
     Containers::Array<Vector2i> sizes{NoInit, sizes16.size()};
     Math::castInto(
-        Containers::arrayCast<2, const Short>(stridedArrayView(sizes16)),
-        Containers::arrayCast<2, Int>(stridedArrayView(sizes)));
+        stridedArrayView(sizes16).slice(&Vector2s::data),
+        stridedArrayView(sizes).slice(&Vector2i::data));
     _sizes = sizes;
 
     if(data.rotate) for(Vector2i& size: _sizes) {

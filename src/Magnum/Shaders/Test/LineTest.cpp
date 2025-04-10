@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -24,10 +25,10 @@
 */
 
 #include <new>
-#include <sstream>
+#include <Corrade/Containers/ArrayView.h> /* arraySize() */
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 
 #include "Magnum/Shaders/Line.h"
 #include "Magnum/Shaders/Implementation/lineMiterLimit.h"
@@ -48,8 +49,11 @@ struct LineTest: TestSuite::Tester {
     void materialUniformConstructNoInit();
     void materialUniformSetters();
 
-    void materialUniformSetMiterLengthLimitInvalid();
-    void materialUniformSetMiterAngleLimitInvalid();
+    /* Miter limit tests are copied verbatim between the Shaders and Ui
+       libraries */
+    void materialUniformMiterLimit();
+    void materialUniformMiterLengthLimitInvalid();
+    void materialUniformMiterAngleLimitInvalid();
 
     void debugCapStyle();
     void debugJoinStyle();
@@ -65,7 +69,7 @@ const struct {
     const char* name;
     Float limit;
     const char* message;
-} MaterialUniformSetMiterLengthLimitInvalidData[]{
+} MaterialUniformMiterLengthLimitInvalidData[]{
     {"too short", 0.9997f,
         "expected a finite value greater than or equal to 1, got 0.9997"},
     {"too long", Constants::inf(),
@@ -76,7 +80,7 @@ const struct {
     const char* name;
     Rad limit;
     const char* message;
-} MaterialUniformSetMiterAngleLimitInvalidData[]{
+} MaterialUniformMiterAngleLimitInvalidData[]{
     {"too small", 0.0_degf,
         "expected a value greater than 0° and less than or equal to 180°, got 0°"},
     {"too large", 180.1_degf,
@@ -94,13 +98,15 @@ LineTest::LineTest() {
 
               &LineTest::materialUniformConstructDefault,
               &LineTest::materialUniformConstructNoInit,
-              &LineTest::materialUniformSetters});
+              &LineTest::materialUniformSetters,
 
-    addInstancedTests({&LineTest::materialUniformSetMiterLengthLimitInvalid},
-        Containers::arraySize(MaterialUniformSetMiterLengthLimitInvalidData));
+              &LineTest::materialUniformMiterLimit});
 
-    addInstancedTests({&LineTest::materialUniformSetMiterAngleLimitInvalid},
-        Containers::arraySize(MaterialUniformSetMiterAngleLimitInvalidData));
+    addInstancedTests({&LineTest::materialUniformMiterLengthLimitInvalid},
+        Containers::arraySize(MaterialUniformMiterLengthLimitInvalidData));
+
+    addInstancedTests({&LineTest::materialUniformMiterAngleLimitInvalid},
+        Containers::arraySize(MaterialUniformMiterAngleLimitInvalidData));
 
     addTests({&LineTest::debugCapStyle,
               &LineTest::debugJoinStyle,
@@ -258,55 +264,70 @@ void LineTest::materialUniformSetters() {
      .setColor(0x354565fc_rgbaf)
      .setWidth(2.5f)
      .setSmoothness(7.0f)
-     .setMiterLengthLimit(25.0f);
+     .setMiterLimit(3.4567f);
+
     CORRADE_COMPARE(a.backgroundColor, 0x01020304_rgbaf);
     CORRADE_COMPARE(a.color, 0x354565fc_rgbaf);
     CORRADE_COMPARE(a.width, 2.5f);
     CORRADE_COMPARE(a.smoothness, 7.0f);
+    CORRADE_COMPARE(a.miterLimit, 3.4567f);
+}
+
+void LineTest::materialUniformMiterLimit() {
+    LineMaterialUniform a;
+
+    /* Verifying documented relation of the default to angle/length */
+    CORRADE_COMPARE(a.miterLimit, 0.875f);
+    a.setMiterLengthLimit(4.0f);
+    CORRADE_COMPARE(a.miterLimit, 0.875f);
+    a.setMiterAngleLimit(28.955_degf);
+    CORRADE_COMPARE(a.miterLimit, 0.875f);
+
+    a.setMiterLengthLimit(25.0f);
     CORRADE_COMPARE(a.miterLimit, 0.9968f);
 
     a.setMiterAngleLimit(35.0_degf);
     CORRADE_COMPARE(a.miterLimit, 0.819152f);
 }
 
-void LineTest::materialUniformSetMiterLengthLimitInvalid() {
-    auto&& data = MaterialUniformSetMiterLengthLimitInvalidData[testCaseInstanceId()];
+void LineTest::materialUniformMiterLengthLimitInvalid() {
+    auto&& data = MaterialUniformMiterLengthLimitInvalidData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
     CORRADE_SKIP_IF_NO_ASSERT();
 
     LineMaterialUniform a;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     a.setMiterLengthLimit(data.limit);
-    CORRADE_COMPARE(out.str(), Utility::formatString("Shaders::LineMaterialUniform::setMiterLengthLimit(): {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Shaders::LineMaterialUniform::setMiterLengthLimit(): {}\n", data.message));
 }
 
-void LineTest::materialUniformSetMiterAngleLimitInvalid() {
-    auto&& data = MaterialUniformSetMiterAngleLimitInvalidData[testCaseInstanceId()];
+void LineTest::materialUniformMiterAngleLimitInvalid() {
+    auto&& data = MaterialUniformMiterAngleLimitInvalidData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
     CORRADE_SKIP_IF_NO_ASSERT();
 
     LineMaterialUniform a;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     a.setMiterAngleLimit(data.limit);
-    CORRADE_COMPARE(out.str(), Utility::formatString("Shaders::LineMaterialUniform::setMiterAngleLimit(): {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Shaders::LineMaterialUniform::setMiterAngleLimit(): {}\n", data.message));
 }
 
 void LineTest::debugCapStyle() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << LineCapStyle::Square << LineCapStyle(0xb0);
-    CORRADE_COMPARE(out.str(), "Shaders::LineCapStyle::Square Shaders::LineCapStyle(0xb0)\n");
+    CORRADE_COMPARE(out, "Shaders::LineCapStyle::Square Shaders::LineCapStyle(0xb0)\n");
 }
 
 void LineTest::debugJoinStyle() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << LineJoinStyle::Bevel << LineJoinStyle(0xb0);
-    CORRADE_COMPARE(out.str(), "Shaders::LineJoinStyle::Bevel Shaders::LineJoinStyle(0xb0)\n");
+    CORRADE_COMPARE(out, "Shaders::LineJoinStyle::Bevel Shaders::LineJoinStyle(0xb0)\n");
 }
 
 void LineTest::debugVertexAnnotation() {
@@ -314,29 +335,29 @@ void LineTest::debugVertexAnnotation() {
        32bit to avoid surprises when passing it to the default-constructed
        LineGL::Annotation attribute (which defaults to 32bit), so it should
        also print the whole 32bit value. */
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << LineVertexAnnotation::Join << LineVertexAnnotation(0xcafecafe);
-    CORRADE_COMPARE(out.str(), "Shaders::LineVertexAnnotation::Join Shaders::LineVertexAnnotation(0xcafecafe)\n");
+    CORRADE_COMPARE(out, "Shaders::LineVertexAnnotation::Join Shaders::LineVertexAnnotation(0xcafecafe)\n");
 }
 
 void LineTest::debugVertexAnnotationPacked() {
-    std::ostringstream out;
+    Containers::String out;
     /* Last is not packed, ones before should not make any flags persistent */
     Debug{&out} << Debug::packed << LineVertexAnnotation::Join << Debug::packed << LineVertexAnnotation(0xcafecafe) << LineVertexAnnotation::Begin;
-    CORRADE_COMPARE(out.str(), "Join 0xcafecafe Shaders::LineVertexAnnotation::Begin\n");
+    CORRADE_COMPARE(out, "Join 0xcafecafe Shaders::LineVertexAnnotation::Begin\n");
 }
 
 void LineTest::debugVertexAnnotations() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << (LineVertexAnnotation::Up|LineVertexAnnotation::Join|LineVertexAnnotation(0xb00)) << LineVertexAnnotations{};
-    CORRADE_COMPARE(out.str(), "Shaders::LineVertexAnnotation::Up|Shaders::LineVertexAnnotation::Join|Shaders::LineVertexAnnotation(0xb00) Shaders::LineVertexAnnotations{}\n");
+    CORRADE_COMPARE(out, "Shaders::LineVertexAnnotation::Up|Shaders::LineVertexAnnotation::Join|Shaders::LineVertexAnnotation(0xb00) Shaders::LineVertexAnnotations{}\n");
 }
 
 void LineTest::debugVertexAnnotationsPacked() {
-    std::ostringstream out;
+    Containers::String out;
     /* Last is not packed, ones before should not make any flags persistent */
     Debug{&out} << Debug::packed << (LineVertexAnnotation::Up|LineVertexAnnotation::Join|LineVertexAnnotation(0xb00)) << Debug::packed << LineVertexAnnotations{} << LineVertexAnnotation::Begin;
-    CORRADE_COMPARE(out.str(), "Up|Join|0xb00 {} Shaders::LineVertexAnnotation::Begin\n");
+    CORRADE_COMPARE(out, "Up|Join|0xb00 {} Shaders::LineVertexAnnotation::Begin\n");
 }
 
 }}}}

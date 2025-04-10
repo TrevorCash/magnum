@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/FunctionsBatch.h"
 #include "Magnum/Math/Range.h"
@@ -137,6 +138,8 @@ struct RangeTest: TestSuite::Tester {
     void intersectIntersects1D();
     void join();
     void join1D();
+    void joinPoint();
+    void joinPoint1D();
 
     void strictWeakOrdering();
 
@@ -187,6 +190,8 @@ RangeTest::RangeTest() {
               &RangeTest::intersectIntersects1D,
               &RangeTest::join,
               &RangeTest::join1D,
+              &RangeTest::joinPoint,
+              &RangeTest::joinPoint1D,
 
               &RangeTest::strictWeakOrdering,
 
@@ -917,6 +922,32 @@ void RangeTest::join1D() {
     CORRADE_COMPARE(Math::join(c, a), a);
 }
 
+void RangeTest::joinPoint() {
+    Range2Di a{{12, 20}, {15, 35}};
+    Range2Di empty{{12, 20}, {12, 20}};
+    Vector2i b{13, 25};
+    Vector2i c{10, 40};
+    Vector2i d{20, 15};
+
+    CORRADE_COMPARE(Math::join(a, b), a);
+    CORRADE_COMPARE(Math::join(empty, b), (Range2Di{{12, 20}, {13, 25}}));
+    CORRADE_COMPARE(Math::join(a, c), (Range2Di{{10, 20}, {15, 40}}));
+    CORRADE_COMPARE(Math::join(a, d), (Range2Di{{12, 15}, {20, 35}}));
+}
+
+void RangeTest::joinPoint1D() {
+    Range1Di a{12, 15};
+    Range1Di empty{12, 12};
+    Vector2i{13, 25};
+    Vector2i{10, 40};
+    Vector2i{20, 15};
+
+    CORRADE_COMPARE(Math::join(a, 13), a);
+    CORRADE_COMPARE(Math::join(empty, 13), (Range1Di{12, 13}));
+    CORRADE_COMPARE(Math::join(a, 10), (Range1Di{10, 15}));
+    CORRADE_COMPARE(Math::join(a, 20), (Range1Di{12, 20}));
+}
+
 void RangeTest::strictWeakOrdering() {
     StrictWeakOrdering o;
     const Range1D a{1.0f, 2.0f};
@@ -978,17 +1009,17 @@ void RangeTest::subclass() {
 }
 
 void RangeTest::debug() {
-    std::ostringstream o;
-    Debug(&o) << Range2Di({34, 23}, {47, 30});
+    Containers::String out;
+    Debug{&out} << Range2Di({34, 23}, {47, 30});
 
-    CORRADE_COMPARE(o.str(), "Range({34, 23}, {47, 30})\n");
+    CORRADE_COMPARE(out, "Range({34, 23}, {47, 30})\n");
 }
 
 void RangeTest::debugPacked() {
-    std::ostringstream out;
+    Containers::String out;
     /* Second is not packed, the first should not make any flags persistent */
     Debug{&out} << Debug::packed << Range2Di{{34, 23}, {47, 30}} << Range2Di{};
-    CORRADE_COMPARE(out.str(), "{{34, 23}, {47, 30}} Range({0, 0}, {0, 0})\n");
+    CORRADE_COMPARE(out, "{{34, 23}, {47, 30}} Range({0, 0}, {0, 0})\n");
 }
 
 }}}}

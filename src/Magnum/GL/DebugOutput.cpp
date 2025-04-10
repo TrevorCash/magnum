@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -178,22 +179,10 @@ void DebugOutput::setDefaultCallback() {
 }
 
 void DebugOutput::setEnabledInternal(const GLenum source, const GLenum type, const GLenum severity, const std::initializer_list<UnsignedInt> ids, const bool enabled) {
-    Context::current().state().debug.controlImplementation(source, type, severity, ids, enabled);
+    Context::current().state().debug.controlImplementation(source, type, severity, ids.size(), ids.begin(), enabled);
 }
 
-void DebugOutput::controlImplementationNoOp(GLenum, GLenum, GLenum, std::initializer_list<UnsignedInt>, bool) {}
-
-#ifndef MAGNUM_TARGET_GLES2
-void DebugOutput::controlImplementationKhrDesktopES32(const GLenum source, const GLenum type, const GLenum severity, const std::initializer_list<UnsignedInt> ids, const bool enabled) {
-    glDebugMessageControl(source, type, severity, ids.size(), ids.begin(), enabled);
-}
-#endif
-
-#ifdef MAGNUM_TARGET_GLES
-void DebugOutput::controlImplementationKhrES(const GLenum source, const GLenum type, const GLenum severity, const std::initializer_list<UnsignedInt> ids, const bool enabled) {
-    glDebugMessageControlKHR(source, type, severity, ids.size(), ids.begin(), enabled);
-}
-#endif
+void DebugOutput::controlImplementationNoOp(GLenum, GLenum, GLenum, GLsizei, const GLuint*, GLboolean) {}
 
 void DebugOutput::callbackImplementationNoOp(Callback) {}
 
@@ -231,7 +220,6 @@ void DebugOutput::callbackImplementationKhrES(const Callback callback) {
 }
 #endif
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 Debug& operator<<(Debug& debug, const DebugOutput::Source value) {
     debug << "GL::DebugOutput::Source" << Debug::nospace;
 
@@ -248,7 +236,7 @@ Debug& operator<<(Debug& debug, const DebugOutput::Source value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const DebugOutput::Type value) {
@@ -270,7 +258,7 @@ Debug& operator<<(Debug& debug, const DebugOutput::Type value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const DebugOutput::Severity value) {
@@ -285,39 +273,25 @@ Debug& operator<<(Debug& debug, const DebugOutput::Severity value) {
         #undef _c
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
-#endif
 
 void DebugMessage::insert(const Source source, const Type type, const UnsignedInt id, const DebugOutput::Severity severity, const Containers::StringView string) {
-    Context::current().state().debug.messageInsertImplementation(source, type, id, severity, string);
+    Context::current().state().debug.messageInsertImplementation(GLenum(source), GLenum(type), id, GLenum(severity), string.size(), string.data());
 }
 
-void DebugMessage::insertImplementationNoOp(Source, Type, UnsignedInt, DebugOutput::Severity, const Containers::StringView) {}
+void DebugMessage::insertImplementationNoOp(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar*) {}
 
-#ifndef MAGNUM_TARGET_GLES2
-void DebugMessage::insertImplementationKhrDesktopES32(const Source source, const Type type, const UnsignedInt id, const DebugOutput::Severity severity, const Containers::StringView string) {
-    glDebugMessageInsert(GLenum(source), GLenum(type), id, GLenum(severity), string.size(), string.data());
-}
-#endif
-
-#ifdef MAGNUM_TARGET_GLES
-void DebugMessage::insertImplementationKhrES(const Source source, const Type type, const UnsignedInt id, const DebugOutput::Severity severity, const Containers::StringView string) {
-    glDebugMessageInsertKHR(GLenum(source), GLenum(type), id, GLenum(severity), string.size(), string.data());
-}
-#endif
-
-void DebugMessage::insertImplementationExt(Source, Type, UnsignedInt, DebugOutput::Severity, const Containers::StringView string) {
-    glInsertEventMarkerEXT(string.size(), string.data());
+void DebugMessage::insertImplementationExt(GLenum, GLenum, GLuint, GLenum, const GLsizei length, const GLchar* const message) {
+    glInsertEventMarkerEXT(length, message);
 }
 
 #ifndef MAGNUM_TARGET_GLES
-void DebugMessage::insertImplementationGremedy(Source, Type, UnsignedInt, DebugOutput::Severity, const Containers::StringView string) {
-    glStringMarkerGREMEDY(string.size(), string.data());
+void DebugMessage::insertImplementationGremedy(GLenum, GLenum, GLuint, GLenum, const GLsizei length, const GLchar* const message) {
+    glStringMarkerGREMEDY(length, message);
 }
 #endif
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 Debug& operator<<(Debug& debug, const DebugMessage::Source value) {
     debug << "GL::DebugMessage::Source" << Debug::nospace;
 
@@ -330,7 +304,7 @@ Debug& operator<<(Debug& debug, const DebugMessage::Source value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const DebugMessage::Type value) {
@@ -348,9 +322,8 @@ Debug& operator<<(Debug& debug, const DebugMessage::Type value) {
         #undef _c
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
-#endif
 
 Int DebugGroup::maxStackDepth() {
     if(!Context::current().isExtensionSupported<Extensions::KHR::debug>())
@@ -375,7 +348,7 @@ DebugGroup::DebugGroup(const Source source, const UnsignedInt id, const Containe
 
 void DebugGroup::push(const Source source, const UnsignedInt id, const Containers::StringView message) {
     CORRADE_ASSERT(!_active, "GL::DebugGroup::push(): group is already active", );
-    Context::current().state().debug.pushGroupImplementation(source, id, message);
+    Context::current().state().debug.pushGroupImplementation(GLenum(source), id, message.size(), message.data());
     _active = true;
 }
 
@@ -385,43 +358,14 @@ void DebugGroup::pop() {
     _active = false;
 }
 
-void DebugGroup::pushImplementationNoOp(Source, UnsignedInt, Containers::StringView) {}
+void DebugGroup::pushImplementationNoOp(GLenum, GLuint, GLsizei, const GLchar*) {}
 
-#ifndef MAGNUM_TARGET_GLES2
-void DebugGroup::pushImplementationKhrDesktopES32(const Source source, const UnsignedInt id, const Containers::StringView message) {
-    glPushDebugGroup(GLenum(source), id, message.size(), message.data());
-}
-#endif
-
-#ifdef MAGNUM_TARGET_GLES
-void DebugGroup::pushImplementationKhrES(const Source source, const UnsignedInt id, const Containers::StringView message) {
-    glPushDebugGroupKHR(GLenum(source), id, message.size(), message.data());
-}
-#endif
-
-void DebugGroup::pushImplementationExt(Source, UnsignedInt, const Containers::StringView message) {
-    glPushGroupMarkerEXT(message.size(), message.data());
+void DebugGroup::pushImplementationExt(GLenum, GLuint, const GLsizei length, const GLchar* const message) {
+    glPushGroupMarkerEXT(length, message);
 }
 
 void DebugGroup::popImplementationNoOp() {}
 
-#ifndef MAGNUM_TARGET_GLES2
-void DebugGroup::popImplementationKhrDesktopES32() {
-    glPopDebugGroup();
-}
-#endif
-
-#ifdef MAGNUM_TARGET_GLES
-void DebugGroup::popImplementationKhrES() {
-    glPopDebugGroupKHR();
-}
-#endif
-
-void DebugGroup::popImplementationExt() {
-    glPopGroupMarkerEXT();
-}
-
-#ifndef DOXYGEN_GENERATING_OUTPUT
 Debug& operator<<(Debug& debug, const DebugGroup::Source value) {
     debug << "GL::DebugGroup::Source" << Debug::nospace;
 
@@ -434,9 +378,8 @@ Debug& operator<<(Debug& debug, const DebugGroup::Source value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(GLenum(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << GLenum(value) << Debug::nospace << ")";
 }
-#endif
 
 }}
 #endif

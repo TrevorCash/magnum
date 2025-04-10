@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/GL/DefaultFramebuffer.h"
 
@@ -42,10 +42,10 @@ DefaultFramebufferTest::DefaultFramebufferTest() {
 }
 
 void DefaultFramebufferTest::debugStatus() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << DefaultFramebuffer::Status::Complete << DefaultFramebuffer::Status(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::DefaultFramebuffer::Status::Complete GL::DefaultFramebuffer::Status(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::DefaultFramebuffer::Status::Complete GL::DefaultFramebuffer::Status(0xdead)\n");
 }
 
 }}}}

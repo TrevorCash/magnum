@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,7 +24,6 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/String.h>
 #include <Corrade/Containers/StridedArrayView.h>
@@ -31,7 +31,6 @@
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
 #include <Corrade/Utility/Algorithms.h>
-#include <Corrade/Utility/DebugStl.h> /** @todo remove once Debug is stram-free */
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/ImageView.h"
@@ -263,13 +262,17 @@ const struct {
         /* ./extract-interesting-blocks.py dice_bc5.dds bc5.png --offset 26
            (image taken from the bcdec repository test files) */
         /* [120, 124], 2.000 */
-        '\xd3', '\xdf', '\x58', '\xbf', '\xda', '\xb1', '\x7d', '\xdb', '\xd3', '\xdf', '\x58', '\xbf', '\xda', '\xb1', '\x7d', '\xdb',
+        '\xd3', '\xdf', '\x58', '\xbf', '\xda', '\xb1', '\x7d', '\xdb',
+        '\xd3', '\xdf', '\x58', '\xbf', '\xda', '\xb1', '\x7d', '\xdb',
         /* [81, 124], 2.000 */
-        '\xeb', '\xf6', '\x76', '\x60', '\x7f', '\xb6', '\x67', '\xfb', '\xeb', '\xf6', '\x76', '\x60', '\x7f', '\xb6', '\x67', '\xfb',
+        '\xeb', '\xf6', '\x76', '\x60', '\x7f', '\xb6', '\x67', '\xfb',
+        '\xeb', '\xf6', '\x76', '\x60', '\x7f', '\xb6', '\x67', '\xfb',
         /* [121, 123], 2.000 */
-        '\xd4', '\xe2', '\xc8', '\x1d', '\xdb', '\xb3', '\x6d', '\xdb', '\xd4', '\xe2', '\xc8', '\x1d', '\xdb', '\xb3', '\x6d', '\xdb',
+        '\xd4', '\xe2', '\xc8', '\x1d', '\xdb', '\xb3', '\x6d', '\xdb',
+        '\xd4', '\xe2', '\xc8', '\x1d', '\xdb', '\xb3', '\x6d', '\xdb',
         /* [81, 123], 2.000 */
-        '\xd7', '\xf3', '\x9d', '\x10', '\x4e', '\x2f', '\xe7', '\x77', '\xd7', '\xf3', '\x9d', '\x10', '\x4e', '\x2f', '\xe7', '\x77',
+        '\xd7', '\xf3', '\x9d', '\x10', '\x4e', '\x2f', '\xe7', '\x77',
+        '\xd7', '\xf3', '\x9d', '\x10', '\x4e', '\x2f', '\xe7', '\x77',
     }}, yFlipBc5InPlace, "bc5.png", {InPlaceInit, {
         '\xd7', '\xf3', '\x7e', '\xf7', '\x72', '\xe1', '\xd4', '\x09',
         '\xd7', '\xf3', '\x7e', '\xf7', '\x72', '\xe1', '\xd4', '\x09',
@@ -364,11 +367,11 @@ void ColorBatchTest::yFlipInvalidLastDimension() {
        it's enough to test just some */
     char data[32];
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     yFlipBc3InPlace(Containers::stridedArrayView(data).expanded<0>(Containers::Size3D{1, 4, 8}));
     yFlipBc1InPlace(Containers::stridedArrayView(data).expanded<0>(Containers::Size3D{1, 2, 16}).every({1, 1, 2}));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Math::yFlipBc3InPlace(): expected last dimension to be 16 bytes but got 8\n"
         "Math::yFlipBc1InPlace(): last dimension is not contiguous\n");
 }

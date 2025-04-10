@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2021 Pablo Escobar <mail@rvrs.in>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,15 +25,13 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/String.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/ImageView.h"
@@ -91,31 +90,49 @@ constexpr struct {
     bool asData;
     const char* plugin;
 } DetectData[]{
+    /* Try to keep the order the same as in the documentation, and use all
+       variants if there are */
     {"ASTC", "8x8.astc", false, "AstcImporter"},
     {"ASTC data", "8x8.astc", true, "AstcImporter"},
-    {"PNG", "rgb.png", false, "PngImporter"},
-    {"PNG data", "rgb.png", true, "PngImporter"},
+    {"Basis", "rgb.basis", false, "BasisImporter"},
+    {"Basis data", "rgb.basis", true, "BasisImporter"},
+    {"BMP", "rgb.bmp", false, "BmpImporter"},
+    {"BMP data", "rgb.bmp", true, "BmpImporter"},
+    {"DDS", "rgba_dxt1.dds", false, "DdsImporter"},
+    {"DDS data", "rgba_dxt1.dds", true, "DdsImporter"},
+    {"GIF", "image.gif", false, "GifImporter"},
+    {"OpenEXR", "skybox.exr", false, "OpenExrImporter"},
+    {"HDR", "rgb.hdr", false, "HdrImporter"},
+    {"HDR data", "rgb.hdr", true, "HdrImporter"},
+    {"HDR data, different signature", "rgb.2.hdr", true, "HdrImporter"},
+    {"ICO", "pngs.ico", false, "IcoImporter"},
     {"JPEG", "gray.jpg", false, "JpegImporter"},
     {"JPEG data", "gray.jpg", true, "JpegImporter"},
     {"JPEG uppercase", "uppercase.JPG", false, "JpegImporter"},
     {"JPEG2000", "image.jp2", false, "Jpeg2000Importer"},
-    {"HDR", "rgb.hdr", false, "HdrImporter"},
-    {"HDR data", "rgb.hdr", true, "HdrImporter"},
-    {"ICO", "pngs.ico", false, "IcoImporter"},
-    {"DDS", "rgba_dxt1.dds", false, "DdsImporter"},
-    {"DDS data", "rgba_dxt1.dds", true, "DdsImporter"},
-    {"BMP", "rgb.bmp", false, "BmpImporter"},
-    {"BMP data", "rgb.bmp", true, "BmpImporter"},
-    {"GIF", "image.gif", false, "GifImporter"},
+    /* KTX2, including data, tested sufficiently elsewhere */
+    {"MNG", "obsolete.mng", false, "MngImporter"},
+    {"Portable Bitmap", "text.pbm", false, "PbmImporter"},
+    {"Portable Graymap", "text.pgm", false, "PgmImporter"},
+    {"Portable Anymap", "text.pnm", false, "PnmImporter"},
+    {"Portable Pixmap", "text.ppm", false, "PpmImporter"},
+    {"ZSoft PCX", "image.pcx", false, "PcxImporter"},
+    {"Softimage PIC", "image.pic", false, "PicImporter"},
+    {"PNG", "rgb.png", false, "PngImporter"},
+    {"PNG data", "rgb.png", true, "PngImporter"},
     {"PSD", "image.psd", false, "PsdImporter"},
+    {"Sillicon Graphics SGI", "pixar.sgi", false, "SgiImporter"},
+    {"Sillicon Graphics BW", "pixar.bw", false, "SgiImporter"},
+    {"Sillicon Graphics RGB", "pixar.rgb", false, "SgiImporter"},
+    {"Sillicon Graphics RGBA", "pixar.rgba", false, "SgiImporter"},
     {"TIFF", "image.tiff", false, "TiffImporter"},
+    {"TIFF, 3-character extension", "image.tif", false, "TiffImporter"},
     {"TIFF data", "image.tiff", true, "TiffImporter"},
-    {"Basis", "rgb.basis", false, "BasisImporter"},
-    {"Basis data", "rgb.basis", true, "BasisImporter"},
+    /* TGA, including data, tested sufficiently elsewhere. The extension
+       variants however cannot be tested because the plugin is available. */
     {"OpenVDB", "volume.vdb", false, "OpenVdbImporter"},
     {"WebP", "rgb-lossless.webp", false, "WebPImporter"},
     {"WebP data", "rgb-lossless.webp", true, "WebPImporter"}
-    /* Not testing everything, just the most important ones */
 };
 
 const struct {
@@ -158,6 +175,7 @@ const struct {
     {"just one byte", "\x33"_s, "33"},
     {"just one zero byte", "\x00"_s, "00"},
     {"DDS, but no space", "DDS!"_s, "44445321"},
+    {"HDR, but without the trailing newline", "#?RADIANCE."_s, "233f5241"},
     {"TIFF, but too short", "II\x2a"_s, "49492a"},
     {"TIFF, but no zero byte", "MM\xff\x2a"_s, "4d4dff2a"},
     {"KTX, but wrong version", "\xabKTX 30\xbb\r\n\x1a\n"_s, "ab4b5458"},
@@ -267,7 +285,7 @@ void AnyImageImporterTest::detect() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("AnyImageImporter");
     Containers::String filename = Utility::Path::join(ANYIMAGEIMPORTER_TEST_DIR, data.filename);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     if(data.asData) {
         Containers::Optional<Containers::Array<char>> read = Utility::Path::read(filename);
@@ -275,12 +293,12 @@ void AnyImageImporterTest::detect() {
         CORRADE_VERIFY(!importer->openData(*read));
     } else CORRADE_VERIFY(!importer->openFile(filename));
     #ifndef CORRADE_PLUGINMANAGER_NO_DYNAMIC_PLUGIN_SUPPORT
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} is not static and was not found in nonexistent\n"
         "Trade::AnyImageImporter::{1}(): cannot load the {0} plugin\n",
         data.plugin, data.asData ? "openData" : "openFile"));
     #else
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "PluginManager::Manager::load(): plugin {0} was not found\n"
         "Trade::AnyImageImporter::{1}(): cannot load the {0} plugin\n",
         data.plugin, data.asData ? "openData" : "openFile"));
@@ -312,17 +330,17 @@ void AnyImageImporterTest::ktxBasisFallbackFile() {
     if(data.verbose)
         importer->setFlags(ImporterFlag::Verbose);
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     Error redirectError{&out};
     /* We don't care if the file opens (it won't if BasisImporter isn't
        present), just verifying if correct plugin got picked by checking the
        message. */
     importer->openFile(Utility::Path::join(ANYIMAGEIMPORTER_TEST_DIR, "basis.ktx2"));
-    if(data.expectedMessage) CORRADE_COMPARE_AS(out.str(),
-        Utility::formatString(data.expectedMessage, "openFile"),
+    if(data.expectedMessage) CORRADE_COMPARE_AS(out,
+        Utility::format(data.expectedMessage, "openFile"),
         TestSuite::Compare::StringHasPrefix);
-    else CORRADE_COMPARE(out.str(), "");
+    else CORRADE_COMPARE(out, "");
 }
 
 void AnyImageImporterTest::ktxBasisFallbackData() {
@@ -353,26 +371,26 @@ void AnyImageImporterTest::ktxBasisFallbackData() {
     Containers::Optional<Containers::Array<char>> read = Utility::Path::read(Utility::Path::join(ANYIMAGEIMPORTER_TEST_DIR, "basis.ktx2"));
     CORRADE_VERIFY(read);
 
-    std::ostringstream out;
+    Containers::String out;
     Debug redirectOutput{&out};
     Error redirectError{&out};
     /* We don't care if the file opens (it won't if BasisImporter isn't
        present), just verifying if correct plugin got picked by checking the
        message. */
     importer->openData(*read);
-    if(data.expectedMessage) CORRADE_COMPARE_AS(out.str(),
-        Utility::formatString(data.expectedMessage, "openData"),
+    if(data.expectedMessage) CORRADE_COMPARE_AS(out,
+        Utility::format(data.expectedMessage, "openData"),
         TestSuite::Compare::StringHasPrefix);
-    else CORRADE_COMPARE(out.str(), "");
+    else CORRADE_COMPARE(out, "");
 }
 
 void AnyImageImporterTest::unknownExtension() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("AnyImageImporter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openFile("image.xcf"));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageImporter::openFile(): cannot determine the format of image.xcf\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageImporter::openFile(): cannot determine the format of image.xcf\n");
 }
 
 void AnyImageImporterTest::unknownSignature() {
@@ -381,19 +399,19 @@ void AnyImageImporterTest::unknownSignature() {
 
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("AnyImageImporter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openData(data.data));
-    CORRADE_COMPARE(out.str(), Utility::formatString("Trade::AnyImageImporter::openData(): cannot determine the format from signature 0x{}\n", data.signature));
+    CORRADE_COMPARE(out, Utility::format("Trade::AnyImageImporter::openData(): cannot determine the format from signature 0x{}\n", data.signature));
 }
 
 void AnyImageImporterTest::emptyData() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("AnyImageImporter");
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!importer->openData(nullptr));
-    CORRADE_COMPARE(out.str(), "Trade::AnyImageImporter::openData(): file is empty\n");
+    CORRADE_COMPARE(out, "Trade::AnyImageImporter::openData(): file is empty\n");
 }
 
 void AnyImageImporterTest::propagateFlags() {
@@ -406,7 +424,7 @@ void AnyImageImporterTest::propagateFlags() {
     Containers::Pointer<AbstractImporter> importer = _manager.instantiate("AnyImageImporter");
     importer->setFlags(ImporterFlag::Verbose);
 
-    std::ostringstream out;
+    Containers::String out;
     {
         Debug redirectOutput{&out};
         if(data.asData) {
@@ -416,7 +434,7 @@ void AnyImageImporterTest::propagateFlags() {
         } else CORRADE_VERIFY(importer->openFile(Utility::Path::join(ANYIMAGEIMPORTER_TEST_DIR, data.filename)));
         CORRADE_VERIFY(importer->image2D(0));
     }
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Trade::AnyImageImporter::{}(): using TgaImporter\n"
         "Trade::TgaImporter::image2D(): converting from BGR to RGB\n",
         data.messageFunctionName));
@@ -468,7 +486,7 @@ void AnyImageImporterTest::propagateConfigurationUnknown() {
     importer->configuration().setValue("noSuchOption", "isHere");
     importer->setFlags(data.flags);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     if(data.asData) {
         Containers::Optional<Containers::Array<char>> read = Utility::Path::read(Utility::Path::join(ANYIMAGEIMPORTER_TEST_DIR, data.filename));
@@ -476,9 +494,9 @@ void AnyImageImporterTest::propagateConfigurationUnknown() {
         CORRADE_VERIFY(importer->openData(*read));
     } else CORRADE_VERIFY(importer->openFile(Utility::Path::join(ANYIMAGEIMPORTER_TEST_DIR, data.filename)));
     if(data.quiet)
-        CORRADE_COMPARE(out.str(), "");
+        CORRADE_COMPARE(out, "");
     else
-        CORRADE_COMPARE(out.str(), Utility::formatString("Trade::AnyImageImporter::{}(): option noSuchOption not recognized by TgaImporter\n", data.messageFunctionName));
+        CORRADE_COMPARE(out, Utility::format("Trade::AnyImageImporter::{}(): option noSuchOption not recognized by TgaImporter\n", data.messageFunctionName));
 }
 
 void AnyImageImporterTest::propagateFileCallback() {

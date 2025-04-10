@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -31,6 +32,9 @@
  */
 #endif
 
+#include "Magnum/configure.h"
+
+#ifdef MAGNUM_TARGET_GL
 #include "Magnum/Resource.h"
 #include "Magnum/DebugTools/DebugTools.h"
 #include "Magnum/DebugTools/visibility.h"
@@ -38,7 +42,6 @@
 #include "Magnum/SceneGraph/Drawable.h"
 #include "Magnum/Shaders/Shaders.h"
 
-#ifdef MAGNUM_TARGET_GL
 namespace Magnum { namespace DebugTools {
 
 /**
@@ -82,7 +85,7 @@ Visualizes object position, rotation and scale using colored axes. See
 
 Example code:
 
-@snippet MagnumDebugTools-gl.cpp ObjectRenderer
+@snippet DebugTools-gl.cpp ObjectRenderer
 
 @note This class is available only if Magnum is compiled with
     @ref MAGNUM_TARGET_GL "TARGET_GL" and `MAGNUM_WITH_SCENEGRAPH` enabled
@@ -105,16 +108,6 @@ template<UnsignedInt dimensions> class ObjectRenderer: public SceneGraph::Drawab
          */
         explicit ObjectRenderer(ResourceManager& manager, SceneGraph::AbstractObject<dimensions, Float>& object, ResourceKey options = ResourceKey(), SceneGraph::DrawableGroup<dimensions, Float>* drawables = nullptr);
 
-        #ifdef MAGNUM_BUILD_DEPRECATED
-        /**
-         * @brief Constructor
-         * @m_deprecated_since{2019,10} Implicit @ref ResourceManager singleton
-         *      is deprecated, use @ref ObjectRenderer(ResourceManager&, SceneGraph::AbstractObject<dimensions, Float>&, ResourceKey, SceneGraph::DrawableGroup<dimensions, Float>*)
-         *      instead.
-         */
-        explicit CORRADE_DEPRECATED("implicit ResourceManager singleton is deprecated, use a constructor with explicit ResourceManager reference instead") ObjectRenderer(SceneGraph::AbstractObject<dimensions, Float>& object, ResourceKey options = ResourceKey(), SceneGraph::DrawableGroup<dimensions, Float>* drawables = nullptr);
-        #endif
-
         ~ObjectRenderer();
 
     private:
@@ -125,10 +118,22 @@ template<UnsignedInt dimensions> class ObjectRenderer: public SceneGraph::Drawab
         Resource<GL::Mesh> _mesh;
 };
 
-/** @brief Two-dimensional object renderer */
+/**
+@brief Two-dimensional object renderer
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+*/
 typedef ObjectRenderer<2> ObjectRenderer2D;
 
-/** @brief Three-dimensional object renderer */
+/**
+@brief Three-dimensional object renderer
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+*/
 typedef ObjectRenderer<3> ObjectRenderer3D;
 
 }}

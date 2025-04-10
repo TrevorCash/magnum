@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -40,7 +41,10 @@ namespace Magnum { namespace Platform {
 namespace Implementation {
 
 CORRADE_HAS_TYPE(HasKeyEvent, typename T::KeyEvent);
+CORRADE_HAS_TYPE(HasScrollEvent, typename T::ScrollEvent);
+#ifdef MAGNUM_BUILD_DEPRECATED
 CORRADE_HAS_TYPE(HasMouseScrollEvent, typename T::MouseScrollEvent);
+#endif
 CORRADE_HAS_TYPE(HasTextInputEvent, typename T::TextInputEvent);
 CORRADE_HAS_TYPE(HasTextEditingEvent, typename T::TextEditingEvent);
 
@@ -59,9 +63,22 @@ template<class Application> struct ApplicationKeyEventMixin<Application, true> {
     void callKeyReleaseEvent(typename Application::KeyEvent& event, Containers::LinkedList<BasicScreen<Application>>& screens);
 };
 
-/* Calls into the screen in case the application has a mouseScrollEvent(),
-   otherwise provides a dummy virtual so the application can unconditionally
-   override */
+/* Calls into the screen in case the application has a scrollEvent(), otherwise
+   provides a dummy virtual so the application can unconditionally override */
+template<class Application, bool implements> struct ApplicationScrollEventMixin {
+    typedef int ScrollEvent;
+    virtual void scrollEvent(ScrollEvent&) = 0;
+
+    void callScrollEvent(Application&, ScrollEvent&, Containers::LinkedList<BasicScreen<Application>>&);
+};
+template<class Application> struct ApplicationScrollEventMixin<Application, true> {
+    void callScrollEvent(Application& application, typename Application::ScrollEvent& event, Containers::LinkedList<BasicScreen<Application>>& screens);
+};
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+/* Calls into the screen in case the application has a (deprecated)
+   mouseScrollEvent(), otherwise provides a dummy virtual so the application
+   can unconditionally override */
 template<class Application, bool> struct ApplicationMouseScrollEventMixin {
     typedef int MouseScrollEvent;
     virtual void mouseScrollEvent(MouseScrollEvent&) = 0;
@@ -69,8 +86,11 @@ template<class Application, bool> struct ApplicationMouseScrollEventMixin {
     void callMouseScrollEvent(MouseScrollEvent&, Containers::LinkedList<BasicScreen<Application>>&);
 };
 template<class Application> struct ApplicationMouseScrollEventMixin<Application, true> {
+    CORRADE_IGNORE_DEPRECATED_PUSH
     void callMouseScrollEvent(typename Application::MouseScrollEvent& event, Containers::LinkedList<BasicScreen<Application>>& screens);
+    CORRADE_IGNORE_DEPRECATED_POP
 };
+#endif
 
 /* Calls into the screen in case the application has a textInputEvent(),
    otherwise provides a dummy virtual so the application can unconditionally
@@ -121,14 +141,14 @@ event, they are propagated to the screens:
 -   @ref Sdl2Application::drawEvent() "drawEvent()" is propagated in
     back-to-front order to screens which have @ref BasicScreen::PropagatedEvent::Draw
     enabled.
--   Input events (@ref Sdl2Application::keyPressEvent() "keyPressEvent()",
-    @ref Sdl2Application::keyReleaseEvent() "keyReleaseEvent()",
-    @ref Sdl2Application::mousePressEvent() "mousePressEvent()",
-    @ref Sdl2Application::mouseReleaseEvent() "mouseReleaseEvent()",
-    @ref Sdl2Application::mouseMoveEvent() "mouseMoveEvent()",
-    @ref Sdl2Application::mouseMoveEvent() "mouseScrollEvent()",
-    @ref Sdl2Application::textInputEvent() "textInputEvent()" and
-    @ref Sdl2Application::textEditingEvent() "textEditingEvent()")
+-   Input events (@relativeref{Sdl2Application,keyPressEvent()},
+    @relativeref{Sdl2Application,keyReleaseEvent()},
+    @relativeref{Sdl2Application,pointerPressEvent()},
+    @relativeref{Sdl2Application,pointerReleaseEvent()},
+    @relativeref{Sdl2Application,pointerMoveEvent()},
+    @relativeref{Sdl2Application,mouseScrollEvent()},
+    @relativeref{Sdl2Application,textInputEvent()} and
+    @relativeref{Sdl2Application,textEditingEvent()})
     are propagated in front-to-back order to screens which have
     @ref BasicScreen::PropagatedEvent::Input enabled. If any screen sets the
     event as accepted, it is not propagated further.
@@ -142,19 +162,19 @@ called *before* all @ref BasicScreen::viewportEvent() "Screen::viewportEvent()",
 in this case to make it possible to handle viewport changes on the default
 framebuffer:
 
-@snippet MagnumPlatform.cpp ScreenedApplication-global-events
+@snippet Platform.cpp ScreenedApplication-global-events
 
 Uses @ref Corrade::Containers::LinkedList for efficient screen management.
 Traversing front-to-back through the list of screens can be done using
 range-based for:
 
-@snippet MagnumPlatform.cpp ScreenedApplication-for-range
+@snippet Platform.cpp ScreenedApplication-for-range
 
 Or, if you need more flexibility, like in the following code. Traversing
 back-to-front can be done using @ref Corrade::Containers::LinkedList::last()
 and @ref BasicScreen::nextNearerScreen().
 
-@snippet MagnumPlatform.cpp ScreenedApplication-for
+@snippet Platform.cpp ScreenedApplication-for
 
 @section Platform-ScreenedApplication-template-specializations Explicit template specializations
 
@@ -174,7 +194,10 @@ template<class Application> class BasicScreenedApplication:
     public Application,
     private Containers::LinkedList<BasicScreen<Application>>,
     private Implementation::ApplicationKeyEventMixin<Application, Implementation::HasKeyEvent<Application>::value>,
+    private Implementation::ApplicationScrollEventMixin<Application, Implementation::HasScrollEvent<Application>::value>,
+    #ifdef MAGNUM_BUILD_DEPRECATED
     private Implementation::ApplicationMouseScrollEventMixin<Application, Implementation::HasMouseScrollEvent<Application>::value>,
+    #endif
     private Implementation::ApplicationTextInputEventMixin<Application, Implementation::HasTextInputEvent<Application>::value>,
     private Implementation::ApplicationTextEditingEventMixin<Application, Implementation::HasTextEditingEvent<Application>::value>
 {
@@ -272,8 +295,8 @@ template<class Application> class BasicScreenedApplication:
         CORRADE_DEPRECATED("Platform::Screen::application() returns a reference now") const BasicScreenedApplication<Application>& operator*() const { return *this; }
         CORRADE_DEPRECATED("Platform::Screen::application() returns a reference now") operator BasicScreenedApplication<Application>*() { return this; }
         CORRADE_DEPRECATED("Platform::Screen::application() returns a reference now") operator const BasicScreenedApplication<Application>*() const { return this; }
-        template<class T, class = typename std::enable_if<std::is_base_of<BasicScreenedApplication<Application>, T>::value>::type> CORRADE_DEPRECATED("Platform::Screen::application() returns a reference now") operator T*() { return static_cast<T*>(this); }
-        template<class T, class = typename std::enable_if<std::is_base_of<BasicScreenedApplication<Application>, T>::value>::type> CORRADE_DEPRECATED("Platform::Screen::application() returns a reference now") operator const T*() const { return static_cast<const T*>(this); }
+        template<class T, typename std::enable_if<std::is_base_of<BasicScreenedApplication<Application>, T>::value, int>::type = 0> CORRADE_DEPRECATED("Platform::Screen::application() returns a reference now") operator T*() { return static_cast<T*>(this); }
+        template<class T, typename std::enable_if<std::is_base_of<BasicScreenedApplication<Application>, T>::value, int>::type = 0> CORRADE_DEPRECATED("Platform::Screen::application() returns a reference now") operator const T*() const { return static_cast<const T*>(this); }
         CORRADE_DEPRECATED("Platform::Screen::application() returns a reference now, use hasApplication() instead") bool operator!() const { return false; }
         #endif
 
@@ -323,15 +346,27 @@ template<class Application> class BasicScreenedApplication:
            implementations are dispatching the events to attached screens. */
         void viewportEvent(typename Application::ViewportEvent& event) override final;
         void drawEvent() override final;
+        void pointerPressEvent(typename Application::PointerEvent& event) override final;
+        void pointerReleaseEvent(typename Application::PointerEvent& event) override final;
+        void pointerMoveEvent(typename Application::PointerMoveEvent& event) override final;
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        CORRADE_IGNORE_DEPRECATED_PUSH
         void mousePressEvent(typename Application::MouseEvent& event) override final;
         void mouseReleaseEvent(typename Application::MouseEvent& event) override final;
         void mouseMoveEvent(typename Application::MouseMoveEvent& event) override final;
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
 
         /* These events are not available in all cases, so if the Application
            doesn't have them, they're overriding a mixin dummy */
         void keyPressEvent(typename BasicScreenedApplication<Application>::KeyEvent& event) override final;
         void keyReleaseEvent(typename BasicScreenedApplication<Application>::KeyEvent& event) override final;
+        void scrollEvent(typename BasicScreenedApplication<Application>::ScrollEvent& event) override final;
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        CORRADE_IGNORE_DEPRECATED_PUSH
         void mouseScrollEvent(typename BasicScreenedApplication<Application>::MouseScrollEvent& event) override final;
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
         void textInputEvent(typename BasicScreenedApplication<Application>::TextInputEvent& event) override final;
         void textEditingEvent(typename BasicScreenedApplication<Application>::TextEditingEvent& event) override final;
 };

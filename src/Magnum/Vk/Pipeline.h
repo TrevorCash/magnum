@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -90,7 +91,7 @@ subpass index and the count of color attachments. Apart from that you need to
 set a viewport using @ref RasterizationPipelineCreateInfo::setViewport()
 and you end up with a minimal setup needed for color-only rendering:
 
-@snippet MagnumVk.cpp Pipeline-creation-rasterization
+@snippet Vk.cpp Pipeline-creation-rasterization
 
 Certain aspects of the pipeline can be set as dynamic using
 @relativeref{RasterizationPipelineCreateInfo,setDynamicStates()} --- in that
@@ -103,7 +104,7 @@ Compared to a rasterization pipeline, @ref ComputePipelineCreateInfo only takes
 a @ref ShaderSet containing a single @ref ShaderStage::Compute shader and a
 @link PipelineLayout @endlink:
 
-@snippet MagnumVk.cpp Pipeline-creation-compute
+@snippet Vk.cpp Pipeline-creation-compute
 
 @section Vk-Pipeline-usage Pipeline usage
 
@@ -111,7 +112,7 @@ A pipeline is bound to a compatible command buffer using
 @ref CommandBuffer::bindPipeline(), which replaces any pipeline bound
 previously to the same @ref bindPoint():
 
-@snippet MagnumVk.cpp Pipeline-usage
+@snippet Vk.cpp Pipeline-usage
 */
 class MAGNUM_VK_EXPORT Pipeline {
     public:

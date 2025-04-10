@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
     Copyright @ 2022 Hugo Amiard <hugo.amiard@wonderlandengine.com>
 
@@ -551,12 +552,23 @@ void AbstractShaderProgram::bindAttributeLocation(const UnsignedInt location, co
     glBindAttribLocation(_id, location, Containers::String::nullTerminatedView(name).data());
 }
 
-#ifndef MAGNUM_TARGET_GLES
+#if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
 void AbstractShaderProgram::bindFragmentDataLocation(const UnsignedInt location, const Containers::StringView name) {
-    glBindFragDataLocation(_id, location, Containers::String::nullTerminatedView(name).data());
+    #ifndef MAGNUM_TARGET_GLES
+    glBindFragDataLocation
+    #else
+    glBindFragDataLocationEXT
+    #endif
+        (_id, location, Containers::String::nullTerminatedView(name).data());
 }
+
 void AbstractShaderProgram::bindFragmentDataLocationIndexed(const UnsignedInt location, UnsignedInt index, const Containers::StringView name) {
-    glBindFragDataLocationIndexed(_id, location, index, Containers::String::nullTerminatedView(name).data());
+    #ifndef MAGNUM_TARGET_GLES
+    glBindFragDataLocationIndexed
+    #else
+    glBindFragDataLocationIndexedEXT
+    #endif
+        (_id, location, index, Containers::String::nullTerminatedView(name).data());
 }
 #endif
 

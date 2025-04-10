@@ -6,6 +6,8 @@
     https://doc.magnum.graphics/magnum/namespaceMagnum_1_1EigenIntegration.html
     https://doc.magnum.graphics/magnum/namespaceMagnum_1_1GlmIntegration.html
 
+    Depends on CorradePair.h.
+
     This is a single-header library generated from the Magnum project. With the
     goal being easy integration, it's deliberately free of all comments to keep
     the file size small. More info, changelogs and full docs here:
@@ -22,12 +24,33 @@
         #include <MagnumMath.hpp>
 
     If you need the deinlined symbols to be exported from a shared library,
-    `#define MAGNUM_EXPORT` as appropriate. In addition, contents of the
-    GlmIntegration and EigenIntegration libraries are included as well ---
-    opt-in by specifying either `#define MAGNUM_MATH_GLM_INTEGRATION` or
+    `#define MAGNUM_EXPORT` as appropriate. The STL compatibility bits for time
+    types are included as well --- opt-in with
+    `#define MAGNUM_MATH_STL_COMPATIBILITY` before including the file. Contents
+    of the GlmIntegration and EigenIntegration libraries can be opted in by
+    specifying either `#define MAGNUM_MATH_GLM_INTEGRATION` or
     `#define MAGNUM_MATH_EIGEN_INTEGRATION` before including the file.
     Including it multiple times with different macros defined works as well.
 
+    v2020.06-3125-g632a2 (2025-01-07)
+    -   New Nanoseconds and Seconds types along with _nsec, _usec, _msec and
+        _sec literals and opt-in std::chrono compatibility
+    -   Literals are now in inline AngleLiterals, ColorLiterals, HalfLiterals
+        and TimeLiterals subnamespaces to allow for more fine-grained inclusion
+    -   Most const Vector APIs are now constexpr as well
+    -   The _rgbf and _rgbaf literals are now constexpr
+    -   Vector and [Rectangular]Matrix instances can are now constexpr
+        constructible directly from plain C arrays of matching sizes
+    -   Added Quaternion::rotation() from two vectors
+    -   Added Quaternion::xyzw() and wxyz() for conversion to a Vector4
+    -   Bezier APIs now use the leaf Vector2 / Vector3 types instead of the
+        base Vector type
+    -   New Matrix2x1, Matrix3x1, Matrix4x1, Matrix2x1d, Matrix3x1d and
+        Matrix4x1d typedefs for single-row matrices
+    -   Removed dependency on <utility> in favor of CorradePair.h, which
+        reduces the preprocessed size by about 500 lines, and enables constexpr
+        usage in various new places
+    -   Updated Eigen integration to work with MSVC 2022 17.10+
     v2020.06-2544-g3e435 (2023-09-11)
     -   Fixes to the Utility::swap() helper to avoid ambiguity with std::swap()
     v2020.06-2502-gfa079385b (2023-08-28)
@@ -218,6 +241,8 @@ template<class U> class className {                                         \
 
 namespace Magnum {
 
+using namespace Corrade;
+
 typedef Math::Half Half;
 typedef Math::BitVector<2> BitVector2;
 typedef Math::BitVector<3> BitVector3;
@@ -251,15 +276,18 @@ typedef Math::Color3<UnsignedShort> Color3us;
 typedef Math::Color4<UnsignedShort> Color4us;
 typedef Math::Matrix3<Float> Matrix3;
 typedef Math::Matrix4<Float> Matrix4;
+typedef Math::Matrix2x1<Float> Matrix2x1;
 typedef Math::Matrix2x2<Float> Matrix2x2;
-typedef Math::Matrix3x3<Float> Matrix3x3;
-typedef Math::Matrix4x4<Float> Matrix4x4;
 typedef Math::Matrix2x3<Float> Matrix2x3;
-typedef Math::Matrix3x2<Float> Matrix3x2;
 typedef Math::Matrix2x4<Float> Matrix2x4;
-typedef Math::Matrix4x2<Float> Matrix4x2;
+typedef Math::Matrix3x1<Float> Matrix3x1;
+typedef Math::Matrix3x2<Float> Matrix3x2;
+typedef Math::Matrix3x3<Float> Matrix3x3;
 typedef Math::Matrix3x4<Float> Matrix3x4;
+typedef Math::Matrix4x1<Float> Matrix4x1;
+typedef Math::Matrix4x2<Float> Matrix4x2;
 typedef Math::Matrix4x3<Float> Matrix4x3;
+typedef Math::Matrix4x4<Float> Matrix4x4;
 typedef Math::Matrix2x2<Byte> Matrix2x2b;
 typedef Math::Matrix2x3<Byte> Matrix2x3b;
 typedef Math::Matrix2x4<Byte> Matrix2x4b;
@@ -304,6 +332,8 @@ typedef Math::Range1D<Int> Range1Di;
 typedef Math::Range2D<Int> Range2Di;
 typedef Math::Range3D<Int> Range3Di;
 typedef Math::Frustum<Float> Frustum;
+typedef Math::Nanoseconds<Long> Nanoseconds;
+typedef Math::Seconds<Float> Seconds;
 typedef Math::Vector2<Half> Vector2h;
 typedef Math::Vector3<Half> Vector3h;
 typedef Math::Vector4<Half> Vector4h;
@@ -328,15 +358,18 @@ typedef Math::Vector3<Double> Vector3d;
 typedef Math::Vector4<Double> Vector4d;
 typedef Math::Matrix3<Double> Matrix3d;
 typedef Math::Matrix4<Double> Matrix4d;
+typedef Math::Matrix2x1<Double> Matrix2x1d;
 typedef Math::Matrix2x2<Double> Matrix2x2d;
-typedef Math::Matrix3x3<Double> Matrix3x3d;
-typedef Math::Matrix4x4<Double> Matrix4x4d;
 typedef Math::Matrix2x3<Double> Matrix2x3d;
-typedef Math::Matrix3x2<Double> Matrix3x2d;
 typedef Math::Matrix2x4<Double> Matrix2x4d;
-typedef Math::Matrix4x2<Double> Matrix4x2d;
+typedef Math::Matrix3x1<Double> Matrix3x1d;
+typedef Math::Matrix3x2<Double> Matrix3x2d;
+typedef Math::Matrix3x3<Double> Matrix3x3d;
 typedef Math::Matrix3x4<Double> Matrix3x4d;
+typedef Math::Matrix4x1<Double> Matrix4x1d;
+typedef Math::Matrix4x2<Double> Matrix4x2d;
 typedef Math::Matrix4x3<Double> Matrix4x3d;
+typedef Math::Matrix4x4<Double> Matrix4x4d;
 typedef Math::QuadraticBezier2D<Double> QuadraticBezier2Dd;
 typedef Math::QuadraticBezier3D<Double> QuadraticBezier3Dd;
 typedef Math::CubicBezier2D<Double> CubicBezier2Dd;
@@ -366,7 +399,6 @@ typedef Math::Frustum<Double> Frustumd;
 #include "Magnum/Math/Bezier.h"
 #include "Magnum/Math/BitVector.h"
 #include "Magnum/Math/Color.h"
-// TODO: ColorBatch (separate library because of StridedArrayView)
 #include "Magnum/Math/Complex.h"
 #include "Magnum/Math/Constants.h"
 #include "Magnum/Math/CubicHermite.h"
@@ -376,19 +408,18 @@ typedef Math::Frustum<Double> Frustumd;
 #include "Magnum/Math/DualQuaternion.h"
 #include "Magnum/Math/Frustum.h"
 #include "Magnum/Math/Functions.h"
-// TODO: FunctionsBatch (separate library because of StridedArrayView)
 #include "Magnum/Math/Half.h"
 #include "Magnum/Math/Intersection.h"
 #include "Magnum/Math/Matrix.h"
 #include "Magnum/Math/Matrix3.h"
 #include "Magnum/Math/Matrix4.h"
 #include "Magnum/Math/Packing.h"
-// TODO: PackingBatch (separate library because of StridedArrayView)
 #include "Magnum/Math/Quaternion.h"
 #include "Magnum/Math/Range.h"
 #include "Magnum/Math/RectangularMatrix.h"
 #include "Magnum/Math/Swizzle.h"
 #include "Magnum/Math/Tags.h"
+#include "Magnum/Math/Time.h"
 #include "Magnum/Math/TypeTraits.h"
 #include "Magnum/Math/Unit.h"
 #include "Magnum/Math/Vector.h"
@@ -400,6 +431,10 @@ typedef Math::Frustum<Double> Frustumd;
 #include "Magnum/Math/Algorithms/KahanSum.h"
 #include "Magnum/Math/Algorithms/Qr.h"
 //#include "Magnum/Math/Algorithms/Svd.h" // TODO needs Optional and Triple
+#ifdef MAGNUM_MATH_STL_COMPATIBILITY
+// {{includes}}
+#include "Magnum/Math/TimeStl.h"
+#endif
 #ifdef MAGNUM_MATH_GLM_INTEGRATION
 // {{includes}}
 #include "Magnum/GlmIntegration/Integration.h"
@@ -416,4 +451,5 @@ typedef Math::Frustum<Double> Frustumd;
 // {{ includes }}
 #include "Magnum/Math/Functions.cpp"
 #include "Magnum/Math/Packing.cpp"
+/* Time.cpp is just debug output operators, not included */
 #endif

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,8 +25,7 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <numeric>
-#include <sstream>
+#include <numeric> /* std::iota() */
 #include <Corrade/Containers/ArrayViewStl.h>
 #include <Corrade/Containers/Pair.h>
 #include <Corrade/Containers/StridedArrayView.h>
@@ -33,15 +33,9 @@
 #include <Corrade/Containers/StringIterable.h>
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Utility/Algorithms.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Path.h>
 #include <Corrade/Utility/System.h>
-
-#ifdef CORRADE_TARGET_APPLE
-#include <Corrade/Containers/Pair.h>
-#include <Corrade/Utility/System.h> /* isSandboxed() */
-#endif
 
 #include "Magnum/DebugTools/ColorMap.h"
 #include "Magnum/DebugTools/CompareImage.h"
@@ -1054,8 +1048,8 @@ const struct {
     #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
     {"wireframe", "instanced-wireframe2D.tga",
         MeshVisualizerGL2D::Flag::Wireframe,
-        /* Minor differences on ARM Mali */
-        0.34f, 0.00625f},
+        /* Minor differences on ARM Mali, NVidia */
+        0.667f, 0.012f},
     #endif
     {"wireframe w/o GS", "instanced-wireframe-nogeo2D.tga",
         MeshVisualizerGL2D::Flag::Wireframe|MeshVisualizerGL2D::Flag::NoGeometryShader,
@@ -1094,12 +1088,14 @@ const struct {
     #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
     {"wireframe", "instanced-wireframe3D.tga",
         MeshVisualizerGL3D::Flag::Wireframe,
-        0.0f, 0.0f},
+        /* Minor differences on NVidia */
+        0.667f, 0.0054f},
     #endif
     #if !defined(MAGNUM_TARGET_GLES2) && !defined(MAGNUM_TARGET_WEBGL)
     {"wireframe + TBN", "instanced-wireframe-tbn3D.tga",
         MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::TangentDirection|MeshVisualizerGL3D::Flag::BitangentFromTangentDirection|MeshVisualizerGL3D::Flag::NormalDirection,
-        0.0f, 0.0f},
+        /* Minor differences on NVidia */
+        0.667f, 0.0050f},
     #endif
     {"wireframe w/o GS", "instanced-wireframe-nogeo3D.tga",
         MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::NoGeometryShader,
@@ -1175,7 +1171,8 @@ constexpr struct {
     {"bind with offset, textured array object ID, shader storage", "multidraw-objectidtexture2D.tga",
         MeshVisualizerGL2D::Flag::ShaderStorageBuffers|MeshVisualizerGL2D::Flag::TextureTransformation|MeshVisualizerGL2D::Flag::ObjectIdTexture|MeshVisualizerGL2D::Flag::TextureArrays,
         0, 0, true, 16,
-        0.0f, 0.0f},
+        /* Minor differences on NVidia */
+        0.667f, 0.056f},
     #endif
     #ifndef MAGNUM_TARGET_WEBGL
     {"draw offset, wireframe", "multidraw-wireframe2D.tga",
@@ -1213,7 +1210,8 @@ constexpr struct {
     {"draw offset, textured array object ID, shader storage", "multidraw-objectidtexture2D.tga",
         MeshVisualizerGL2D::Flag::ShaderStorageBuffers|MeshVisualizerGL2D::Flag::TextureTransformation|MeshVisualizerGL2D::Flag::ObjectIdTexture|MeshVisualizerGL2D::Flag::TextureArrays,
         0, 0, false, 1,
-        0.0f, 0.0f},
+        /* Minor differences on NVidia */
+        0.667f, 0.056f},
     #endif
     #ifndef MAGNUM_TARGET_WEBGL
     {"multidraw, wireframe", "multidraw-wireframe2D.tga",
@@ -1265,17 +1263,19 @@ constexpr struct {
     {"bind with offset, wireframe", "multidraw-wireframe3D.tga",
         MeshVisualizerGL3D::Flag::Wireframe,
         1, 1, true, 16,
-        0.0f, 0.0f},
+        /* Minor differences on NVidia */
+        0.667f, 0.0055f},
     {"bind with offset, wireframe + TBN", "multidraw-wireframe-tbn3D.tga",
         MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::TangentDirection|MeshVisualizerGL3D::Flag::BitangentFromTangentDirection|MeshVisualizerGL3D::Flag::NormalDirection,
         1, 1, true, 16,
-        0.0f, 0.0f},
+        /* Minor differences on NVidia */
+        0.667f, 0.0054f},
     #endif
     {"bind with offset, wireframe w/o GS", "multidraw-wireframe-nogeo3D.tga",
         MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::NoGeometryShader,
         1, 1, true, 16,
-        /* Minor differences on ARM Mali */
-        6.0f, 0.042f},
+        /* Minor differences on ARM Mali, NVidia */
+        11.34f, 0.068f},
     {"bind with offset, vertex ID", "multidraw-vertexid3D.tga",
         MeshVisualizerGL3D::Flag::VertexId,
         1, 1, true, 16,
@@ -1304,17 +1304,19 @@ constexpr struct {
     {"draw offset, wireframe", "multidraw-wireframe3D.tga",
         MeshVisualizerGL3D::Flag::Wireframe,
         2, 3, false, 1,
-        0.0f, 0.0f},
+        /* Minor differences on NVidia */
+        0.667f, 0.0055f},
     {"draw offset, wireframe + TBN", "multidraw-wireframe-tbn3D.tga",
         MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::TangentDirection|MeshVisualizerGL3D::Flag::BitangentFromTangentDirection|MeshVisualizerGL3D::Flag::NormalDirection,
         2, 3, false, 1,
-        0.0f, 0.0f},
+        /* Minor differences on NVidia */
+        0.667f, 0.0054f},
     #endif
     {"draw offset, wireframe w/o GS", "multidraw-wireframe-nogeo3D.tga",
         MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::NoGeometryShader,
         2, 3, false, 1,
-        /* Minor differences on ARM Mali */
-        6.0f, 0.042f},
+        /* Minor differences on ARM Mali, NVidia */
+        11.34f, 0.068f},
     {"draw offset, vertex ID", "multidraw-vertexid3D.tga",
         MeshVisualizerGL3D::Flag::VertexId,
         2, 3, false, 1,
@@ -1343,17 +1345,19 @@ constexpr struct {
     {"multidraw, wireframe", "multidraw-wireframe3D.tga",
         MeshVisualizerGL3D::Flag::MultiDraw|MeshVisualizerGL3D::Flag::Wireframe,
         2, 3, false, 1,
-        0.0f, 0.0f},
+        /* Minor differences on NVidia */
+        0.667f, 0.003f},
     {"multidraw, wireframe + TBN", "multidraw-wireframe-tbn3D.tga",
         MeshVisualizerGL3D::Flag::MultiDraw|MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::TangentDirection|MeshVisualizerGL3D::Flag::BitangentFromTangentDirection|MeshVisualizerGL3D::Flag::NormalDirection,
         2, 3, false, 1,
-        0.0f, 0.0f},
+        /* Minor differences on NVidia */
+        0.667f, 0.003f},
     #endif
     {"multidraw, wireframe w/o GS", "multidraw-wireframe-nogeo3D.tga",
         MeshVisualizerGL3D::Flag::MultiDraw|MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::NoGeometryShader,
         2, 3, false, 1,
-        /* Minor differences on ARM Mali */
-        6.0f, 0.04f},
+        /* Minor differences on ARM Mali, NVidia */
+        11.34f, 0.066f},
     {"multidraw, vertex ID", "multidraw-vertexid3D.tga",
         MeshVisualizerGL3D::Flag::MultiDraw|MeshVisualizerGL3D::Flag::VertexId,
         2, 3, false, 1,
@@ -1756,7 +1760,7 @@ MeshVisualizerGLTest::MeshVisualizerGLTest() {
         && std::getenv("SIMULATOR_UDID")
         #endif
     ) {
-        _testDir = Utility::Path::split(*Utility::Path::executableLocation()).first();
+        _testDir = Utility::Path::path(*Utility::Path::executableLocation());
     } else
     #endif
     {
@@ -2420,7 +2424,7 @@ void MeshVisualizerGLTest::constructInvalid2D() {
 
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshVisualizerGL2D{MeshVisualizerGL2D::Configuration{}
         .setFlags(data.flags)
@@ -2428,7 +2432,7 @@ void MeshVisualizerGLTest::constructInvalid2D() {
         .setJointCount(data.jointCount, data.perVertexJointCount, data.secondaryPerVertexJointCount)
         #endif
     };
-    CORRADE_COMPARE(out.str(), Utility::formatString("Shaders::MeshVisualizerGL{}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Shaders::MeshVisualizerGL{}\n", data.message));
 }
 
 void MeshVisualizerGLTest::constructInvalid3D() {
@@ -2437,7 +2441,7 @@ void MeshVisualizerGLTest::constructInvalid3D() {
 
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshVisualizerGL3D{MeshVisualizerGL3D::Configuration{}
         .setFlags(data.flags)
@@ -2445,7 +2449,7 @@ void MeshVisualizerGLTest::constructInvalid3D() {
         .setJointCount(data.jointCount, data.perVertexJointCount, data.secondaryPerVertexJointCount)
         #endif
     };
-    CORRADE_COMPARE(out.str(), Utility::formatString("Shaders::MeshVisualizerGL{}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Shaders::MeshVisualizerGL{}\n", data.message));
 }
 
 #ifndef MAGNUM_TARGET_GLES2
@@ -2460,14 +2464,14 @@ void MeshVisualizerGLTest::constructUniformBuffersInvalid2D() {
         CORRADE_SKIP(GL::Extensions::ARB::uniform_buffer_object::string() << "is not supported.");
     #endif
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshVisualizerGL2D{MeshVisualizerGL2D::Configuration{}
         .setFlags(data.flags)
         .setJointCount(data.jointCount, data.perVertexJointCount, data.secondaryPerVertexJointCount)
         .setMaterialCount(data.materialCount)
         .setDrawCount(data.drawCount)};
-    CORRADE_COMPARE(out.str(), Utility::formatString("Shaders::MeshVisualizerGL2D: {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Shaders::MeshVisualizerGL2D: {}\n", data.message));
 }
 
 void MeshVisualizerGLTest::constructUniformBuffersInvalid3D() {
@@ -2481,14 +2485,14 @@ void MeshVisualizerGLTest::constructUniformBuffersInvalid3D() {
         CORRADE_SKIP(GL::Extensions::ARB::uniform_buffer_object::string() << "is not supported.");
     #endif
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MeshVisualizerGL3D{MeshVisualizerGL3D::Configuration{}
         .setFlags(data.flags)
         .setJointCount(data.jointCount, data.perVertexJointCount, data.secondaryPerVertexJointCount)
         .setMaterialCount(data.materialCount)
         .setDrawCount(data.drawCount)};
-    CORRADE_COMPARE(out.str(), Utility::formatString("Shaders::MeshVisualizerGL3D: {}\n", data.message));
+    CORRADE_COMPARE(out, Utility::format("Shaders::MeshVisualizerGL3D: {}\n", data.message));
 }
 #endif
 
@@ -2509,12 +2513,12 @@ void MeshVisualizerGLTest::setPerVertexJointCountInvalid2D() {
         .setFlags(MeshVisualizerGL2D::Flag::DynamicPerVertexJointCount|MeshVisualizerGL2D::Flag::Wireframe|MeshVisualizerGL2D::Flag::NoGeometryShader)
         .setJointCount(16, 3, 2)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     a.setPerVertexJointCount(3, 2);
     b.setPerVertexJointCount(4);
     b.setPerVertexJointCount(3, 3);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setPerVertexJointCount(): the shader was not created with dynamic per-vertex joint count enabled\n"
         "Shaders::MeshVisualizerGL::setPerVertexJointCount(): expected at most 3 per-vertex joints, got 4\n"
         "Shaders::MeshVisualizerGL::setPerVertexJointCount(): expected at most 2 secondary per-vertex joints, got 3\n");
@@ -2536,12 +2540,12 @@ void MeshVisualizerGLTest::setPerVertexJointCountInvalid3D() {
         .setFlags(MeshVisualizerGL3D::Flag::DynamicPerVertexJointCount|MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::NoGeometryShader)
         .setJointCount(16, 3, 2)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     a.setPerVertexJointCount(3, 2);
     b.setPerVertexJointCount(4);
     b.setPerVertexJointCount(3, 3);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setPerVertexJointCount(): the shader was not created with dynamic per-vertex joint count enabled\n"
         "Shaders::MeshVisualizerGL::setPerVertexJointCount(): expected at most 3 per-vertex joints, got 4\n"
         "Shaders::MeshVisualizerGL::setPerVertexJointCount(): expected at most 2 secondary per-vertex joints, got 3\n");
@@ -2563,7 +2567,7 @@ void MeshVisualizerGLTest::setUniformUniformBuffersEnabled2D() {
     /* This should work fine */
     shader.setViewportSize({});
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader
         /* setPerVertexJointCount() works on both UBOs and classic */
@@ -2579,7 +2583,7 @@ void MeshVisualizerGLTest::setUniformUniformBuffersEnabled2D() {
         .setJointMatrices({})
         .setJointMatrix(0, {})
         .setPerInstanceJointCount(0);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL2D::setTransformationProjectionMatrix(): the shader was created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL::setTextureMatrix(): the shader was created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL::setTextureLayer(): the shader was created with uniform buffers enabled\n"
@@ -2608,7 +2612,7 @@ void MeshVisualizerGLTest::setUniformUniformBuffersEnabled3D() {
     /* This should work fine */
     shader.setViewportSize({});
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader
         /* setPerVertexJointCount() works on both UBOs and classic */
@@ -2625,7 +2629,7 @@ void MeshVisualizerGLTest::setUniformUniformBuffersEnabled3D() {
         .setJointMatrices({})
         .setJointMatrix(0, {})
         .setPerInstanceJointCount(0);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL3D::setProjectionMatrix(): the shader was created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL3D::setTransformationMatrix(): the shader was created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL::setTextureMatrix(): the shader was created with uniform buffers enabled\n"
@@ -2640,14 +2644,14 @@ void MeshVisualizerGLTest::setUniformUniformBuffersEnabled3D() {
         "Shaders::MeshVisualizerGL3D::setJointMatrix(): the shader was created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL::setPerInstanceJointCount(): the shader was created with uniform buffers enabled\n");
 
-    out.str({});
+    out = {};
 
     #ifndef MAGNUM_TARGET_WEBGL
     shader
         .setNormalMatrix({})
         .setLineWidth({})
         .setLineLength({});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL3D::setNormalMatrix(): the shader was created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL3D::setLineWidth(): the shader was created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL3D::setLineLength(): the shader was created with uniform buffers enabled\n");
@@ -2661,7 +2665,7 @@ void MeshVisualizerGLTest::bindBufferUniformBuffersNotEnabled2D() {
     MeshVisualizerGL2D shader{MeshVisualizerGL2D::Configuration{}
         .setFlags(MeshVisualizerGL2D::Flag::Wireframe|MeshVisualizerGL2D::Flag::NoGeometryShader)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindTransformationProjectionBuffer(buffer)
           .bindTransformationProjectionBuffer(buffer, 0, 16)
@@ -2674,7 +2678,7 @@ void MeshVisualizerGLTest::bindBufferUniformBuffersNotEnabled2D() {
           .bindJointBuffer(buffer)
           .bindJointBuffer(buffer, 0, 16)
           .setDrawOffset(0);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL2D::bindTransformationProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL2D::bindTransformationProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL2D::bindDrawBuffer(): the shader was not created with uniform buffers enabled\n"
@@ -2695,7 +2699,7 @@ void MeshVisualizerGLTest::bindBufferUniformBuffersNotEnabled3D() {
     MeshVisualizerGL3D shader{MeshVisualizerGL3D::Configuration{}
         .setFlags(MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::NoGeometryShader)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindProjectionBuffer(buffer)
           .bindProjectionBuffer(buffer, 0, 16)
@@ -2710,7 +2714,7 @@ void MeshVisualizerGLTest::bindBufferUniformBuffersNotEnabled3D() {
           .bindJointBuffer(buffer)
           .bindJointBuffer(buffer, 0, 16)
           .setDrawOffset(0);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL3D::bindProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL3D::bindProjectionBuffer(): the shader was not created with uniform buffers enabled\n"
         "Shaders::MeshVisualizerGL3D::bindTransformationBuffer(): the shader was not created with uniform buffers enabled\n"
@@ -2743,10 +2747,10 @@ void MeshVisualizerGLTest::bindObjectIdTextureInvalid2D() {
     MeshVisualizerGL2D shader{MeshVisualizerGL2D::Configuration{}
         .setFlags(data.flags2D)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindObjectIdTexture(texture);
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 
 void MeshVisualizerGLTest::bindObjectIdTextureInvalid3D() {
@@ -2764,10 +2768,10 @@ void MeshVisualizerGLTest::bindObjectIdTextureInvalid3D() {
     MeshVisualizerGL3D shader{MeshVisualizerGL3D::Configuration{}
         .setFlags(data.flags3D)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindObjectIdTexture(texture);
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 
 void MeshVisualizerGLTest::bindObjectIdTextureArrayInvalid2D() {
@@ -2785,10 +2789,10 @@ void MeshVisualizerGLTest::bindObjectIdTextureArrayInvalid2D() {
     MeshVisualizerGL2D shader{MeshVisualizerGL2D::Configuration{}
         .setFlags(data.flags2D)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindObjectIdTexture(textureArray);
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 
 void MeshVisualizerGLTest::bindObjectIdTextureArrayInvalid3D() {
@@ -2806,17 +2810,17 @@ void MeshVisualizerGLTest::bindObjectIdTextureArrayInvalid3D() {
     MeshVisualizerGL3D shader{MeshVisualizerGL3D::Configuration{}
         .setFlags(data.flags3D)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindObjectIdTexture(textureArray);
-    CORRADE_COMPARE(out.str(), data.message);
+    CORRADE_COMPARE(out, data.message);
 }
 #endif
 
 void MeshVisualizerGLTest::setWireframeNotEnabled2D() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* The constructor asserts for at least some feature being enabled (which
@@ -2826,20 +2830,20 @@ void MeshVisualizerGLTest::setWireframeNotEnabled2D() {
         .setColor({});
 
     #ifndef MAGNUM_TARGET_GLES2
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setColor(): the shader was not created with wireframe or object/vertex/primitive ID enabled\n");
     #else
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setColor(): the shader was not created with wireframe enabled\n");
     #endif
 
-    out.str({});
+    out = {};
     shader
         .setWireframeColor({})
         .setWireframeWidth({})
         .setSmoothness({});
 
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setWireframeColor(): the shader was not created with wireframe enabled\n"
         "Shaders::MeshVisualizerGL::setWireframeWidth(): the shader was not created with wireframe enabled\n"
         "Shaders::MeshVisualizerGL2D::setSmoothness(): the shader was not created with wireframe enabled\n");
@@ -2848,7 +2852,7 @@ void MeshVisualizerGLTest::setWireframeNotEnabled2D() {
 void MeshVisualizerGLTest::setWireframeNotEnabled3D() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     /* The constructor asserts for at least some feature being enabled (which
@@ -2859,20 +2863,20 @@ void MeshVisualizerGLTest::setWireframeNotEnabled3D() {
         .setColor({});
 
     #ifndef MAGNUM_TARGET_GLES2
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setColor(): the shader was not created with wireframe or object/vertex/primitive ID enabled\n");
     #else
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setColor(): the shader was not created with wireframe enabled\n");
     #endif
 
-    out.str({});
+    out = {};
     shader
         .setWireframeColor({})
         .setWireframeWidth({})
         .setSmoothness({});
 
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setWireframeColor(): the shader was not created with wireframe enabled\n"
         "Shaders::MeshVisualizerGL::setWireframeWidth(): the shader was not created with wireframe enabled\n"
         "Shaders::MeshVisualizerGL3D::setSmoothness(): the shader was not created with wireframe or TBN direction enabled\n");
@@ -2885,10 +2889,10 @@ void MeshVisualizerGLTest::setTextureMatrixNotEnabled2D() {
     MeshVisualizerGL2D shader{MeshVisualizerGL2D::Configuration{}
         .setFlags(MeshVisualizerGL2D::Flag::ObjectIdTexture)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setTextureMatrix({});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setTextureMatrix(): the shader was not created with texture transformation enabled\n");
 }
 
@@ -2898,10 +2902,10 @@ void MeshVisualizerGLTest::setTextureMatrixNotEnabled3D() {
     MeshVisualizerGL3D shader{MeshVisualizerGL3D::Configuration{}
         .setFlags(MeshVisualizerGL3D::Flag::ObjectIdTexture)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setTextureMatrix({});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setTextureMatrix(): the shader was not created with texture transformation enabled\n");
 }
 
@@ -2911,10 +2915,10 @@ void MeshVisualizerGLTest::setTextureLayerNotArray2D() {
     MeshVisualizerGL2D shader{MeshVisualizerGL2D::Configuration{}
         .setFlags(MeshVisualizerGL2D::Flag::ObjectIdTexture)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setTextureLayer(37);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setTextureLayer(): the shader was not created with texture arrays enabled\n");
 }
 
@@ -2924,10 +2928,10 @@ void MeshVisualizerGLTest::setTextureLayerNotArray3D() {
     MeshVisualizerGL3D shader{MeshVisualizerGL3D::Configuration{}
         .setFlags(MeshVisualizerGL3D::Flag::ObjectIdTexture)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setTextureLayer(37);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setTextureLayer(): the shader was not created with texture arrays enabled\n");
 }
 
@@ -2943,11 +2947,11 @@ void MeshVisualizerGLTest::bindTextureTransformBufferNotEnabled2D() {
     MeshVisualizerGL2D shader{MeshVisualizerGL2D::Configuration{}
         .setFlags(MeshVisualizerGL2D::Flag::UniformBuffers|MeshVisualizerGL2D::Flag::ObjectIdTexture)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindTextureTransformationBuffer(buffer)
           .bindTextureTransformationBuffer(buffer, 0, 16);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::bindTextureTransformationBuffer(): the shader was not created with texture transformation enabled\n"
         "Shaders::MeshVisualizerGL::bindTextureTransformationBuffer(): the shader was not created with texture transformation enabled\n");
 }
@@ -2964,11 +2968,11 @@ void MeshVisualizerGLTest::bindTextureTransformBufferNotEnabled3D() {
     MeshVisualizerGL2D shader{MeshVisualizerGL2D::Configuration{}
         .setFlags(MeshVisualizerGL2D::Flag::UniformBuffers|MeshVisualizerGL2D::Flag::ObjectIdTexture)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.bindTextureTransformationBuffer(buffer)
           .bindTextureTransformationBuffer(buffer, 0, 16);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::bindTextureTransformationBuffer(): the shader was not created with texture transformation enabled\n"
         "Shaders::MeshVisualizerGL::bindTextureTransformationBuffer(): the shader was not created with texture transformation enabled\n");
 }
@@ -2980,10 +2984,10 @@ void MeshVisualizerGLTest::setObjectIdNotEnabled2D() {
 
     MeshVisualizerGL2D shader{NoCreate};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setObjectId({});
-    CORRADE_COMPARE(out.str(), "Shaders::MeshVisualizerGL::setObjectId(): the shader was not created with object ID enabled\n");
+    CORRADE_COMPARE(out, "Shaders::MeshVisualizerGL::setObjectId(): the shader was not created with object ID enabled\n");
 }
 
 void MeshVisualizerGLTest::setObjectIdNotEnabled3D() {
@@ -2991,10 +2995,10 @@ void MeshVisualizerGLTest::setObjectIdNotEnabled3D() {
 
     MeshVisualizerGL3D shader{NoCreate};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setObjectId({});
-    CORRADE_COMPARE(out.str(), "Shaders::MeshVisualizerGL::setObjectId(): the shader was not created with object ID enabled\n");
+    CORRADE_COMPARE(out, "Shaders::MeshVisualizerGL::setObjectId(): the shader was not created with object ID enabled\n");
 }
 
 void MeshVisualizerGLTest::setColorMapNotEnabled2D() {
@@ -3003,11 +3007,11 @@ void MeshVisualizerGLTest::setColorMapNotEnabled2D() {
     GL::Texture2D texture;
     MeshVisualizerGL2D shader{NoCreate};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setColorMapTransformation({}, {})
         .bindColorMapTexture(texture);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setColorMapTransformation(): the shader was not created with object/vertex/primitive ID enabled\n"
         "Shaders::MeshVisualizerGL::bindColorMapTexture(): the shader was not created with object/vertex/primitive ID enabled\n");
 }
@@ -3018,11 +3022,11 @@ void MeshVisualizerGLTest::setColorMapNotEnabled3D() {
     GL::Texture2D texture;
     MeshVisualizerGL3D shader{NoCreate};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setColorMapTransformation({}, {})
         .bindColorMapTexture(texture);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setColorMapTransformation(): the shader was not created with object/vertex/primitive ID enabled\n"
         "Shaders::MeshVisualizerGL::bindColorMapTexture(): the shader was not created with object/vertex/primitive ID enabled\n");
 }
@@ -3043,12 +3047,12 @@ void MeshVisualizerGLTest::setTangentBitangentNormalNotEnabled3D() {
     MeshVisualizerGL3D shader{MeshVisualizerGL3D::Configuration{}
         .setFlags(MeshVisualizerGL3D::Flag::Wireframe)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setNormalMatrix({})
         .setLineWidth({})
         .setLineLength({});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL3D::setNormalMatrix(): the shader was not created with TBN direction enabled\n"
         "Shaders::MeshVisualizerGL3D::setLineWidth(): the shader was not created with TBN direction enabled\n"
         "Shaders::MeshVisualizerGL3D::setLineLength(): the shader was not created with TBN direction enabled\n");
@@ -3070,13 +3074,13 @@ void MeshVisualizerGLTest::setWrongJointCountOrId2D() {
         .setFlags(MeshVisualizerGL2D::Flag::Wireframe|MeshVisualizerGL2D::Flag::NoGeometryShader)
         .setJointCount(5, 1)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* Calling setJointMatrices() with less items is fine, tested in
        renderSkinningWireframe2D() */
     shader.setJointMatrices({{}, {}, {}, {}, {}, {}})
         .setJointMatrix(5, Matrix3{});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL2D::setJointMatrices(): expected at most 5 items but got 6\n"
         "Shaders::MeshVisualizerGL2D::setJointMatrix(): joint ID 5 is out of range for 5 joints\n");
 }
@@ -3095,13 +3099,13 @@ void MeshVisualizerGLTest::setWrongJointCountOrId3D() {
         .setFlags(MeshVisualizerGL3D::Flag::Wireframe|MeshVisualizerGL3D::Flag::NoGeometryShader)
         .setJointCount(5, 1)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     /* Calling setJointMatrices() with less items is fine, tested in
        renderSkinningWireframe3D() */
     shader.setJointMatrices({{}, {}, {}, {}, {}, {}})
         .setJointMatrix(5, Matrix4{});
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL3D::setJointMatrices(): expected at most 5 items but got 6\n"
         "Shaders::MeshVisualizerGL3D::setJointMatrix(): joint ID 5 is out of range for 5 joints\n");
 }
@@ -3121,10 +3125,10 @@ void MeshVisualizerGLTest::setWrongDrawOffset2D() {
         .setMaterialCount(2)
         .setDrawCount(5)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setDrawOffset(5);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setDrawOffset(): draw offset 5 is out of range for 5 draws\n");
 }
 
@@ -3141,10 +3145,10 @@ void MeshVisualizerGLTest::setWrongDrawOffset3D() {
         .setMaterialCount(2)
         .setDrawCount(5)};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.setDrawOffset(5);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Shaders::MeshVisualizerGL::setDrawOffset(): draw offset 5 is out of range for 5 draws\n");
 }
 #endif
@@ -3262,7 +3266,7 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderDefault
         CORRADE_EXPECT_FAIL("Defaults don't work for wireframe as line width is derived from viewport size.");
         CORRADE_COMPARE_WITH(
             /* Dropping the alpha channel, as it's always 1.0 */
-            Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+            _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
             Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-wireframe2D.tga"),
             (DebugTools::CompareImageToFile{_manager}));
     }
@@ -3298,7 +3302,7 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-wireframe2D.tga"),
         /* AMD has off-by-one errors on edges compared to Intel */
         (DebugTools::CompareImageToFile{_manager, 1.0f, 0.082f}));
@@ -3384,7 +3388,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderDefault
         CORRADE_EXPECT_FAIL("Defaults don't work for wireframe as line width is derived from viewport size.");
         CORRADE_COMPARE_WITH(
             /* Dropping the alpha channel, as it's always 1.0 */
-            Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+            _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
             Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-wireframe3D.tga"),
             (DebugTools::CompareImageToFile{_manager}));
     }
@@ -3424,7 +3428,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-wireframe3D.tga"),
         /* AMD has off-by-one errors on edges compared to Intel */
         (DebugTools::CompareImageToFile{_manager, 1.0f, 0.06f}));
@@ -3502,7 +3506,7 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-objectid2D.tga"),
         /* SwiftShader has a few rounding errors on edges */
         (DebugTools::CompareImageToFile{_manager, 24.67f, 0.11f}));
@@ -3582,7 +3586,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-objectid3D.tga"),
         /* SwiftShader has a few rounding errors on edges and off-by-two
            pixels */
@@ -3682,7 +3686,7 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-instancedobjectid2D.tga"),
         /* SwiftShader has a few rounding errors on edges */
         (DebugTools::CompareImageToFile{_manager, 150.67f, 0.45f}));
@@ -3785,7 +3789,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-instancedobjectid3D.tga"),
         /* SwiftShader has a few rounding errors on edges */
         (DebugTools::CompareImageToFile{_manager, 150.67f, 0.165f}));
@@ -3860,9 +3864,10 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-vertexid2D.tga"),
-        (DebugTools::CompareImageToFile{_manager, 1.0f, 0.017f}));
+        /* Minor differences on NVidia */
+        (DebugTools::CompareImageToFile{_manager, 1.0f, 0.022f}));
 }
 
 template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderDefaultsVertexId3D() {
@@ -3938,9 +3943,10 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-vertexid3D.tga"),
-        (DebugTools::CompareImageToFile{_manager, 1.0f, 0.012f}));
+        /* Minor differences on NVidia */
+        (DebugTools::CompareImageToFile{_manager, 1.0f, 0.018f}));
 }
 
 template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderDefaultsPrimitiveId2D() {
@@ -4041,7 +4047,7 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-primitiveid2D.tga"),
         /* SwiftShader has a few rounding errors on edges */
         (DebugTools::CompareImageToFile{_manager, 76.67f, 0.23f}));
@@ -4149,7 +4155,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-primitiveid3D.tga"),
         /* SwiftShader has a few rounding errors on edges */
         (DebugTools::CompareImageToFile{_manager, 88.34f, 0.071f}));
@@ -4231,7 +4237,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderDefault
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/defaults-tbn.tga"),
         /* AMD has off-by-one errors on edges compared to Intel */
         (DebugTools::CompareImageToFile{_manager, 1.0f, 0.06f}));
@@ -4370,7 +4376,7 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderWirefra
         #endif
         CORRADE_COMPARE_WITH(
             /* Dropping the alpha channel, as it's always 1.0 */
-            Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+            _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
             Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.file}),
             (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
     }
@@ -4387,7 +4393,7 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderWirefra
         #endif
         CORRADE_COMPARE_WITH(
             /* Dropping the alpha channel, as it's always 1.0 */
-            Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+            _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
             Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.fileXfail}),
             (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
     }
@@ -4541,7 +4547,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderWirefra
         #endif
         CORRADE_COMPARE_WITH(
             /* Dropping the alpha channel, as it's always 1.0 */
-            Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+            _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
             Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.file}),
             (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
     }
@@ -4558,7 +4564,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderWirefra
         #endif
         CORRADE_COMPARE_WITH(
             /* Dropping the alpha channel, as it's always 1.0 */
-            Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+            _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
             Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.fileXfail}),
             (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
     }
@@ -4774,7 +4780,7 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderObjectV
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.file2D}),
         /* AMD has slight off-by-one errors compared to Intel, SwiftShader a
            bit more */
@@ -5009,7 +5015,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderObjectV
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.file3D}),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -5053,7 +5059,7 @@ void MeshVisualizerGLTest::renderWireframe3DPerspective() {
     /* Slight rasterization differences on AMD. */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/wireframe-perspective.tga"),
         (DebugTools::CompareImageToFile{_manager, 0.667f, 0.002f}));
 }
@@ -5264,7 +5270,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderTangent
     #endif
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.file}),
         (DebugTools::CompareImageToFile{_manager, maxThreshold, meanThreshold}));
 }
@@ -5427,7 +5433,7 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderSkinnin
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.expected}),
         /* Minor differences on ARM Mali */
         (DebugTools::CompareImageToFile{_manager, 1.0f, 0.012f}));
@@ -5593,7 +5599,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderSkinnin
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.expected}),
         /* Minor differences on ARM Mali */
         (DebugTools::CompareImageToFile{_manager, 1.0f, 0.012f}));
@@ -5893,7 +5899,7 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderInstanc
     */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.expected}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 }
@@ -6220,7 +6226,7 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderInstanc
     */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.expected}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 }
@@ -6378,10 +6384,11 @@ template<MeshVisualizerGL2D::Flag flag> void MeshVisualizerGLTest::renderInstanc
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/skinning-instanced.tga"),
-        /* SwiftShader has minor differences in the output, ARM Mali too */
-        (DebugTools::CompareImageToFile{_manager, 1.0f, 0.018f}));
+        /* SwiftShader has minor differences in the output, ARM Mali too,
+           NVidia as well */
+        (DebugTools::CompareImageToFile{_manager, 1.0f, 0.022f}));
 }
 
 template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderInstancedSkinningWireframe3D() {
@@ -6539,10 +6546,11 @@ template<MeshVisualizerGL3D::Flag flag> void MeshVisualizerGLTest::renderInstanc
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/skinning-instanced.tga"),
-        /* SwiftShader has minor differences in the output, ARM Mali too */
-        (DebugTools::CompareImageToFile{_manager, 1.0f, 0.018f}));
+        /* SwiftShader has minor differences in the output, ARM Mali too,
+           NVidia as well */
+        (DebugTools::CompareImageToFile{_manager, 1.0f, 0.022f}));
 }
 #endif
 
@@ -6882,7 +6890,7 @@ void MeshVisualizerGLTest::renderMulti2D() {
     */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.expected}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 }
@@ -7233,7 +7241,7 @@ void MeshVisualizerGLTest::renderMulti3D() {
     */
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join({_testDir, "MeshVisualizerTestFiles", data.expected}),
         (DebugTools::CompareImageToFile{_manager, data.maxThreshold, data.meanThreshold}));
 }
@@ -7484,7 +7492,7 @@ void MeshVisualizerGLTest::renderMultiSkinningWireframe2D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/skinning-multi.tga"),
         (DebugTools::CompareImageToFile{_manager}));
 }
@@ -7737,7 +7745,7 @@ void MeshVisualizerGLTest::renderMultiSkinningWireframe3D() {
 
     CORRADE_COMPARE_WITH(
         /* Dropping the alpha channel, as it's always 1.0 */
-        Containers::arrayCast<Color3ub>(_framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>()),
+        _framebuffer.read(_framebuffer.viewport(), {PixelFormat::RGBA8Unorm}).pixels<Color4ub>().slice(&Color4ub::rgb),
         Utility::Path::join(_testDir, "MeshVisualizerTestFiles/skinning-multi.tga"),
         (DebugTools::CompareImageToFile{_manager}));
 }

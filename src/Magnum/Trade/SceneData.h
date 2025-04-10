@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -26,7 +27,7 @@
 */
 
 /** @file
- * @brief Class @ref Magnum::Trade::SceneData, @ref Magnum::Trade::SceneFieldData, enum @ref Magnum::Trade::SceneMappingType, @ref Magnum::Trade::SceneField, @ref Magnum::Trade::SceneFieldType, @ref Magnum::Trade::SceneFieldFlag, enum set @ref Magnum::Trade::SceneFieldFlags, function @ref Magnum::sceneMappingTypeSize(), @ref Magnum::sceneMappingTypeAlignment(), @ref Magnum::sceneFieldTypeSize(), @ref Magnum::sceneFieldTypeAlignment(), @ref Magnum::Trade::isSceneFieldCustom(), @ref Magnum::sceneFieldCustom()
+ * @brief Class @ref Magnum::Trade::SceneData, @ref Magnum::Trade::SceneFieldData, enum @ref Magnum::Trade::SceneMappingType, @ref Magnum::Trade::SceneField, @ref Magnum::Trade::SceneFieldType, @ref Magnum::Trade::SceneFieldFlag, enum set @ref Magnum::Trade::SceneFieldFlags, function @ref Magnum::Trade::sceneMappingTypeSize(), @ref Magnum::Trade::sceneMappingTypeAlignment(), @ref Magnum::Trade::sceneFieldTypeSize(), @ref Magnum::Trade::sceneFieldTypeAlignment(), @ref Magnum::Trade::isSceneFieldCustom(), @ref Magnum::Trade::sceneFieldCustom()
  */
 
 #include <Corrade/Containers/Array.h>
@@ -829,7 +830,7 @@ The most straightforward usage is constructing an instance from a
 @ref SceneField and a strided view for the field data and object mapping. The
 @ref SceneMappingType and @ref SceneFieldType get inferred from the view types:
 
-@snippet MagnumTrade.cpp SceneFieldData-usage
+@snippet Trade.cpp SceneFieldData-usage
 
 Alternatively, you can pass typeless @cpp const void @ce or 2D views and supply
 @ref SceneMappingType and @ref SceneFieldType explicitly.
@@ -844,7 +845,7 @@ is useful mainly to avoid pointer patching during data serialization, but also
 for example when the data layout is static (and thus can be defined at compile
 time), but the actual data is allocated / populated at runtime.
 
-@snippet MagnumTrade.cpp SceneFieldData-usage-offset-only
+@snippet Trade.cpp SceneFieldData-usage-offset-only
 
 See @ref Trade-SceneData-populating-non-owned "the corresponding SceneData documentation"
 for a complete usage example. Offset-only fields are marked with
@@ -872,10 +873,10 @@ with @ref SceneFieldFlag::ImplicitMapping, which is a superset of
 @subsection Trade-SceneFieldData-usage-bits Bit fields
 
 Bit fields have dedicated constructors taking a
-@ref Containers::StridedBitArrayView1D or
-@ref Containers::StridedBitArrayView2D, and because the type is always
-@ref SceneFieldType::Bit, it's omitted. For offset-only bit fields there's a
-@ref SceneFieldData(SceneField, std::size_t, SceneMappingType, std::size_t, std::ptrdiff_t, std::size_t, std::size_t, std::ptrdiff_t, UnsignedShort, SceneFieldFlags)
+@relativeref{Corrade,Containers::StridedBitArrayView1D} or
+@relativeref{Corrade,Containers::StridedBitArrayView2D}, and because the type
+is always @ref SceneFieldType::Bit, it's omitted. For offset-only bit fields
+there's a @ref SceneFieldData(SceneField, std::size_t, SceneMappingType, std::size_t, std::ptrdiff_t, std::size_t, std::size_t, std::ptrdiff_t, UnsignedShort, SceneFieldFlags)
 constructor that omits @ref SceneFieldType as well, but contains an additional
 bit offset parameter.
 
@@ -888,7 +889,7 @@ particular type can correspond to more than one @ref SceneFieldType (such as
 @ref SceneFieldType::StringRangeNullTerminated32 being both represented with an
 @relativeref{Magnum,UnsignedInt}), the type has to be specified explicitly:
 
-@snippet MagnumTrade.cpp SceneFieldData-usage-strings
+@snippet Trade.cpp SceneFieldData-usage-strings
 
 Offset-only constructors have it similar, containing an extra base string
 offset. Due to packing in the internal layout, string fields can't be arrays.
@@ -1552,8 +1553,10 @@ Containers::Array<SceneFieldData> MAGNUM_TRADE_EXPORT sceneFieldDataNonOwningArr
 
 Contains scene node hierarchy, transformations, resource assignment as well as
 any other data associated with the scene. Populated instances of this class are
-returned from @ref AbstractImporter::scene() as well as from various
-@ref SceneTools algorithms.
+returned from @ref AbstractImporter::scene() as well as used in various
+@ref SceneTools algorithms. Like with other @ref Trade types, the internal
+representation is fixed upon construction and allows only optional in-place
+modification of the data itself, but not of the overall structure.
 
 @section Trade-SceneData-representation Data representation and terminology
 
@@ -1644,7 +1647,7 @@ upper bound to all object identifiers referenced by the scene, but as mentioned
 above, not all of them may be actual nodes so we don't allocate actual scene
 graph object instances for them yet. Alternatively, for very sparse ranges, a hashmap could be also used here.
 
-@snippet MagnumTrade.cpp SceneData-usage1
+@snippet Trade.cpp SceneData-usage1
 
 <b></b>
 
@@ -1654,7 +1657,7 @@ Next we go through objects that have an associated parent using
 @ref parentsAsArray(). Those are the actual nodes we want, so we allocate a
 scene graph object for each ...
 
-@snippet MagnumTrade.cpp SceneData-usage2
+@snippet Trade.cpp SceneData-usage2
 
 @m_class{m-noindent}
 
@@ -1666,7 +1669,7 @@ object is already allocated by the time we pass it to
 @ref SceneGraph::Object::setParent() --- generally there's no guarantee that a
 parent appears in the field before its children.
 
-@snippet MagnumTrade.cpp SceneData-usage3
+@snippet Trade.cpp SceneData-usage3
 
 With the hierarchy done, we assign transformations. The transformation field
 can be present for only a subset of the nodes, with the rest implicitly having
@@ -1676,7 +1679,7 @@ nodes, so we only set it for objects present in our hierarchy. The
 transformation / rotation / scaling fields into a matrix for us, if the scene
 contains only those.
 
-@snippet MagnumTrade.cpp SceneData-usage4
+@snippet Trade.cpp SceneData-usage4
 
 Finally, assuming there's a `Drawable` class derived from
 @ref SceneGraph::Drawable that accepts a mesh and material ID (retrieving them
@@ -1685,7 +1688,7 @@ subsequently from @ref AbstractImporter::mesh() /
 assigning actual meshes to corresponding scene nodes is just another
 @cpp for @ce loop over @ref meshesMaterialsAsArray():
 
-@snippet MagnumTrade.cpp SceneData-usage5
+@snippet Trade.cpp SceneData-usage5
 
 <b></b>
 
@@ -1716,7 +1719,7 @@ in a textual form, @ref GltfImporter will always parse the data into canonical
 32-bit types. With that assumption, the above snippet that used
 @ref transformations3DAsArray() can be rewritten to a zero-copy form like this:
 
-@snippet MagnumTrade.cpp SceneData-usage-advanced
+@snippet Trade.cpp SceneData-usage-advanced
 
 @section Trade-SceneData-usage-per-object Per-object access
 
@@ -1735,7 +1738,7 @@ For example, together with an @ref AbstractImporter instance the scene comes
 from, the following snippet lists meshes and material names that are associated
 with a "Chair" object, assuming such object exists:
 
-@snippet MagnumTrade.cpp SceneData-per-object
+@snippet Trade.cpp SceneData-per-object
 
 The actual object ID lookup is done by @ref findFieldObjectOffset() and
 depending on what @ref SceneFieldFlags are present for given field, it can be
@@ -1756,7 +1759,7 @@ the data are mutable using @ref dataFlags() first. The following snippet
 updates all transformations with the live state of a scene imported earlier,
 for example in order to bake in a certain animation state:
 
-@snippet MagnumTrade.cpp SceneData-usage-mutable
+@snippet Trade.cpp SceneData-usage-mutable
 
 @section Trade-SceneData-populating Populating an instance
 
@@ -1768,7 +1771,7 @@ stored together in a @cpp struct @ce, while a subset of them has a mesh and a
 material assigned, which are stored in separate arrays. And because the scene
 is small, we save space by using just 16-bit indices for everything.
 
-@snippet MagnumTrade.cpp SceneData-populating
+@snippet Trade.cpp SceneData-populating
 
 Note that the above layout is just an example, you're free to choose any
 representation that matches your use case best, with fields interleaved
@@ -1786,7 +1789,7 @@ mutability and ownership together with an
 @ref SceneData(SceneMappingType, UnsignedLong, DataFlags, Containers::ArrayView<const void>, Containers::Array<SceneFieldData>&&, const void*)
 constructor:
 
-@snippet MagnumTrade.cpp SceneData-populating-non-owned
+@snippet Trade.cpp SceneData-populating-non-owned
 
 The @ref SceneFieldData list is still implicitly allocated in the above case,
 but it can also be defined externally and referenced via
@@ -1796,7 +1799,7 @@ layout is constant but the actual data is allocated / populated at runtime, the
 and then subsequently referenced from a @ref SceneData with a concrete data
 array:
 
-@snippet MagnumTrade.cpp SceneData-populating-offset-only
+@snippet Trade.cpp SceneData-populating-offset-only
 
 See also the @ref Trade-SceneFieldData-usage-offset-only "corresponding SceneFieldData documentation for offset-only fields".
 
@@ -1814,7 +1817,7 @@ cells, and we save calculated frustums for inspection as well. For the new data
 we allocate object IDs from a range after `nodeCount`, and copy in the actual
 data.
 
-@snippet MagnumTrade.cpp SceneData-populating-custom1
+@snippet Trade.cpp SceneData-populating-custom1
 
 Then, similarly as with @ref MeshData, the scene can have custom fields as
 well, created with @ref sceneFieldCustom(). We create one for the cell light
@@ -1822,13 +1825,13 @@ reference array and one for the cell frustum and then use them to annotate
 the views allocated above. Note that we also increased the total object count
 to include the light culling grid cells as well.
 
-@snippet MagnumTrade.cpp SceneData-populating-custom2
+@snippet Trade.cpp SceneData-populating-custom2
 
 Later, the fields can be retrieved back using the same custom identifiers.
 The light references are actually a 2D array (8 lights for each cell), so a
 @cpp [] @ce needs to be used:
 
-@snippet MagnumTrade.cpp SceneData-populating-custom-retrieve
+@snippet Trade.cpp SceneData-populating-custom-retrieve
 
 @subsection Trade-SceneData-populating-strings String fields
 
@@ -1861,12 +1864,12 @@ references:
     @ref std::strlen() call on every access.
 
 String fields can also have @ref SceneFieldFlag::NullTerminatedString set, in
-which case the returned @ref Containers::StringView instances will have
-@relativeref{Corrade,Containers::StringViewFlag::NullTerminated} set, which may
-be useful for example to avoid an allocation when passing filenames to OS APIs
-in @ref Utility::Path::read(). The null terminators of course have to be stored
-in the data itself, see a particular @ref SceneFieldType for information about
-how it affects the field encoding.
+which case the returned @relativeref{Corrade,Containers::StringView} instances
+will have @relativeref{Corrade,Containers::StringViewFlag::NullTerminated} set,
+which may be useful for example to avoid an allocation when passing filenames
+to OS APIs in @relativeref{Corrade,Utility::Path::read()}. The null terminators
+of course have to be stored in the data itself, see a particular
+@ref SceneFieldType for information about how it affects the field encoding.
 
 The following example shows populating a @ref SceneData with a "tag" string
 field, stored as null-terminated 8-bit string array ranges. In other words ---
@@ -1874,12 +1877,12 @@ assuming there's enough stored data --- the space efficiency is the same as if
 a just a numeric value of an 8-bit @cpp enum @ce would be stored, but here it
 includes human-readable string names.
 
-@snippet MagnumTrade.cpp SceneData-populating-strings
+@snippet Trade.cpp SceneData-populating-strings
 
 While there's many options how to store the string, retrieving of any string
 @ref SceneFieldType can be conveniently done using @ref fieldStrings():
 
-@snippet MagnumTrade.cpp SceneData-populating-strings-retrieve
+@snippet Trade.cpp SceneData-populating-strings-retrieve
 */
 class MAGNUM_TRADE_EXPORT SceneData {
     public:
@@ -2206,9 +2209,10 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @brief Find an absolute ID of a named field
          * @m_since_latest
          *
-         * If @p name doesn't exist, returns @ref Containers::NullOpt. The
-         * lookup is done in an @f$ \mathcal{O}(n) @f$ complexity with
-         * @f$ n @f$ being the field count.
+         * If @p name doesn't exist, returns
+         * @relativeref{Corrade,Containers::NullOpt}. The lookup is done in an
+         * @f$ \mathcal{O}(n) @f$ complexity with @f$ n @f$ being the field
+         * count.
          * @see @ref hasField(), @ref fieldId()
          */
         Containers::Optional<UnsignedInt> findFieldId(SceneField name) const;
@@ -2235,9 +2239,9 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @m_since_latest
          *
          * If @p object isn't present in @p fieldId starting at @p offset,
-         * returns @ref Containers::NullOpt. The @p fieldId is expected to be
-         * smaller than @ref fieldCount(), @p object smaller than
-         * @ref mappingBound() and @p offset not larger than
+         * returns @relativeref{Corrade,Containers::NullOpt}. The @p fieldId is
+         * expected to be smaller than @ref fieldCount(), @p object smaller
+         * than @ref mappingBound() and @p offset not larger than
          * @ref fieldSize(UnsignedInt) const.
          *
          * If the field has @ref SceneFieldFlag::ImplicitMapping, the lookup is
@@ -2259,9 +2263,10 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @m_since_latest
          *
          * If @p object isn't present in @p fieldName starting at @p offset,
-         * returns @ref Containers::NullOpt. The @p fieldName is expected to
-         * exist, @p object is expected to be smaller than @ref mappingBound()
-         * and @p offset not be larger than @ref fieldSize(SceneField) const.
+         * returns @relativeref{Corrade,Containers::NullOpt}. The @p fieldName
+         * is expected to exist, @p object is expected to be smaller than
+         * @ref mappingBound() and @p offset not be larger than
+         * @ref fieldSize(SceneField) const.
          *
          * If the field has @ref SceneFieldFlag::ImplicitMapping, the lookup is
          * done in an @f$ \mathcal{O}(m) @f$ complexity with @f$ m @f$ being
@@ -2523,7 +2528,11 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @see @ref field(SceneField) const, @ref mutableField(UnsignedInt),
          *      @ref fieldArraySize()
          */
-        template<class T, class = typename std::enable_if<!std::is_array<T>::value>::type> Containers::StridedArrayView1D<const T> field(UnsignedInt id) const;
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView1D<const T> field(UnsignedInt id) const;
 
         /**
          * @brief Data for given array field in a concrete type
@@ -2536,7 +2545,11 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @ref fieldArraySize(UnsignedInt) const for given field. For
          * non-array fields the second dimension has a size of @cpp 1 @ce.
          */
-        template<class T, class = typename std::enable_if<std::is_array<T>::value>::type> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> field(UnsignedInt id) const;
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> field(UnsignedInt id) const;
 
         /**
          * @brief Mutable data for given field in a concrete type
@@ -2546,7 +2559,11 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * Expects that the scene is mutable.
          * @see @ref dataFlags()
          */
-        template<class T, class = typename std::enable_if<!std::is_array<T>::value>::type> Containers::StridedArrayView1D<T> mutableField(UnsignedInt id);
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView1D<T> mutableField(UnsignedInt id);
 
         /**
          * @brief Mutable data for given array field in a concrete type
@@ -2559,7 +2576,11 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @ref fieldArraySize(UnsignedInt) const for given field. For
          * non-array fields the second dimension has a size of @cpp 1 @ce.
          */
-        template<class T, class = typename std::enable_if<std::is_array<T>::value>::type> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> mutableField(UnsignedInt id);
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView2D<typename std::remove_extent<T>::type> mutableField(UnsignedInt id);
 
         /**
          * @brief Data for given named field
@@ -2603,7 +2624,11 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @see @ref hasField(), @ref field(UnsignedInt) const,
          *      @ref mutableField(SceneField)
          */
-        template<class T, class = typename std::enable_if<!std::is_array<T>::value>::type> Containers::StridedArrayView1D<const T> field(SceneField name) const;
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView1D<const T> field(SceneField name) const;
 
         /**
          * @brief Data for given named array field in a concrete type
@@ -2616,7 +2641,11 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @ref fieldArraySize(SceneField) const for given field. For non-array
          * fields the second dimension has a size of @cpp 1 @ce.
          */
-        template<class T, class = typename std::enable_if<std::is_array<T>::value>::type> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> field(SceneField name) const;
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> field(SceneField name) const;
 
         /**
          * @brief Mutable data for given named field
@@ -2626,7 +2655,11 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * Expects that the scene is mutable.
          * @see @ref dataFlags()
          */
-        template<class T, class = typename std::enable_if<!std::is_array<T>::value>::type> Containers::StridedArrayView1D<T> mutableField(SceneField name);
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<!std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView1D<T> mutableField(SceneField name);
 
         /**
          * @brief Mutable data for given named array field in a concrete type
@@ -2639,7 +2672,11 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @ref fieldArraySize(SceneField) const for given field. For non-array
          * fields the second dimension has a size of @cpp 1 @ce.
          */
-        template<class T, class = typename std::enable_if<std::is_array<T>::value>::type> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> mutableField(SceneField name);
+        template<class T
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_array<T>::value, int>::type = 0
+            #endif
+        > Containers::StridedArrayView2D<typename std::remove_extent<T>::type> mutableField(SceneField name);
 
         /**
          * @brief Contents of given bit field
@@ -2936,6 +2973,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
 
         /**
          * @brief Parent indices as 32-bit integers
+         * @return Pairs of (object mapping, parent ID)
          * @m_since_latest
          *
          * Convenience alternative to @ref mapping(SceneField) const together
@@ -2990,6 +3028,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
 
         /**
          * @brief 2D transformations as 3x3 float matrices
+         * @return Pairs of (object mapping, transformation)
          * @m_since_latest
          *
          * Convenience alternative to @ref mapping(SceneField) const together
@@ -3041,6 +3080,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
 
         /**
          * @brief 2D transformations as float translation, rotation and scaling components
+         * @return Pairs of (object mapping, (translation, rotation, scaling))
          * @m_since_latest
          *
          * Convenience alternative to @ref mapping(SceneField) const together
@@ -3097,6 +3137,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
 
         /**
          * @brief 3D transformations as 4x4 float matrices
+         * @return Pairs of (object mapping, transformation)
          * @m_since_latest
          *
          * Convenience alternative to @ref mapping(SceneField) const together
@@ -3148,6 +3189,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
 
         /**
          * @brief 3D transformations as float translation, rotation and scaling components
+         * @return Pairs of (object mapping, (translation, rotation, scaling))
          * @m_since_latest
          *
          * Convenience alternative to @ref mapping(SceneField) const together
@@ -3204,6 +3246,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
 
         /**
          * @brief Mesh and material IDs as 32-bit integers
+         * @return Pairs of (object mapping, (mesh ID, material ID))
          * @m_since_latest
          *
          * Convenience alternative to @ref mapping(SceneField) const together
@@ -3250,6 +3293,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
 
         /**
          * @brief Light IDs as 32-bit integers
+         * @return Pairs of (object mapping, light ID)
          * @m_since_latest
          *
          * Convenience alternative to @ref mapping(SceneField) const together
@@ -3291,6 +3335,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
 
         /**
          * @brief Camera IDs as 32-bit integers
+         * @return Pairs of (object mapping, camera ID)
          * @m_since_latest
          *
          * Convenience alternative to @ref mapping(SceneField) const together
@@ -3332,6 +3377,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
 
         /**
          * @brief Skin IDs as 32-bit integers
+         * @return Pairs of (object mapping, skin ID)
          * @m_since_latest
          *
          * Convenience alternative to @ref mapping(SceneField) const together
@@ -3373,6 +3419,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
 
         /**
          * @brief Per-object importer state as `void` pointers
+         * @return Pairs of (object mapping, importer state)
          * @m_since_latest
          *
          * Convenience alternative to @ref mapping(SceneField) const together
@@ -3428,8 +3475,8 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * directly.
          *
          * If the @ref SceneField::Parent field is not present or if there's no
-         * parent for @p object, returns @ref Containers::NullOpt. If @p object
-         * is top-level, returns @cpp -1 @ce.
+         * parent for @p object, returns @relativeref{Corrade,Containers::NullOpt}.
+         * If @p object is top-level, returns @cpp -1 @ce.
          *
          * The @p object is expected to be less than @ref mappingBound().
          * @see @ref childrenFor()
@@ -3476,7 +3523,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @ref SceneField::Translation, @relativeref{SceneField,Rotation} or
          * @relativeref{SceneField,Scaling} is present, the fields represent a
          * 3D transformation or there's no transformation for @p object,
-         * returns @ref Containers::NullOpt.
+         * returns @relativeref{Corrade,Containers::NullOpt}.
          *
          * The @p object is expected to be less than @ref mappingBound().
          * @see @ref translationRotationScaling2DFor()
@@ -3505,7 +3552,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * (@cpp 1.0f @ce in both dimensions). If neither of those fields is
          * present, if any of the fields represents a 3D transformation or if
          * there's no transformation for @p object, returns
-         * @ref Containers::NullOpt.
+         * @relativeref{Corrade,Containers::NullOpt}.
          *
          * The @p object is expected to be less than @ref mappingBound().
          * @see @ref transformation2DFor()
@@ -3531,7 +3578,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * @ref SceneField::Translation, @relativeref{SceneField,Rotation} or
          * @relativeref{SceneField,Scaling} is present, the fields represent a
          * 2D transformation or there's no transformation for @p object,
-         * returns @ref Containers::NullOpt.
+         * returns @relativeref{Corrade,Containers::NullOpt}.
          *
          * The @p object is expected to be less than @ref mappingBound().
          * @see @ref translationRotationScaling3DFor()
@@ -3560,7 +3607,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
          * (@cpp 1.0f @ce in all dimensions). If neither of those fields is
          * present, if any of the fields represents a 2D transformation or if
          * there's no transformation for @p object, returns
-         * @ref Containers::NullOpt.
+         * @relativeref{Corrade,Containers::NullOpt}.
          *
          * The @p object is expected to be less than @ref mappingBound().
          * @see @ref transformation3DFor()
@@ -3658,7 +3705,7 @@ class MAGNUM_TRADE_EXPORT SceneData {
          *
          * If the @ref SceneField::ImporterState field is not present or if
          * there's no importer state for @p object, returns
-         * @ref Containers::NullOpt.
+         * @relativeref{Corrade,Containers::NullOpt}.
          *
          * The @p object is expected to be less than @ref mappingBound().
          */
@@ -4250,7 +4297,8 @@ template<class T> bool SceneData::checkFieldTypeCompatibility(const SceneFieldDa
 }
 #endif
 
-template<class T, class> Containers::StridedArrayView1D<const T> SceneData::field(const UnsignedInt id) const {
+#ifndef DOXYGEN_GENERATING_OUTPUT
+template<class T, typename std::enable_if<!std::is_array<T>::value, int>::type> Containers::StridedArrayView1D<const T> SceneData::field(const UnsignedInt id) const {
     Containers::StridedArrayView2D<const char> data = field(id);
     #ifdef CORRADE_GRACEFUL_ASSERT /* Sigh. Brittle. Better idea? */
     if(!data.stride()[1]) return {};
@@ -4261,7 +4309,7 @@ template<class T, class> Containers::StridedArrayView1D<const T> SceneData::fiel
     return Containers::arrayCast<1, const T>(data);
 }
 
-template<class T, class> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> SceneData::field(const UnsignedInt id) const {
+template<class T, typename std::enable_if<std::is_array<T>::value, int>::type> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> SceneData::field(const UnsignedInt id) const {
     Containers::StridedArrayView2D<const char> data = field(id);
     #ifdef CORRADE_GRACEFUL_ASSERT /* Sigh. Brittle. Better idea? */
     if(!data.stride()[1]) return {};
@@ -4272,7 +4320,7 @@ template<class T, class> Containers::StridedArrayView2D<const typename std::remo
     return Containers::arrayCast<2, const typename std::remove_extent<T>::type>(data);
 }
 
-template<class T, class> Containers::StridedArrayView1D<T> SceneData::mutableField(const UnsignedInt id) {
+template<class T, typename std::enable_if<!std::is_array<T>::value, int>::type> Containers::StridedArrayView1D<T> SceneData::mutableField(const UnsignedInt id) {
     Containers::StridedArrayView2D<char> data = mutableField(id);
     #ifdef CORRADE_GRACEFUL_ASSERT /* Sigh. Brittle. Better idea? */
     if(!data.stride()[1]) return {};
@@ -4283,7 +4331,7 @@ template<class T, class> Containers::StridedArrayView1D<T> SceneData::mutableFie
     return Containers::arrayCast<1, T>(data);
 }
 
-template<class T, class> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> SceneData::mutableField(const UnsignedInt id) {
+template<class T, typename std::enable_if<std::is_array<T>::value, int>::type> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> SceneData::mutableField(const UnsignedInt id) {
     Containers::StridedArrayView2D<char> data = mutableField(id);
     #ifdef CORRADE_GRACEFUL_ASSERT /* Sigh. Brittle. Better idea? */
     if(!data.stride()[1]) return {};
@@ -4294,7 +4342,7 @@ template<class T, class> Containers::StridedArrayView2D<typename std::remove_ext
     return Containers::arrayCast<2, typename std::remove_extent<T>::type>(data);
 }
 
-template<class T, class> Containers::StridedArrayView1D<const T> SceneData::field(const SceneField name) const {
+template<class T, typename std::enable_if<!std::is_array<T>::value, int>::type> Containers::StridedArrayView1D<const T> SceneData::field(const SceneField name) const {
     const UnsignedInt fieldId = findFieldIdInternal(name);
     CORRADE_ASSERT(fieldId != ~UnsignedInt{},
         "Trade::SceneData::field(): field" << name << "not found", {});
@@ -4308,7 +4356,7 @@ template<class T, class> Containers::StridedArrayView1D<const T> SceneData::fiel
     return Containers::arrayCast<1, const T>(data);
 }
 
-template<class T, class> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> SceneData::field(const SceneField name) const {
+template<class T, typename std::enable_if<std::is_array<T>::value, int>::type> Containers::StridedArrayView2D<const typename std::remove_extent<T>::type> SceneData::field(const SceneField name) const {
     const UnsignedInt fieldId = findFieldIdInternal(name);
     CORRADE_ASSERT(fieldId != ~UnsignedInt{},
         "Trade::SceneData::field(): field" << name << "not found", {});
@@ -4322,7 +4370,7 @@ template<class T, class> Containers::StridedArrayView2D<const typename std::remo
     return Containers::arrayCast<2, const typename std::remove_extent<T>::type>(data);
 }
 
-template<class T, class> Containers::StridedArrayView1D<T> SceneData::mutableField(const SceneField name) {
+template<class T, typename std::enable_if<!std::is_array<T>::value, int>::type> Containers::StridedArrayView1D<T> SceneData::mutableField(const SceneField name) {
     const UnsignedInt fieldId = findFieldIdInternal(name);
     CORRADE_ASSERT(fieldId != ~UnsignedInt{},
         "Trade::SceneData::mutableField(): field" << name << "not found", {});
@@ -4336,7 +4384,7 @@ template<class T, class> Containers::StridedArrayView1D<T> SceneData::mutableFie
     return Containers::arrayCast<1, T>(data);
 }
 
-template<class T, class> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> SceneData::mutableField(const SceneField name) {
+template<class T, typename std::enable_if<std::is_array<T>::value, int>::type> Containers::StridedArrayView2D<typename std::remove_extent<T>::type> SceneData::mutableField(const SceneField name) {
     const UnsignedInt fieldId = findFieldIdInternal(name);
     CORRADE_ASSERT(fieldId != ~UnsignedInt{},
         "Trade::SceneData::mutableField(): field" << name << "not found", {});
@@ -4349,6 +4397,7 @@ template<class T, class> Containers::StridedArrayView2D<typename std::remove_ext
     #endif
     return Containers::arrayCast<2, typename std::remove_extent<T>::type>(data);
 }
+#endif
 
 }}
 

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/DebugTools/CompareMaterial.h"
 #include "Magnum/Math/Color.h"
@@ -305,13 +305,13 @@ void MergeTest::conflictsFail() {
     }, {2, 3}};
 
     /* Verify that it fails in all variants */
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!merge(a, b));
     CORRADE_VERIFY(!merge(b, a));
     CORRADE_VERIFY(!merge(a, c, MergeConflicts::KeepFirstIfSameType));
     CORRADE_VERIFY(!merge(c, a, MergeConflicts::KeepFirstIfSameType));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "MaterialTools::merge(): conflicting attribute RoughnessTexture in layer 0\n"
         "MaterialTools::merge(): conflicting attribute RoughnessTexture in layer 0\n"
         "MaterialTools::merge(): conflicting type Trade::MaterialAttributeType::Float vs String of attribute customAttribute in layer 1\n"

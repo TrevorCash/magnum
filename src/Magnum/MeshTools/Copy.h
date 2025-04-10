@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -49,7 +50,8 @@ unchanged, the data layout isn't changed in any way. The resulting
 @ref Trade::DataFlag::Owned and @ref Trade::DataFlag::Mutable. Attributes that
 were offset-only before are kept offset-only, others have offsets recalculated
 against the newly-allocated vertex data.
-@see @ref copy(Trade::MeshData&&), @ref reference(), @ref mutableReference()
+@see @ref copy(Trade::MeshData&&), @ref reference(), @ref mutableReference(),
+    @ref meshtools-helpers
 */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData copy(const Trade::MeshData& mesh);
 
@@ -68,7 +70,7 @@ ownership. The resulting data are always owned and mutable, the data layout
 isn't changed in any way. Attributes that were offset-only before are kept
 offset-only, others have offsets recalculated against the
 potentially-newly-allocated vertex data.
-@see @ref reference(), @ref mutableReference()
+@see @ref reference(), @ref mutableReference(), @ref meshtools-helpers
 */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData copy(Trade::MeshData&& mesh);
 
@@ -80,7 +82,7 @@ The returned instance has empty @ref Trade::MeshData::indexDataFlags() and
 @ref Trade::MeshData::vertexDataFlags() and references attribute data from the
 @p mesh as well. The function performs no allocation or data copy. Use
 @ref copy() for an inverse operation.
-@see @ref mutableReference()
+@see @ref mutableReference(), @ref meshtools-helpers
 */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData reference(const Trade::MeshData& mesh);
 
@@ -92,7 +94,7 @@ The returned instance has @ref Trade::MeshData::indexDataFlags() and
 @ref Trade::MeshData::vertexDataFlags() set to @ref Trade::DataFlag::Mutable.
 The function performs no allocation or data copy. Use @ref copy() for an
 inverse operation. Expects that @p mesh is mutable.
-@see @ref reference()
+@see @ref reference(), @ref meshtools-helpers
 */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData mutableReference(Trade::MeshData& mesh);
 

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,15 +24,13 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <cstring>
-#include <sstream>
+#include <new>
 #include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/Pair.h>
-#include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
-#if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
 #include <Corrade/Containers/String.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/TestSuite/Tester.h>
+#if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/TweakableParser.h>
 #endif
 
@@ -47,6 +46,7 @@ struct AngleTest: TestSuite::Tester {
     void constructNoInit();
     void constructConversion();
     void constructCopy();
+    void constructFromBase();
 
     void literals();
     void conversion();
@@ -55,7 +55,7 @@ struct AngleTest: TestSuite::Tester {
     void debugDegPacked();
     void debugRad();
     void debugRadPacked();
-    #if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+    #if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
     template<class T> void tweakable();
     template<class T> void tweakableError();
     #endif
@@ -68,7 +68,7 @@ using Magnum::Radd;
 
 using namespace Literals;
 
-#if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+#if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
 constexpr struct {
     const char* name;
     const char* data;
@@ -138,6 +138,7 @@ AngleTest::AngleTest() {
               &AngleTest::constructNoInit,
               &AngleTest::constructConversion,
               &AngleTest::constructCopy,
+              &AngleTest::constructFromBase,
 
               &AngleTest::literals,
               &AngleTest::conversion,
@@ -147,7 +148,7 @@ AngleTest::AngleTest() {
               &AngleTest::debugRad,
               &AngleTest::debugRadPacked});
 
-    #if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+    #if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
     addInstancedTests<AngleTest>({
         &AngleTest::tweakable<Deg>,
         &AngleTest::tweakable<Unit<Math::Deg, Float>>,
@@ -173,10 +174,15 @@ AngleTest::AngleTest() {
 }
 
 void AngleTest::construct() {
-    constexpr Deg b(25.0);
-    CORRADE_COMPARE(Float(b), 25.0f);
-    constexpr Radd n(3.14);
-    CORRADE_COMPARE(Double(n), 3.14);
+    Deg a{25.0f};
+    Radd b{3.14};
+    CORRADE_COMPARE(Float(a), 25.0f);
+    CORRADE_COMPARE(Double(b), 3.14);
+
+    constexpr Deg ca{25.0f};
+    constexpr Radd cb(3.14);
+    CORRADE_COMPARE(Float(ca), 25.0f);
+    CORRADE_COMPARE(Double(cb), 3.14);
 
     /* Implicit conversion is not allowed */
     CORRADE_VERIFY(!std::is_convertible<Float, Rad>::value);
@@ -187,14 +193,23 @@ void AngleTest::construct() {
 }
 
 void AngleTest::constructDefault() {
-    constexpr Deg m1;
-    constexpr Deg m2{ZeroInit};
-    CORRADE_COMPARE(Float(m1), 0.0f);
-    CORRADE_COMPARE(Float(m2), 0.0f);
-    constexpr Radd a1;
-    constexpr Radd a2{ZeroInit};
-    CORRADE_COMPARE(Double(a1), 0.0);
-    CORRADE_COMPARE(Double(a2), 0.0);
+    Deg a1;
+    Deg a2{ZeroInit};
+    Radd b1;
+    Radd b2{ZeroInit};
+    CORRADE_COMPARE(Float(a1), 0.0f);
+    CORRADE_COMPARE(Float(a2), 0.0f);
+    CORRADE_COMPARE(Double(b1), 0.0);
+    CORRADE_COMPARE(Double(b2), 0.0);
+
+    constexpr Deg ca1;
+    constexpr Deg ca2{ZeroInit};
+    constexpr Radd cb1;
+    constexpr Radd cb2{ZeroInit};
+    CORRADE_COMPARE(Float(ca1), 0.0f);
+    CORRADE_COMPARE(Float(ca2), 0.0f);
+    CORRADE_COMPARE(Double(cb1), 0.0);
+    CORRADE_COMPARE(Double(cb2), 0.0);
 
     CORRADE_VERIFY(std::is_nothrow_default_constructible<Deg>::value);
     CORRADE_VERIFY(std::is_nothrow_default_constructible<Rad>::value);
@@ -244,13 +259,19 @@ void AngleTest::constructNoInit() {
 }
 
 void AngleTest::constructConversion() {
-    constexpr Deg a(25.0);
-    constexpr Radd b(3.14);
-
-    constexpr Rad c(b);
+    Deg a{25.0f};
+    Radd b{3.14};
+    Rad c{b};
+    Degd d{a};
     CORRADE_COMPARE(Float(c), 3.14f);
-    constexpr Degd d(a);
     CORRADE_COMPARE(Double(d), 25.0);
+
+    constexpr Deg ca{25.0f};
+    constexpr Radd cb{3.14};
+    constexpr Rad cc{cb};
+    constexpr Degd cd{ca};
+    CORRADE_COMPARE(Float(cc), 3.14f);
+    CORRADE_COMPARE(Double(cd), 25.0);
 
     /* Implicit conversion is not allowed */
     CORRADE_VERIFY(!std::is_convertible<Degd, Deg>::value);
@@ -281,6 +302,15 @@ void AngleTest::constructCopy() {
     CORRADE_VERIFY(std::is_nothrow_copy_assignable<Rad>::value);
 }
 
+void AngleTest::constructFromBase() {
+    /* The operation returns Unit instead of the leaf type, so this can work
+       only if the base class has a "copy constructor" from the base type */
+    Deg a = 35.0_degf + 0.15_degf;
+    Radd b = 1.0_rad + 0.25_rad;
+    CORRADE_COMPARE(a, 35.15_degf);
+    CORRADE_COMPARE(b, 1.25_rad);
+}
+
 void AngleTest::literals() {
     constexpr auto a = 25.0_deg;
     CORRADE_VERIFY(std::is_same<decltype(a), const Degd>::value);
@@ -299,54 +329,57 @@ void AngleTest::literals() {
 
 void AngleTest::conversion() {
     /* Implicit conversion should be allowed */
-    constexpr Deg a = Rad(1.57079633f);
+    constexpr Deg a = 1.57079633_radf;
     CORRADE_COMPARE(Float(a), 90.0f);
 
     constexpr Rad b = 90.0_degf;
     CORRADE_COMPARE(Float(b), 1.57079633f);
+
+    CORRADE_VERIFY(std::is_nothrow_constructible<Deg, Rad>::value);
+    CORRADE_VERIFY(std::is_nothrow_constructible<Radd, Degd>::value);
 }
 
 void AngleTest::debugDeg() {
-    std::ostringstream o;
+    Containers::String out;
 
-    Debug(&o) << 90.0_degf;
-    CORRADE_COMPARE(o.str(), "Deg(90)\n");
+    Debug{&out} << 90.0_degf;
+    CORRADE_COMPARE(out, "Deg(90)\n");
 
     /* Verify that this compiles */
-    o.str({});
-    Debug(&o) << 56.0_degf - 34.0_degf;
-    CORRADE_COMPARE(o.str(), "Deg(22)\n");
+    out = {};
+    Debug{&out} << 56.0_degf - 34.0_degf;
+    CORRADE_COMPARE(out, "Deg(22)\n");
 }
 
 void AngleTest::debugDegPacked() {
-    std::ostringstream out;
+    Containers::String out;
 
     /* Second is not packed, the first should not make any flags persistent */
     Debug{&out} << Debug::packed << 90.0_degf << 45.0_degf;
-    CORRADE_COMPARE(out.str(), "90 Deg(45)\n");
+    CORRADE_COMPARE(out, "90 Deg(45)\n");
 }
 
 void AngleTest::debugRad() {
-    std::ostringstream o;
+    Containers::String out;
 
-    Debug(&o) << 1.5708_radf;
-    CORRADE_COMPARE(o.str(), "Rad(1.5708)\n");
+    Debug{&out} << 1.5708_radf;
+    CORRADE_COMPARE(out, "Rad(1.5708)\n");
 
     /* Verify that this compiles */
-    o.str({});
-    Debug(&o) << 1.5708_radf - 3.1416_radf;
-    CORRADE_COMPARE(o.str(), "Rad(-1.5708)\n");
+    out = {};
+    Debug{&out} << 1.5708_radf - 3.1416_radf;
+    CORRADE_COMPARE(out, "Rad(-1.5708)\n");
 }
 
 void AngleTest::debugRadPacked() {
-    std::ostringstream out;
+    Containers::String out;
 
     /* Second is not packed, the first should not make any flags persistent */
     Debug{&out} << Debug::packed << 1.5708_radf << 3.1416_radf;
-    CORRADE_COMPARE(out.str(), "1.5708 Rad(3.1416)\n");
+    CORRADE_COMPARE(out, "1.5708 Rad(3.1416)\n");
 }
 
-#if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+#if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
 template<class T> void AngleTest::tweakable() {
     auto&& data = TweakableData[testCaseInstanceId()];
     setTestCaseTemplateName(TweakableTraits<T>::name());
@@ -361,11 +394,11 @@ template<class T> void AngleTest::tweakableError() {
     setTestCaseTemplateName(TweakableTraits<T>::name());
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Error redirectError{&out};
     Utility::TweakableState state = Utility::TweakableParser<T>::parse(Utility::format(data.data, TweakableTraits<T>::literal())).first();
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.error, TweakableTraits<T>::literal()));
+    CORRADE_COMPARE(out, Utility::format(data.error, TweakableTraits<T>::literal()));
     CORRADE_COMPARE(state, data.state);
 }
 #endif

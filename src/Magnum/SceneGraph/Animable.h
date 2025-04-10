@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -79,7 +80,7 @@ First thing is to add @ref Animable feature to some object and implement
 to implement your animation, the function provides both absolute animation
 time and time delta. Example:
 
-@snippet MagnumSceneGraph.cpp Animable-usage-definition
+@snippet SceneGraph.cpp Animable-usage-definition
 
 Similarly to @ref Drawable feature, there is no way to just animate all the
 objects in the scene. You need to create animable group and use it to control
@@ -89,14 +90,14 @@ The animation is initially in stopped state and without repeat, see
 @ref setState(), @ref setRepeated() and @ref setRepeatCount() for more
 information.
 
-@snippet MagnumSceneGraph.cpp Animable-usage
+@snippet SceneGraph.cpp Animable-usage
 
 Animation step is performed by calling @ref AnimableGroup::step() in your draw
 event implementation. The function expects absolute time from relative to some
 fixed point in the past and time delta (i.e. duration of the frame). You can
 use @ref Timeline for that, see its documentation for more information.
 
-@snippet MagnumSceneGraph-gl.cpp Animable-usage-timeline
+@snippet SceneGraph-gl.cpp Animable-usage-timeline
 
 @section SceneGraph-Animable-multiple-groups Using multiple animable groups to improve performance
 
@@ -138,7 +139,7 @@ template<UnsignedInt dimensions, class T> class Animable: public AbstractGrouped
         #ifndef DOXYGEN_GENERATING_OUTPUT
         /* This is here to avoid ambiguity with deleted copy constructor when
            passing `*this` from class subclassing both Animable and AbstractObject */
-        template<class U, class = typename std::enable_if<std::is_base_of<AbstractObject<dimensions, T>, U>::value>::type> explicit Animable(U& object): Animable<dimensions, T>{static_cast<AbstractObject<dimensions, T>&>(object)} {}
+        template<class U, typename std::enable_if<std::is_base_of<AbstractObject<dimensions, T>, U>::value, int>::type = 0> explicit Animable(U& object): Animable<dimensions, T>{static_cast<AbstractObject<dimensions, T>&>(object)} {}
         #endif
 
         ~Animable();

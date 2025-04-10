@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/GL/Renderer.h"
 
@@ -51,25 +51,25 @@ RendererTest::RendererTest() {
 }
 
 void RendererTest::debugError() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << Renderer::Error::InvalidOperation << Renderer::Error(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Renderer::Error::InvalidOperation GL::Renderer::Error(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Renderer::Error::InvalidOperation GL::Renderer::Error(0xdead)\n");
 }
 
 #ifndef MAGNUM_TARGET_WEBGL
 void RendererTest::debugResetNotificationStrategy() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << Renderer::ResetNotificationStrategy::LoseContextOnReset << Renderer::ResetNotificationStrategy(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Renderer::ResetNotificationStrategy::LoseContextOnReset GL::Renderer::ResetNotificationStrategy(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Renderer::ResetNotificationStrategy::LoseContextOnReset GL::Renderer::ResetNotificationStrategy(0xdead)\n");
 }
 
 void RendererTest::debugGraphicsResetStatus() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << Renderer::GraphicsResetStatus::GuiltyContextReset << Renderer::GraphicsResetStatus(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::Renderer::GraphicsResetStatus::GuiltyContextReset GL::Renderer::GraphicsResetStatus(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::Renderer::GraphicsResetStatus::GuiltyContextReset GL::Renderer::GraphicsResetStatus(0xdead)\n");
 }
 #endif
 

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -54,6 +55,37 @@ bool PbrMetallicRoughnessMaterialData::hasNoneRoughnessMetallicTexture() const {
        roughnessTextureLayer() == metalnessTextureLayer();
 }
 
+bool PbrMetallicRoughnessMaterialData::hasOcclusionRoughnessMetallicTexture() const {
+    if(!hasAttribute(MaterialAttribute::OcclusionTexture))
+        return false;
+
+    const UnsignedInt occlusionTexture = attribute<UnsignedInt>(MaterialAttribute::OcclusionTexture);
+    if(hasAttribute(MaterialAttribute::NoneRoughnessMetallicTexture)) {
+        if(attribute<UnsignedInt>(MaterialAttribute::NoneRoughnessMetallicTexture) != occlusionTexture)
+            return false;
+    } else if(hasAttribute(MaterialAttribute::MetalnessTexture) &&
+              hasAttribute(MaterialAttribute::RoughnessTexture)) {
+        if(attribute<UnsignedInt>(MaterialAttribute::RoughnessTexture) != occlusionTexture ||
+           attribute<UnsignedInt>(MaterialAttribute::MetalnessTexture) != occlusionTexture)
+            return false;
+    } else return false;
+
+    if(occlusionTextureSwizzle() != MaterialTextureSwizzle::R ||
+       roughnessTextureSwizzle() != MaterialTextureSwizzle::G ||
+       metalnessTextureSwizzle() != MaterialTextureSwizzle::B)
+        return false;
+
+    const Matrix3 occlusionTextureMatrix = this->occlusionTextureMatrix();
+    const UnsignedInt occlusionTextureCoordinates = this->occlusionTextureCoordinates();
+    const UnsignedInt occlusionTextureLayer = this->occlusionTextureLayer();
+    return roughnessTextureMatrix() == occlusionTextureMatrix &&
+        metalnessTextureMatrix() == occlusionTextureMatrix &&
+        roughnessTextureCoordinates() == occlusionTextureCoordinates &&
+        metalnessTextureCoordinates() == occlusionTextureCoordinates &&
+        roughnessTextureLayer() == occlusionTextureLayer &&
+        metalnessTextureLayer() == occlusionTextureLayer;
+}
+
 bool PbrMetallicRoughnessMaterialData::hasRoughnessMetallicOcclusionTexture() const {
     if(!hasAttribute(MaterialAttribute::RoughnessTexture) ||
        !hasAttribute(MaterialAttribute::MetalnessTexture) ||
@@ -77,31 +109,6 @@ bool PbrMetallicRoughnessMaterialData::hasRoughnessMetallicOcclusionTexture() co
         occlusionTextureCoordinates() == roughnessTextureCoordinates &&
         metalnessTextureLayer() == roughnessTextureLayer &&
         occlusionTextureLayer() == roughnessTextureLayer;
-}
-
-bool PbrMetallicRoughnessMaterialData::hasOcclusionRoughnessMetallicTexture() const {
-    if(!hasAttribute(MaterialAttribute::OcclusionTexture) ||
-       !hasAttribute(MaterialAttribute::RoughnessTexture) ||
-       !hasAttribute(MaterialAttribute::MetalnessTexture))
-        return false;
-
-    const UnsignedInt occlusionTexture = attribute<UnsignedInt>(MaterialAttribute::OcclusionTexture);
-    if(attribute<UnsignedInt>(MaterialAttribute::RoughnessTexture) != occlusionTexture ||
-       attribute<UnsignedInt>(MaterialAttribute::MetalnessTexture) != occlusionTexture ||
-       occlusionTextureSwizzle() != MaterialTextureSwizzle::R ||
-       roughnessTextureSwizzle() != MaterialTextureSwizzle::G ||
-       metalnessTextureSwizzle() != MaterialTextureSwizzle::B)
-        return false;
-
-    const Matrix3 occlusionTextureMatrix = this->occlusionTextureMatrix();
-    const UnsignedInt occlusionTextureCoordinates = this->occlusionTextureCoordinates();
-    const UnsignedInt occlusionTextureLayer = this->occlusionTextureLayer();
-    return roughnessTextureMatrix() == occlusionTextureMatrix &&
-        metalnessTextureMatrix() == occlusionTextureMatrix &&
-        roughnessTextureCoordinates() == occlusionTextureCoordinates &&
-        metalnessTextureCoordinates() == occlusionTextureCoordinates &&
-        roughnessTextureLayer() == occlusionTextureLayer &&
-        metalnessTextureLayer() == occlusionTextureLayer;
 }
 
 bool PbrMetallicRoughnessMaterialData::hasNormalRoughnessMetallicTexture() const {

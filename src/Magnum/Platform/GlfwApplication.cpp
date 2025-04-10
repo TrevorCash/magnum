@@ -2,10 +2,12 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2016, 2018 Jonathan Hale <squareys@googlemail.com>
     Copyright © 2019 Konstantinos Chatzilygeroudis <costashatz@gmail.com>
     Copyright © 2019, 2020 Marco Melorio <m.melorio@icloud.com>
+    Copyright © 2022 Andreas Leroux <andreas.leroux@epitech.eu>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -32,10 +34,12 @@
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Utility/Arguments.h>
 #include <Corrade/Utility/Unicode.h>
+#include <Corrade/Utility/System.h>
 
 #include "Magnum/ImageView.h"
 #include "Magnum/PixelFormat.h"
 #include "Magnum/Math/ConfigurationValue.h"
+#include "Magnum/Math/Time.h"
 #include "Magnum/Platform/ScreenedApplication.hpp"
 #include "Magnum/Platform/Implementation/DpiScaling.h"
 
@@ -46,6 +50,7 @@
 namespace Magnum { namespace Platform {
 
 using namespace Containers::Literals;
+using namespace Math::Literals;
 
 #ifdef GLFW_TRUE
 /* The docs say that it's the same, verify that just in case */
@@ -55,9 +60,11 @@ static_assert(GLFW_TRUE == true && GLFW_FALSE == false, "GLFW does not have sane
 enum class GlfwApplication::Flag: UnsignedByte {
     Redraw = 1 << 0,
     TextInputActive = 1 << 1,
-    Exit = 1 << 2,
+    VSyncEnabled = 1 << 2,
+    NoTickEvent = 1 << 3,
+    Exit = 1 << 4,
     #ifdef CORRADE_TARGET_APPLE
-    HiDpiWarningPrinted = 1 << 3
+    HiDpiWarningPrinted = 1 << 5
     #endif
 };
 
@@ -161,17 +168,25 @@ Vector2 GlfwApplication::dpiScalingInternal(const Implementation::GlfwDpiScaling
     /* Use values from the configuration only if not overridden on command line
        to something non-default. In any case explicit scaling has a precedence
        before the policy. */
+    #ifndef CORRADE_TARGET_APPLE
     Implementation::GlfwDpiScalingPolicy dpiScalingPolicy{};
+    #endif
     if(!_commandLineDpiScaling.isZero()) {
         Debug{verbose} << "Platform::GlfwApplication: user-defined DPI scaling" << _commandLineDpiScaling;
         return _commandLineDpiScaling;
     } else if(_commandLineDpiScalingPolicy != Implementation::GlfwDpiScalingPolicy::Default) {
+        #ifndef CORRADE_TARGET_APPLE
         dpiScalingPolicy = _commandLineDpiScalingPolicy;
+        #endif
     } else if(!configurationDpiScaling.isZero()) {
         Debug{verbose} << "Platform::GlfwApplication: app-defined DPI scaling" << configurationDpiScaling;
         return configurationDpiScaling;
     } else {
+        #ifndef CORRADE_TARGET_APPLE
         dpiScalingPolicy = configurationDpiScalingPolicy;
+        #else
+        static_cast<void>(configurationDpiScalingPolicy);
+        #endif
     }
 
     /* There's no choice on Apple, it's all controlled by the plist file. So
@@ -258,7 +273,6 @@ void GlfwApplication::setWindowTitle(const Containers::StringView title) {
     glfwSetWindowTitle(_window, Containers::String::nullTerminatedView(title).data());
 }
 
-#if GLFW_VERSION_MAJOR*100 + GLFW_VERSION_MINOR >= 302
 void GlfwApplication::setWindowIcon(const ImageView2D& image) {
     setWindowIcon({&image, 1});
 }
@@ -318,14 +332,10 @@ void GlfwApplication::setWindowIcon(const Containers::ArrayView<const ImageView2
 void GlfwApplication::setWindowIcon(std::initializer_list<ImageView2D> images) {
     setWindowIcon(Containers::arrayView(images));
 }
-#endif
 
 bool GlfwApplication::tryCreate(const Configuration& configuration) {
     #ifdef MAGNUM_TARGET_GL
-    #ifdef GLFW_NO_API
-    if(!(configuration.windowFlags() & Configuration::WindowFlag::Contextless))
-    #endif
-    {
+    if(!(configuration.windowFlags() & Configuration::WindowFlag::Contextless)) {
         return tryCreate(configuration, GLConfiguration{});
     }
     #endif
@@ -348,17 +358,13 @@ bool GlfwApplication::tryCreate(const Configuration& configuration) {
         glfwWindowHint(GLFW_DECORATED, !(flags >= Configuration::WindowFlag::Borderless));
         glfwWindowHint(GLFW_RESIZABLE, flags >= Configuration::WindowFlag::Resizable);
         glfwWindowHint(GLFW_VISIBLE, !(flags >= Configuration::WindowFlag::Hidden));
-        #ifdef GLFW_MAXIMIZED
         glfwWindowHint(GLFW_MAXIMIZED, flags >= Configuration::WindowFlag::Maximized);
-        #endif
         glfwWindowHint(GLFW_FLOATING, flags >= Configuration::WindowFlag::AlwaysOnTop);
     }
     glfwWindowHint(GLFW_FOCUSED, configuration.windowFlags() >= Configuration::WindowFlag::Focused);
 
-    #ifdef GLFW_NO_API
     /* Disable implicit GL context creation */
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    #endif
 
     /* Create the window */
     CORRADE_INTERNAL_ASSERT(configuration.title().flags() & Containers::StringViewFlag::NullTerminated);
@@ -384,23 +390,23 @@ bool GlfwApplication::tryCreate(const Configuration& configuration) {
 
 namespace {
 
-GlfwApplication::InputEvent::Modifiers currentGlfwModifiers(GLFWwindow* window) {
+GlfwApplication::Modifiers currentGlfwModifiers(GLFWwindow* window) {
     static_assert(GLFW_PRESS == true && GLFW_RELEASE == false,
         "GLFW press and release constants do not correspond to bool values");
 
-    GlfwApplication::InputEvent::Modifiers mods;
+    GlfwApplication::Modifiers mods;
     if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) ||
        glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT))
-        mods |= GlfwApplication::InputEvent::Modifier::Shift;
+        mods |= GlfwApplication::Modifier::Shift;
     if(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) ||
        glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL))
-        mods |= GlfwApplication::InputEvent::Modifier::Ctrl;
+        mods |= GlfwApplication::Modifier::Ctrl;
     if(glfwGetKey(window, GLFW_KEY_LEFT_ALT) ||
        glfwGetKey(window, GLFW_KEY_RIGHT_ALT))
-        mods |= GlfwApplication::InputEvent::Modifier::Alt;
+        mods |= GlfwApplication::Modifier::Alt;
     if(glfwGetKey(window, GLFW_KEY_LEFT_SUPER) ||
        glfwGetKey(window, GLFW_KEY_RIGHT_SUPER))
-        mods |= GlfwApplication::InputEvent::Modifier::Super;
+        mods |= GlfwApplication::Modifier::Super;
 
     return mods;
 }
@@ -409,7 +415,10 @@ GlfwApplication::InputEvent::Modifiers currentGlfwModifiers(GLFWwindow* window) 
 
 #ifdef MAGNUM_TARGET_GL
 bool GlfwApplication::tryCreate(const Configuration& configuration, const GLConfiguration& glConfiguration) {
-    CORRADE_ASSERT(!_window && _context->version() == GL::Version::None, "Platform::GlfwApplication::tryCreate(): window with OpenGL context already created", false);
+    CORRADE_ASSERT(!(configuration.windowFlags() & Configuration::WindowFlag::Contextless),
+        "Platform::GlfwApplication::tryCreate(): cannot pass Configuration::WindowFlag::Contextless when creating an OpenGL context", false);
+    CORRADE_ASSERT(!_window && _context->version() == GL::Version::None,
+        "Platform::GlfwApplication::tryCreate(): window with OpenGL context already created", false);
 
     /* Save DPI scaling values from configuration for future use, scale window
        based on those */
@@ -427,9 +436,7 @@ bool GlfwApplication::tryCreate(const Configuration& configuration, const GLConf
         glfwWindowHint(GLFW_DECORATED, !(flags >= Configuration::WindowFlag::Borderless));
         glfwWindowHint(GLFW_RESIZABLE, flags >= Configuration::WindowFlag::Resizable);
         glfwWindowHint(GLFW_VISIBLE, !(flags >= Configuration::WindowFlag::Hidden));
-        #ifdef GLFW_MAXIMIZED
         glfwWindowHint(GLFW_MAXIMIZED, flags >= Configuration::WindowFlag::Maximized);
-        #endif
         glfwWindowHint(GLFW_FLOATING, flags >= Configuration::WindowFlag::AlwaysOnTop);
     }
     glfwWindowHint(GLFW_FOCUSED, configuration.windowFlags() >= Configuration::WindowFlag::Focused);
@@ -449,14 +456,10 @@ bool GlfwApplication::tryCreate(const Configuration& configuration, const GLConf
     GLConfiguration::Flags glFlags = glConfiguration.flags();
     if((glFlags & GLConfiguration::Flag::GpuValidation) || (_context->configurationFlags() & GL::Context::Configuration::Flag::GpuValidation))
         glFlags |= GLConfiguration::Flag::Debug;
-    #ifdef GLFW_CONTEXT_NO_ERROR
     else if((glFlags & GLConfiguration::Flag::GpuValidationNoError) || (_context->configurationFlags() & GL::Context::Configuration::Flag::GpuValidationNoError))
         glFlags |= GLConfiguration::Flag::NoError;
-    #endif
 
-    #ifdef GLFW_CONTEXT_NO_ERROR
     glfwWindowHint(GLFW_CONTEXT_NO_ERROR, glFlags >= GLConfiguration::Flag::NoError);
-    #endif
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, glFlags >= GLConfiguration::Flag::Debug);
     glfwWindowHint(GLFW_STEREO, glFlags >= GLConfiguration::Flag::Stereo);
 
@@ -491,12 +494,10 @@ bool GlfwApplication::tryCreate(const Configuration& configuration, const GLConf
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, glFlags >= GLConfiguration::Flag::ForwardCompatible);
         #else
         /* For ES the major context version is compile-time constant */
-        #ifdef MAGNUM_TARGET_GLES3
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        #elif defined(MAGNUM_TARGET_GLES2)
+        #ifdef MAGNUM_TARGET_GLES2
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
         #else
-        #error unsupported OpenGL ES version
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         #endif
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
         glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
@@ -598,6 +599,52 @@ bool GlfwApplication::tryCreate(const Configuration& configuration, const GLConf
 }
 #endif
 
+namespace {
+
+GlfwApplication::Pointer buttonToPointer(const int button) {
+    switch(button) {
+        case GLFW_MOUSE_BUTTON_LEFT:
+            return GlfwApplication::Pointer::MouseLeft;
+        case GLFW_MOUSE_BUTTON_MIDDLE:
+            return GlfwApplication::Pointer::MouseMiddle;
+        case GLFW_MOUSE_BUTTON_RIGHT:
+            return GlfwApplication::Pointer::MouseRight;
+        case GLFW_MOUSE_BUTTON_4:
+            return GlfwApplication::Pointer::MouseButton4;
+        case GLFW_MOUSE_BUTTON_5:
+            return GlfwApplication::Pointer::MouseButton5;
+        case GLFW_MOUSE_BUTTON_6:
+            return GlfwApplication::Pointer::MouseButton6;
+        case GLFW_MOUSE_BUTTON_7:
+            return GlfwApplication::Pointer::MouseButton7;
+        case GLFW_MOUSE_BUTTON_8:
+            return GlfwApplication::Pointer::MouseButton8;
+    }
+
+    CORRADE_INTERNAL_ASSERT_UNREACHABLE();
+}
+
+GlfwApplication::Pointers currentGlfwPointers(GLFWwindow* const window) {
+    GlfwApplication::Pointers pointers;
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        pointers |= GlfwApplication::Pointer::MouseLeft;
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+        pointers |= GlfwApplication::Pointer::MouseMiddle;
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+        pointers |= GlfwApplication::Pointer::MouseRight;
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_4) == GLFW_PRESS)
+        pointers |= GlfwApplication::Pointer::MouseButton4;
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_5) == GLFW_PRESS)
+        pointers |= GlfwApplication::Pointer::MouseButton5;
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_6) == GLFW_PRESS)
+        pointers |= GlfwApplication::Pointer::MouseButton6;
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_7) == GLFW_PRESS)
+        pointers |= GlfwApplication::Pointer::MouseButton7;
+    return pointers;
+}
+
+}
+
 void GlfwApplication::setupCallbacks() {
     glfwSetWindowUserPointer(_window, this);
     glfwSetWindowCloseCallback(_window, [](GLFWwindow* const window){
@@ -623,10 +670,10 @@ void GlfwApplication::setupCallbacks() {
         #endif
         app.viewportEvent(e);
     });
-    glfwSetKeyCallback(_window, [](GLFWwindow* const window, const int key, int, const int action, const int mods) {
+    glfwSetKeyCallback(_window, [](GLFWwindow* const window, const int key, const int scancode, const int action, const int mods) {
         auto& app = *static_cast<GlfwApplication*>(glfwGetWindowUserPointer(window));
 
-        KeyEvent e(static_cast<KeyEvent::Key>(key), {static_cast<InputEvent::Modifier>(mods)}, action == GLFW_REPEAT);
+        KeyEvent e(Key(key), scancode, Modifiers{mods}, action == GLFW_REPEAT);
 
         if(action == GLFW_PRESS || action == GLFW_REPEAT)
             app.keyPressEvent(e);
@@ -636,29 +683,45 @@ void GlfwApplication::setupCallbacks() {
     glfwSetMouseButtonCallback(_window, [](GLFWwindow* const window, const int button, const int action, const int mods) {
         auto& app = *static_cast<GlfwApplication*>(glfwGetWindowUserPointer(window));
 
+        const Pointer pointer = buttonToPointer(button);
         double x, y;
         glfwGetCursorPos(window, &x, &y);
-        MouseEvent e(static_cast<MouseEvent::Button>(button), {Int(x), Int(y)}, {static_cast<InputEvent::Modifier>(mods)});
+        const Vector2 position{Float(x), Float(y)};
 
-        if(action == GLFW_PRESS) /* we don't handle GLFW_REPEAT */
-            app.mousePressEvent(e);
-        else if(action == GLFW_RELEASE)
-            app.mouseReleaseEvent(e);
+        /* If an additional mouse button was pressed or some buttons are still
+           left pressed after a release, call a move event instead */
+        const Pointers pointers = currentGlfwPointers(window);
+        if((action == GLFW_PRESS && (pointers & ~pointer)) ||
+           (action == GLFW_RELEASE && pointers)) {
+            PointerMoveEvent e{window, pointer, position, {}};
+            /* We had to query the pointers already and get the modifiers in
+               the callback, set them directly instead of having them lazily
+               populated later */
+            e._pointers = pointers;
+            e._modifiers = Modifiers{mods};
+            app.pointerMoveEvent(e);
+        } else {
+            PointerEvent e{pointer, position, Modifiers{mods}};
+            if(action == GLFW_PRESS) /* we don't handle GLFW_REPEAT */
+                app.pointerPressEvent(e);
+            else if(action == GLFW_RELEASE)
+                app.pointerReleaseEvent(e);
+        }
     });
     glfwSetCursorPosCallback(_window, [](GLFWwindow* const window, const double x, const double y) {
         auto& app = *static_cast<GlfwApplication*>(glfwGetWindowUserPointer(window));
         /* Avoid bogus offset at first -- report 0 when the event is called for
            the first time */
-        Vector2i position{Int(x), Int(y)};
-        MouseMoveEvent e{window, position,
-            app._previousMouseMovePosition == Vector2i{-1} ? Vector2i{} :
+        const Vector2 position{Float(x), Float(y)};
+        PointerMoveEvent e{window, {}, position,
+            Math::isNan(app._previousMouseMovePosition).all() ? Vector2{} :
             position - app._previousMouseMovePosition};
         app._previousMouseMovePosition = position;
-        app.mouseMoveEvent(e);
+        app.pointerMoveEvent(e);
     });
     glfwSetScrollCallback(_window, [](GLFWwindow* window, double xoffset, double yoffset) {
-        MouseScrollEvent e(window, Vector2{Float(xoffset), Float(yoffset)});
-        static_cast<GlfwApplication*>(glfwGetWindowUserPointer(window))->mouseScrollEvent(e);
+        ScrollEvent e{window, {Float(xoffset), Float(yoffset)}};
+        static_cast<GlfwApplication*>(glfwGetWindowUserPointer(window))->scrollEvent(e);
     });
     glfwSetCharCallback(_window, [](GLFWwindow* window, unsigned int codepoint) {
         auto& app = *static_cast<GlfwApplication*>(glfwGetWindowUserPointer(window));
@@ -686,6 +749,19 @@ GlfwApplication::~GlfwApplication() {
     glfwTerminate();
 }
 
+Containers::StringView GlfwApplication::keyName(const Key key, const UnsignedInt scancode) const {
+    return glfwGetKeyName(int(key), scancode);
+}
+
+#if GLFW_VERSION_MAJOR*100 + GLFW_VERSION_MINOR >= 303
+Containers::Optional<UnsignedInt> GlfwApplication::keyToScanCode(const Key key) const {
+    const int scancode = glfwGetKeyScancode(int(key));
+    if(scancode == -1)
+        return {};
+    return UnsignedInt(scancode);
+}
+#endif
+
 Vector2i GlfwApplication::windowSize() const {
     CORRADE_ASSERT(_window, "Platform::GlfwApplication::windowSize(): no window opened", {});
 
@@ -701,7 +777,6 @@ void GlfwApplication::setWindowSize(const Vector2i& size) {
     glfwSetWindowSize(_window, newSize.x(), newSize.y());
 }
 
-#if GLFW_VERSION_MAJOR*100 + GLFW_VERSION_MINOR >= 302
 void GlfwApplication::setMinWindowSize(const Vector2i& size) {
     CORRADE_ASSERT(_window, "Platform::GlfwApplication::setMinWindowSize(): no window opened", );
 
@@ -717,7 +792,6 @@ void GlfwApplication::setMaxWindowSize(const Vector2i& size) {
     glfwSetWindowSizeLimits(_window, _minWindowSize.x(), _minWindowSize.y(), newSize.x(), newSize.y());
     _maxWindowSize = newSize;
 }
-#endif
 
 #ifdef MAGNUM_TARGET_GL
 Vector2i GlfwApplication::framebufferSize() const {
@@ -735,6 +809,19 @@ Vector2 GlfwApplication::dpiScaling() const {
 
 void GlfwApplication::setSwapInterval(const Int interval) {
     glfwSwapInterval(interval);
+
+    /* Remember whether VSync is enabled for mainLoopIteration() to use
+       minimal loop period or not. Unlike SDL2 where it's possible to check
+       whether the VSync was actually set, here it's purely hope-based.
+       Sorry. */
+    if(interval) _flags |= Flag::VSyncEnabled;
+    else _flags &= ~Flag::VSyncEnabled;
+}
+
+void GlfwApplication::setMinimalLoopPeriod(const Nanoseconds time) {
+    CORRADE_ASSERT(time >= 0_nsec,
+        "Platform::Sdl2Application::setMinimalLoopPeriod(): expected non-negative time, got" << time, );
+    _minimalLoopPeriodNanoseconds = Long(time);
 }
 
 void GlfwApplication::redraw() { _flags |= Flag::Redraw; }
@@ -774,16 +861,39 @@ bool GlfwApplication::mainLoopIteration() {
     */
     if(glfwGetWindowUserPointer(_window) != this) setupCallbacks();
 
-    /* If redrawing, poll for events immediately after drawEvent() (which could
-       be setting the Redraw flag again, thus doing constant redraw). If not,
-       avoid spinning the CPU by waiting for the next input event. */
+    const Nanoseconds timeBefore = _minimalLoopPeriodNanoseconds ? glfwGetTime()*1.0_sec : Nanoseconds{};
+
+    glfwPollEvents();
+
+    /* Tick event */
+    if(!(_flags & Flag::NoTickEvent)) tickEvent();
+
+    /* Draw event */
     if(_flags & Flag::Redraw) {
         _flags &= ~Flag::Redraw;
         drawEvent();
-        glfwPollEvents();
-    } else glfwWaitEvents();
 
-    return !glfwWindowShouldClose(_window);
+        /* If VSync is not enabled, delay to prevent CPU hogging (if set) */
+        if(!(_flags & Flag::VSyncEnabled) && _minimalLoopPeriodNanoseconds) {
+            const Nanoseconds loopTime = glfwGetTime()*1.0_sec - timeBefore;
+            if(loopTime < _minimalLoopPeriodNanoseconds*1_nsec)
+                Utility::System::sleep((_minimalLoopPeriodNanoseconds*1_nsec - loopTime)/1.0_msec);
+        }
+
+        return !(_flags & Flag::Exit || glfwWindowShouldClose(_window));
+    }
+
+    /* If not drawing anything, delay to prevent CPU hogging (if set) */
+    if(_minimalLoopPeriodNanoseconds) {
+        const Nanoseconds loopTime = glfwGetTime()*1.0_sec - timeBefore;
+        if(loopTime < _minimalLoopPeriodNanoseconds*1_nsec)
+            Utility::System::sleep((_minimalLoopPeriodNanoseconds*1_nsec - loopTime)/1.0_msec);
+    }
+
+    /* Then, if the tick event doesn't need to be called periodically, wait
+       indefinitely for next input event */
+    if(_flags & Flag::NoTickEvent) glfwWaitEvents();
+    return !(_flags & Flag::Exit || glfwWindowShouldClose(_window));
 }
 
 void GlfwApplication::exit(int exitCode) {
@@ -846,51 +956,143 @@ GlfwApplication::Cursor GlfwApplication::cursor() {
     return _cursor;
 }
 
-auto GlfwApplication::MouseMoveEvent::buttons() -> Buttons {
-    if(!_buttons) {
-        _buttons = Buttons{};
-        for(const Int button: {GLFW_MOUSE_BUTTON_LEFT,
-                               GLFW_MOUSE_BUTTON_MIDDLE,
-                               GLFW_MOUSE_BUTTON_RIGHT}) {
-            if(glfwGetMouseButton(_window, button) == GLFW_PRESS)
-                *_buttons |= Button(1 << button);
-        }
-    }
-
-    return *_buttons;
-}
-
-auto GlfwApplication::MouseMoveEvent::modifiers() -> Modifiers {
-    if(!_modifiers) _modifiers = currentGlfwModifiers(_window);
-    return *_modifiers;
-}
-
-Vector2i GlfwApplication::MouseScrollEvent::position() {
-    if(!_position) {
-        Vector2d position;
-        glfwGetCursorPos(_window, &position.x(), &position.y());
-        _position = Vector2i{position};
-    }
-
-    return *_position;
-}
-
-auto GlfwApplication::MouseScrollEvent::modifiers() -> Modifiers {
-    if(!_modifiers) _modifiers = currentGlfwModifiers(_window);
-    return *_modifiers;
-}
-
 void GlfwApplication::exitEvent(ExitEvent& event) {
     event.setAccepted();
+}
+
+void GlfwApplication::tickEvent() {
+    /* If this got called, the tick event is not implemented by user and thus
+       we don't need to call it ever again */
+    _flags |= Flag::NoTickEvent;
 }
 
 void GlfwApplication::viewportEvent(ViewportEvent&) {}
 void GlfwApplication::keyPressEvent(KeyEvent&) {}
 void GlfwApplication::keyReleaseEvent(KeyEvent&) {}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+namespace {
+
+CORRADE_IGNORE_DEPRECATED_PUSH
+GlfwApplication::MouseEvent::Button pointerToButton(const GlfwApplication::Pointer pointer) {
+    switch(pointer) {
+        case GlfwApplication::Pointer::MouseLeft:
+            return GlfwApplication::MouseEvent::Button::Left;
+        case GlfwApplication::Pointer::MouseMiddle:
+            return GlfwApplication::MouseEvent::Button::Middle;
+        case GlfwApplication::Pointer::MouseRight:
+            return GlfwApplication::MouseEvent::Button::Right;
+        case GlfwApplication::Pointer::MouseButton4:
+            return GlfwApplication::MouseEvent::Button::Button4;
+        case GlfwApplication::Pointer::MouseButton5:
+            return GlfwApplication::MouseEvent::Button::Button5;
+        case GlfwApplication::Pointer::MouseButton6:
+            return GlfwApplication::MouseEvent::Button::Button6;
+        case GlfwApplication::Pointer::MouseButton7:
+            return GlfwApplication::MouseEvent::Button::Button7;
+        case GlfwApplication::Pointer::MouseButton8:
+            return GlfwApplication::MouseEvent::Button::Button8;
+    }
+
+    CORRADE_INTERNAL_ASSERT_UNREACHABLE();
+}
+CORRADE_IGNORE_DEPRECATED_POP
+
+}
+#endif
+
+void GlfwApplication::pointerPressEvent(PointerEvent& event) {
+    #ifdef MAGNUM_BUILD_DEPRECATED
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    MouseEvent mouseEvent{pointerToButton(event.pointer()), Vector2i{Math::round(event.position())}, event.modifiers()};
+    mousePressEvent(mouseEvent);
+    CORRADE_IGNORE_DEPRECATED_POP
+    #else
+    static_cast<void>(event);
+    #endif
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
 void GlfwApplication::mousePressEvent(MouseEvent&) {}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
+void GlfwApplication::pointerReleaseEvent(PointerEvent& event) {
+    #ifdef MAGNUM_BUILD_DEPRECATED
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    MouseEvent mouseEvent{pointerToButton(event.pointer()), Vector2i{Math::round(event.position())}, event.modifiers()};
+    mouseReleaseEvent(mouseEvent);
+    CORRADE_IGNORE_DEPRECATED_POP
+    #else
+    static_cast<void>(event);
+    #endif
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
 void GlfwApplication::mouseReleaseEvent(MouseEvent&) {}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
+void GlfwApplication::pointerMoveEvent(PointerMoveEvent& event) {
+    #ifdef MAGNUM_BUILD_DEPRECATED
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    const Vector2i roundedPosition{Math::round(event.position())};
+
+    /* If the event is due to some button being additionally pressed or one
+       button from a larger set being released, delegate to a press/release
+       event instead */
+    if(event.pointer()) {
+        /* GLFW reports either a move or a press/release, so there shouldn't be
+           any move in this case */
+        CORRADE_INTERNAL_ASSERT(event.relativePosition() == Vector2{});
+        MouseEvent mouseEvent{pointerToButton(*event.pointer()),
+            roundedPosition, event.modifiers()};
+        event.pointers() >= *event.pointer() ?
+            mousePressEvent(mouseEvent) : mouseReleaseEvent(mouseEvent);
+    } else {
+        /* Can't do just Math::round(event.relativePosition()) because if the
+           previous position was 4.6 and the new 5.3, they both round to 5 but
+           the relativePosition is 0.6 and rounds to 1. Conversely, if it'd be
+           5.3 and 5.6, the positions round to 5 and 6 but relative position
+           stays 0. */
+        const Vector2i previousRoundedPosition{Math::round(event.position() - event.relativePosition())};
+        /* Call the event only if the integer values actually changed */
+        if(roundedPosition != previousRoundedPosition) {
+            MouseMoveEvent mouseEvent{_window, roundedPosition, roundedPosition - previousRoundedPosition};
+            mouseMoveEvent(mouseEvent);
+        }
+    }
+    CORRADE_IGNORE_DEPRECATED_POP
+    #else
+    static_cast<void>(event);
+    #endif
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
 void GlfwApplication::mouseMoveEvent(MouseMoveEvent&) {}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
+void GlfwApplication::scrollEvent(ScrollEvent& event) {
+    #ifdef MAGNUM_BUILD_DEPRECATED
+    CORRADE_IGNORE_DEPRECATED_PUSH
+    MouseScrollEvent mouseEvent{_window, event.offset()};
+    mouseScrollEvent(mouseEvent);
+    CORRADE_IGNORE_DEPRECATED_POP
+    #else
+    static_cast<void>(event);
+    #endif
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
 void GlfwApplication::mouseScrollEvent(MouseScrollEvent&) {}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
 void GlfwApplication::textInputEvent(TextInputEvent&) {}
 
 bool GlfwApplication::isTextInputActive() const {
@@ -926,17 +1128,94 @@ GlfwApplication::Configuration::Configuration():
 
 GlfwApplication::Configuration::~Configuration() = default;
 
-#if defined(DOXYGEN_GENERATING_OUTPUT) || GLFW_VERSION_MAJOR*100 + GLFW_VERSION_MINOR >= 302
-Containers::StringView GlfwApplication::KeyEvent::keyName(const Key key) {
+#ifdef MAGNUM_BUILD_DEPRECATED
+Containers::StringView GlfwApplication::KeyEvent::keyName(const GlfwApplication::Key key) {
     return glfwGetKeyName(int(key), 0);
-}
-
-Containers::StringView GlfwApplication::KeyEvent::keyName() const {
-    return keyName(_key);
 }
 #endif
 
+Containers::StringView GlfwApplication::KeyEvent::keyName() const {
+    return glfwGetKeyName(Int(_key), _scancode);
+}
+
+GlfwApplication::Pointers GlfwApplication::PointerMoveEvent::pointers() {
+    if(!_pointers)
+        _pointers = currentGlfwPointers(_window);
+
+    return *_pointers;
+}
+
+GlfwApplication::Modifiers GlfwApplication::PointerMoveEvent::modifiers() {
+    if(!_modifiers) _modifiers = currentGlfwModifiers(_window);
+    return *_modifiers;
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
+auto GlfwApplication::MouseMoveEvent::buttons() -> Buttons {
+    if(!_buttons) {
+        _buttons = Buttons{};
+        for(const Int button: {GLFW_MOUSE_BUTTON_LEFT,
+                               GLFW_MOUSE_BUTTON_MIDDLE,
+                               GLFW_MOUSE_BUTTON_RIGHT}) {
+            if(glfwGetMouseButton(_window, button) == GLFW_PRESS)
+                *_buttons |= Button(1 << button);
+        }
+    }
+
+    return *_buttons;
+}
+
+GlfwApplication::Modifiers GlfwApplication::MouseMoveEvent::modifiers() {
+    if(!_modifiers) _modifiers = currentGlfwModifiers(_window);
+    return *_modifiers;
+}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
+GlfwApplication::Modifiers GlfwApplication::ScrollEvent::modifiers() {
+    if(!_modifiers) _modifiers = currentGlfwModifiers(_window);
+    return *_modifiers;
+}
+Vector2 GlfwApplication::ScrollEvent::position() {
+    if(!_position) {
+        Vector2d position;
+        glfwGetCursorPos(_window, &position.x(), &position.y());
+        _position = Vector2{position};
+    }
+    return *_position;
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
+Vector2i GlfwApplication::MouseScrollEvent::position() {
+    if(!_position) {
+        Vector2d position;
+        glfwGetCursorPos(_window, &position.x(), &position.y());
+        _position = Vector2i{position};
+    }
+
+    return *_position;
+}
+
+GlfwApplication::Modifiers GlfwApplication::MouseScrollEvent::modifiers() {
+    if(!_modifiers) _modifiers = currentGlfwModifiers(_window);
+    return *_modifiers;
+}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
+/* On MSVC 2017, deprecation warning suppression doesn't work on virtual
+   function overrides, so ScreenedApplication overriding mousePressEvent(),
+   mouseReleaseEvent() mouseMoveEvent() and mouseScrollEvent() causes warnings.
+   Disable them at a higher level instead. */
+#if defined(MAGNUM_BUILD_DEPRECATED) && defined(CORRADE_TARGET_MSVC) && !defined(CORRADE_TARGET_CLANG) && _MSC_VER < 1920
+CORRADE_IGNORE_DEPRECATED_PUSH
+#endif
 template class BasicScreen<GlfwApplication>;
 template class BasicScreenedApplication<GlfwApplication>;
+#if defined(MAGNUM_BUILD_DEPRECATED) && defined(CORRADE_TARGET_MSVC) && !defined(CORRADE_TARGET_CLANG) && _MSC_VER < 1920
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
 
 }}

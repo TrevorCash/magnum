@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -100,6 +101,8 @@ struct FramebufferState {
     void(*renderbufferStorageMultisampleImplementation)(Renderbuffer&, GLsizei, RenderbufferFormat, const Vector2i&);
     #endif
 
+    /* Cannot be a direct pointer to a GL function because the non-robust
+       version doesn't take the size argument */
     void(*readImplementation)(const Range2Di&, PixelFormat, PixelType, std::size_t, GLvoid*);
 
     GLuint readBinding, drawBinding, renderbufferBinding;

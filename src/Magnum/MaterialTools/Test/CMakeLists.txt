@@ -2,7 +2,8 @@
 #   This file is part of Magnum.
 #
 #   Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-#               2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+#               2020, 2021, 2022, 2023, 2024, 2025
+#             Vladimír Vondruš <mosra@centrum.cz>
 #
 #   Permission is hereby granted, free of charge, to any person obtaining a
 #   copy of this software and associated documentation files (the "Software"),
@@ -30,4 +31,5 @@ set(CMAKE_FOLDER "Magnum/MaterialTools/Test")
 corrade_add_test(MaterialToolsCopyTest CopyTest.cpp LIBRARIES MagnumMaterialTools)
 corrade_add_test(MaterialToolsFilterTest FilterTest.cpp LIBRARIES MagnumDebugTools MagnumMaterialToolsTestLib)
 corrade_add_test(MaterialToolsMergeTest MergeTest.cpp LIBRARIES MagnumDebugTools MagnumMaterialToolsTestLib)
+corrade_add_test(MaterialToolsRemoveDuplicatesTest RemoveDuplicatesTest.cpp LIBRARIES MagnumDebugTools MagnumMaterialToolsTestLib)
 corrade_add_test(MaterialToolsPhongToPbrMetall___Test PhongToPbrMetallicRoughnessTest.cpp LIBRARIES MagnumDebugTools MagnumMaterialTools)

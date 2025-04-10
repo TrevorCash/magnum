@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -24,12 +25,12 @@
 */
 
 #include <algorithm> /* std::find() */
-#include <sstream>
 #include <Corrade/Containers/ScopeGuard.h>
 #include <Corrade/Containers/StringIterable.h>
-#include <Corrade/Containers/StringStl.h> /* contains() on std::string */
+#include <Corrade/Containers/StringStl.h> /** @todo remove once Debug is stream-free */
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
+#include <Corrade/TestSuite/Compare/String.h>
 
 #include "Magnum/GL/Context.h"
 #include "Magnum/GL/Extensions.h"
@@ -265,7 +266,7 @@ void ContextGLTest::constructConfiguration() {
     if(data.needsExtensionMissing && Context::current().isExtensionSupported(*data.needsExtensionMissing))
         CORRADE_SKIP(data.needsExtensionMissing->string() << "is supported.");
 
-    std::ostringstream out;
+    Containers::String out;
     {
         Context* current = &Context::current();
         Context::makeCurrent(nullptr);
@@ -279,11 +280,14 @@ void ContextGLTest::constructConfiguration() {
         };
     }
 
-    /** @todo TestSuite::Compare::StringContains / NotContains for proper diag */
     if(!data.logShouldContain.isEmpty())
-        CORRADE_VERIFY(Containers::StringView{out.str()}.contains(data.logShouldContain));
+        CORRADE_COMPARE_AS(out,
+            data.logShouldContain,
+            TestSuite::Compare::StringContains);
     if(!data.logShouldNotContain.isEmpty())
-        CORRADE_VERIFY(!Containers::StringView{out.str()}.contains(data.logShouldNotContain));
+        CORRADE_COMPARE_AS(out,
+            data.logShouldNotContain,
+            TestSuite::Compare::StringNotContains);
 }
 
 void ContextGLTest::constructMove() {
@@ -324,7 +328,7 @@ void ContextGLTest::constructMove() {
     /* The context is still not created here either */
     CORRADE_VERIFY(!Context::hasCurrent());
 
-    std::ostringstream out;
+    Containers::String out;
     {
         Debug redirectOut{&out};
         b.create(Context::Configuration{}
@@ -334,11 +338,14 @@ void ContextGLTest::constructMove() {
             #endif
             .addDisabledExtensions(data.disabledExtensions));
     }
-    /** @todo TestSuite::Compare::StringContains / NotContains for proper diag */
     if(!data.logShouldContain.isEmpty())
-        CORRADE_VERIFY(Containers::StringView{out.str()}.contains(data.logShouldContain));
+        CORRADE_COMPARE_AS(out,
+            data.logShouldContain,
+            TestSuite::Compare::StringContains);
     if(!data.logShouldNotContain.isEmpty())
-        CORRADE_VERIFY(!Containers::StringView{out.str()}.contains(data.logShouldNotContain));
+        CORRADE_COMPARE_AS(out,
+            data.logShouldNotContain,
+            TestSuite::Compare::StringNotContains);
 
     /* The context is created now */
     CORRADE_VERIFY(Context::hasCurrent());

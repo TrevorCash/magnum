@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -75,11 +76,11 @@ MatrixBenchmark::MatrixBenchmark() {
                    &MatrixBenchmark::transformPoint4}, 1000);
 }
 
-typedef Math::Vector2<Float> Vector2;
-typedef Math::Vector3<Float> Vector3;
-typedef Math::Vector4<Float> Vector4;
-typedef Math::Matrix4<Float> Matrix4;
-typedef Math::Matrix3<Float> Matrix3;
+using Magnum::Vector2;
+using Magnum::Vector3;
+using Magnum::Vector4;
+using Magnum::Matrix4;
+using Magnum::Matrix3;
 
 enum: std::size_t { Repeats = 10000 };
 

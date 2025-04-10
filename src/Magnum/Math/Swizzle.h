@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -109,7 +110,7 @@ namespace Implementation {
 
 Creates a new vector from given components. Example:
 
-@snippet MagnumMath.cpp gather
+@snippet Math.cpp gather
 
 You can use letters @cpp 'x' @ce, @cpp 'y' @ce, @cpp 'z' @ce, @cpp 'w' @ce and
 @cpp 'r' @ce, @cpp 'g' @ce, @cpp 'b' @ce, @cpp 'a' @ce for addressing
@@ -138,7 +139,7 @@ Returns a copy of @p vector with particular components updated from @p values.
 Inverse to @ref gather(), supporting the same component addressing except for
 @cpp '0' @ce and @cpp '1' @ce. Example:
 
-@snippet MagnumMath.cpp scatter
+@snippet Math.cpp scatter
 
 @see @ref matrix-vector-component-access, @ref Vector4::xyz(),
     @ref Vector4::rgb(), @ref Vector4::xy(), @ref Vector3::xy()

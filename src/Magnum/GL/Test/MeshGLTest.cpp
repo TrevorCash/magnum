@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Pablo Escobar <mail@rvrs.in>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,13 +25,12 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/Iterable.h>
+#include <Corrade/Containers/ScopeGuard.h>
 #include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 
 #include "Magnum/Image.h"
 #include "Magnum/Mesh.h"
@@ -65,6 +65,8 @@ struct MeshGLTest: OpenGLTester {
     void construct();
     void constructMove();
     void wrap();
+
+    void destructMovedOutInstance();
 
     template<class T> void primitive();
 
@@ -552,6 +554,8 @@ MeshGLTest::MeshGLTest() {
               &MeshGLTest::constructMove,
               &MeshGLTest::wrap,
 
+              &MeshGLTest::destructMovedOutInstance,
+
               &MeshGLTest::primitive<GL::MeshPrimitive>,
               &MeshGLTest::primitive<Magnum::MeshPrimitive>,
 
@@ -779,20 +783,16 @@ void MeshGLTest::construct() {
 }
 
 struct FloatShader: AbstractShaderProgram {
-    explicit FloatShader(Containers::StringView type, Containers::StringView conversion);
+    explicit FloatShader(Containers::StringView type, Containers::StringView conversion
+        /* See the definition for details */
+        #if defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2)
+        , bool dummy = false
+        #endif
+    );
 };
 
 void MeshGLTest::constructMove() {
-    const Float data = Math::unpack<Float, UnsignedByte>(
-        #ifndef MAGNUM_TARGET_GLES2
-        96
-        #else
-        /* Using only RGBA4, supply less precision. This has to be one on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        85
-        #endif
-    );
+    const Float data = Math::unpack<Float, UnsignedByte>(96);
     Buffer buffer1, buffer2;
     buffer1.setData({&data, 1}, BufferUsage::StaticDraw);
     buffer2.setData({nullptr, 8}, BufferUsage::StaticDraw);
@@ -874,7 +874,8 @@ void MeshGLTest::constructMove() {
         #ifndef MAGNUM_TARGET_GLES2
         CORRADE_COMPARE(Containers::arrayCast<UnsignedByte>(framebuffer.read({{}, Vector2i{1}}, {PixelFormat::RGBA, PixelType::UnsignedByte}).data())[0], 96);
         #else /* RGBA4, so less precision */
-        CORRADE_COMPARE(Containers::arrayCast<UnsignedByte>(framebuffer.read({{}, Vector2i{1}}, {PixelFormat::RGBA, PixelType::UnsignedByte}).data())[0], 85);
+        CORRADE_COMPARE_WITH(Containers::arrayCast<UnsignedByte>(framebuffer.read({{}, Vector2i{1}}, {PixelFormat::RGBA, PixelType::UnsignedByte}).data())[0], 96,
+            TestSuite::Compare::around(16));
         #endif
     }
 
@@ -911,6 +912,23 @@ void MeshGLTest::wrap() {
     #else
     glDeleteVertexArraysOES(1, &id);
     #endif
+}
+
+void MeshGLTest::destructMovedOutInstance() {
+    {
+        Containers::ScopeGuard restoreCurrentContext{&GL::Context::current(), GL::Context::makeCurrent};
+
+        Mesh a = Mesh::wrap(0xabcd);
+        CORRADE_COMPARE(a.id(), 0xabcd);
+
+        a = Mesh{NoCreate};
+        CORRADE_COMPARE(a.id(), 0);
+
+        GL::Context::makeCurrent(nullptr);
+    }
+
+    /* It shouldn't try to access the current context to decide anything */
+    CORRADE_VERIFY(true);
 }
 
 template<class T> void MeshGLTest::primitive() {
@@ -979,8 +997,15 @@ struct Checker {
     Framebuffer framebuffer;
 };
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
-FloatShader::FloatShader(Containers::StringView type, Containers::StringView conversion) {
+FloatShader::FloatShader(Containers::StringView type, Containers::StringView conversion
+    /* WebGL 1 requires that at least one attribute is not instanced. The
+       addVertexBufferInstancedFloat() and drawInstancedAttributeSingleInstance()
+       tests set this to true to add a dummy input (that isn't even present in
+       the mesh) to fix that. */
+    #if defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2)
+    , bool dummy
+    #endif
+) {
     /* We need special version for ES3, because GLSL in ES2 doesn't support
        rectangle matrices */
     #ifndef MAGNUM_TARGET_GLES
@@ -1007,20 +1032,39 @@ FloatShader::FloatShader(Containers::StringView type, Containers::StringView con
     #endif
 
     vert.addSource(Utility::format(
-        "#if !defined(GL_ES) && __VERSION__ == 120\n"
-        "#define mediump\n"
-        "#endif\n"
-        "#if (defined(GL_ES) && __VERSION__ < 300) || __VERSION__ == 120\n"
-        "#define in attribute\n"
-        "#define out varying\n"
-        "#endif\n"
-        "in mediump {0} value;\n"
-        "out mediump {0} valueInterpolated;\n"
-        "void main() {{\n"
-        "    valueInterpolated = value;\n"
-        "    gl_PointSize = 1.0;\n"
-        "    gl_Position = vec4(0.0, 0.0, 0.0, 1.0);\n"
-        "}}\n", type));
+        #if defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2)
+        dummy ?
+            "#if !defined(GL_ES) && __VERSION__ == 120\n"
+            "#define mediump\n"
+            "#endif\n"
+            "#if (defined(GL_ES) && __VERSION__ < 300) || __VERSION__ == 120\n"
+            "#define in attribute\n"
+            "#define out varying\n"
+            "#endif\n"
+            "in mediump {0} value;\n"
+            "in mediump float dummy;\n"
+            "out mediump {0} valueInterpolated;\n"
+            "void main() {{\n"
+            "    valueInterpolated = value;\n"
+            "    gl_PointSize = 1.0;\n"
+            "    gl_Position = vec4(0.0, 0.0, dummy, 1.0);\n"
+            "}}\n" :
+        #endif
+            "#if !defined(GL_ES) && __VERSION__ == 120\n"
+            "#define mediump\n"
+            "#endif\n"
+            "#if (defined(GL_ES) && __VERSION__ < 300) || __VERSION__ == 120\n"
+            "#define in attribute\n"
+            "#define out varying\n"
+            "#endif\n"
+            "in mediump {0} value;\n"
+            "out mediump {0} valueInterpolated;\n"
+            "void main() {{\n"
+            "    valueInterpolated = value;\n"
+            "    gl_PointSize = 1.0;\n"
+            "    gl_Position = vec4(0.0, 0.0, 0.0, 1.0);\n"
+            "}}\n",
+        type));
     frag.addSource(Utility::format(
         "#if !defined(GL_ES) && __VERSION__ == 120\n"
         "#define mediump\n"
@@ -1151,7 +1195,6 @@ Checker::Checker(AbstractShaderProgram&& shader, RenderbufferFormat format, Mesh
 template<class T> T Checker::get(PixelFormat format, PixelType type) {
     return Containers::arrayCast<T>(framebuffer.read({{}, Vector2i{1}}, {format, type}).data())[0];
 }
-#endif
 
 #ifndef MAGNUM_TARGET_GLES2
 void MeshGLTest::addVertexBufferUnsignedInt() {
@@ -1232,16 +1275,7 @@ void MeshGLTest::addVertexBufferInt() {
 #endif
 
 void MeshGLTest::addVertexBufferFloat() {
-    const Float data[] = { 0.0f, -0.7f, Math::unpack<Float, UnsignedByte>(
-        #ifndef MAGNUM_TARGET_GLES2
-        96
-        #else
-        /* Using only RGBA4, supply less precision. This has to be done on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        85
-        #endif
-    ) };
+    const Float data[] = { 0.0f, -0.7f, Math::unpack<Float, UnsignedByte>(96) };
     Buffer buffer;
     buffer.setData(data, BufferUsage::StaticDraw);
 
@@ -1273,7 +1307,7 @@ void MeshGLTest::addVertexBufferFloat() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, 96);
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value, 85);
+    CORRADE_COMPARE_WITH(value, 96, TestSuite::Compare::around(16));
     #endif
 }
 
@@ -1384,16 +1418,7 @@ void MeshGLTest::addVertexBufferVectorNi() {
 #endif
 
 void MeshGLTest::addVertexBufferVectorN() {
-    const Vector3 data[] = { {}, {0.0f, -0.9f, 1.0f},
-        #ifndef MAGNUM_TARGET_GLES2
-        0x60189c_rgbf
-        #else
-        /* Using only RGBA4, supply less precision. This has to be done on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        0x551199_rgbf
-        #endif
-    };
+    const Vector3 data[] = { {}, {0.0f, -0.9f, 1.0f}, 0x60189c_rgbf };
     Buffer buffer;
     buffer.setData(data, BufferUsage::StaticDraw);
 
@@ -1425,7 +1450,7 @@ void MeshGLTest::addVertexBufferVectorN() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value.xyz(), 0x60189c_rgb);
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value.xyz(), 0x551199_rgb);
+    CORRADE_COMPARE_WITH(value.xyz(), 0x60189c_rgb, TestSuite::Compare::around(0x101010_rgb));
     #endif
 }
 
@@ -1469,16 +1494,7 @@ void MeshGLTest::addVertexBufferMatrixNxN() {
     const Matrix3x3 data[] = {
         {},
         Matrix3x3::fromDiagonal({0.0f, -0.9f, 1.0f}),
-        Matrix3x3::fromDiagonal(
-            #ifndef MAGNUM_TARGET_GLES2
-            0x60189c_rgbf
-            #else
-            /* Using only RGBA4, supply less precision. This has to be done on
-               the input because SwiftShader stores RGBA4 as RGBA8 internally,
-               thus preserving the full precision of the input. */
-            0x551199_rgbf
-            #endif
-        )
+        Matrix3x3::fromDiagonal(0x60189c_rgbf)
     };
     Buffer buffer;
     buffer.setData(data, BufferUsage::StaticDraw);
@@ -1512,7 +1528,7 @@ void MeshGLTest::addVertexBufferMatrixNxN() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value.xyz(), 0x60189c_rgb);
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value.xyz(), 0x551199_rgb);
+    CORRADE_COMPARE_WITH(value.xyz(), 0x60189c_rgb, TestSuite::Compare::around(0x101010_rgb));
     #endif
 }
 
@@ -1703,6 +1719,9 @@ void MeshGLTest::addVertexBufferUnsignedIntWithShort() {
     CORRADE_SKIP("WebGL doesn't allow supplying signed data to an unsigned attribute.");
     #endif
 
+    /* Signed DataType is now deprecated for unsigned attributes, so build the
+       rest only on non-WebGL or on deprecated WebGL builds */
+    #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
     constexpr Short data[] = { 0, 24563, 2128, 3821, 16583 };
     Buffer buffer;
     buffer.setData(data, BufferUsage::StaticDraw);
@@ -1712,7 +1731,13 @@ void MeshGLTest::addVertexBufferUnsignedIntWithShort() {
 
     if(testCaseInstanceId() == 0) {
         setTestCaseDescription("Attribute");
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_PUSH
+        #endif
         mesh.addVertexBuffer(buffer, 2, 2, Attribute<0, UnsignedInt>{Attribute<0, UnsignedInt>::DataType::Short});
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
     } else if(testCaseInstanceId() == 1) {
         setTestCaseDescription("DynamicAttribute");
         mesh.addVertexBuffer(buffer, 4, 4, DynamicAttribute{
@@ -1733,6 +1758,7 @@ void MeshGLTest::addVertexBufferUnsignedIntWithShort() {
 
     MAGNUM_VERIFY_NO_GL_ERROR();
     CORRADE_COMPARE(value, 16583);
+    #endif
 }
 
 void MeshGLTest::addVertexBufferIntWithUnsignedShort() {
@@ -1745,6 +1771,9 @@ void MeshGLTest::addVertexBufferIntWithUnsignedShort() {
     CORRADE_SKIP("WebGL doesn't allow supplying unsigned data to a signed attribute.");
     #endif
 
+    /* Unsigned DataType is now deprecated for signed attributes, so build the
+       rest only on non-WebGL or on deprecated WebGL builds */
+    #if !defined(MAGNUM_TARGET_WEBGL) || defined(MAGNUM_BUILD_DEPRECATED)
     constexpr UnsignedShort data[] = { 0, 49563, 2128, 3821, 16583 };
     Buffer buffer;
     buffer.setData(data, BufferUsage::StaticDraw);
@@ -1754,7 +1783,13 @@ void MeshGLTest::addVertexBufferIntWithUnsignedShort() {
 
     if(testCaseInstanceId() == 0) {
         setTestCaseDescription("Attribute");
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_PUSH
+        #endif
         mesh.addVertexBuffer(buffer, 2, 2, Attribute<0, Int>{Attribute<0, Int>::DataType::UnsignedShort});
+        #ifdef MAGNUM_TARGET_WEBGL
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
     } else if(testCaseInstanceId() == 1) {
         setTestCaseDescription("DynamicAttribute");
         mesh.addVertexBuffer(buffer, 4, 4, DynamicAttribute{
@@ -1775,6 +1810,7 @@ void MeshGLTest::addVertexBufferIntWithUnsignedShort() {
 
     MAGNUM_VERIFY_NO_GL_ERROR();
     CORRADE_COMPARE(value, 16583);
+    #endif
 }
 
 void MeshGLTest::addVertexBufferIntWithShort() {
@@ -1974,17 +2010,7 @@ void MeshGLTest::addVertexBufferVector4WithInt2101010Rev() {
 #endif
 
 void MeshGLTest::addVertexBufferLessVectorComponents() {
-    const Vector3 data[] = {
-        {}, {0.0f, -0.9f, 1.0f},
-        #ifndef MAGNUM_TARGET_GLES2
-        0x60189c_rgbf
-        #else
-        /* Using only RGBA4, supply less precision. This has to be done on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        0x551199_rgbf
-        #endif
-    };
+    const Vector3 data[] = { {}, {0.0f, -0.9f, 1.0f}, 0x60189c_rgbf };
     Buffer buffer;
     buffer.setData(data, BufferUsage::StaticDraw);
 
@@ -2016,21 +2042,12 @@ void MeshGLTest::addVertexBufferLessVectorComponents() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, 0x60189cff_rgba);
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value, 0x551199ff_rgba);
+    CORRADE_COMPARE_WITH(value.xyz(), 0x60189cff_rgba, TestSuite::Compare::around(0x10101000_rgba));
     #endif
 }
 
 void MeshGLTest::addVertexBufferNormalized() {
-    constexpr Color4ub data[] = { {}, {0, 128, 64},
-        #ifndef MAGNUM_TARGET_GLES2
-        0x209ce4_rgb
-        #else
-        /* Using only RGBA4, supply less precision. This has to be done on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        0x1199dd_rgb
-        #endif
-    };
+    constexpr Color4ub data[] = { {}, {0, 128, 64}, 0x209ce4_rgb };
     Buffer buffer;
     buffer.setData(data, BufferUsage::StaticDraw);
 
@@ -2063,7 +2080,7 @@ void MeshGLTest::addVertexBufferNormalized() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value.xyz(), 0x209ce4_rgb);
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value.xyz(), 0x1199dd_rgb);
+    CORRADE_COMPARE_WITH(value.xyz(), 0x209ce4_rgb, TestSuite::Compare::around(0x101010_rgb));
     #endif
 }
 
@@ -2109,7 +2126,6 @@ struct MultipleShader: AbstractShaderProgram {
     explicit MultipleShader();
 };
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 MultipleShader::MultipleShader() {
     #ifndef MAGNUM_TARGET_GLES
     Shader vert(
@@ -2172,7 +2188,6 @@ MultipleShader::MultipleShader() {
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 }
-#endif
 
 void MeshGLTest::addVertexBufferMultiple() {
     const Float data[] = {
@@ -2187,18 +2202,9 @@ void MeshGLTest::addVertexBufferMultiple() {
         Math::unpack<Float, UnsignedByte>(64),
             Math::unpack<Float, UnsignedByte>(17),
                 Math::unpack<Float, UnsignedByte>(56),
-        #ifndef MAGNUM_TARGET_GLES2
         Math::unpack<Float, UnsignedByte>(15),
             Math::unpack<Float, UnsignedByte>(164),
                 Math::unpack<Float, UnsignedByte>(17),
-        #else
-        /* Using only RGBA4, supply less precision. This has to be done on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        Math::unpack<Float, UnsignedByte>(9),
-            Math::unpack<Float, UnsignedByte>(159),
-                Math::unpack<Float, UnsignedByte>(12),
-        #endif
         Math::unpack<Float, UnsignedByte>(97),
             Math::unpack<Float, UnsignedByte>(28)
     };
@@ -2225,7 +2231,9 @@ void MeshGLTest::addVertexBufferMultiple() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, Color4ub(64 + 15 + 97, 17 + 164 + 28, 56 + 17, 255));
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value, 0xaacc44ff_rgba);
+    CORRADE_COMPARE_WITH(value,
+        (Color4ub{64 + 15 + 97, 17 + 164 + 28, 56 + 17, 255}),
+        TestSuite::Compare::around(0x10101000_rgba));
     #endif
 }
 
@@ -2242,18 +2250,9 @@ void MeshGLTest::addVertexBufferMultipleGaps() {
         Math::unpack<Float, UnsignedByte>(64),
             Math::unpack<Float, UnsignedByte>(17),
                 Math::unpack<Float, UnsignedByte>(56), 0.0f,
-        #ifndef MAGNUM_TARGET_GLES2
         Math::unpack<Float, UnsignedByte>(15),
             Math::unpack<Float, UnsignedByte>(164),
                 Math::unpack<Float, UnsignedByte>(17), 0.0f,
-        #else
-        /* Using only RGBA4, supply less precision. This has to be one on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        Math::unpack<Float, UnsignedByte>(9),
-            Math::unpack<Float, UnsignedByte>(159),
-                Math::unpack<Float, UnsignedByte>(12), 0.0f,
-        #endif
         Math::unpack<Float, UnsignedByte>(97),
             Math::unpack<Float, UnsignedByte>(28), 0.0f, 0.0f
     };
@@ -2281,7 +2280,9 @@ void MeshGLTest::addVertexBufferMultipleGaps() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, Color4ub(64 + 15 + 97, 17 + 164 + 28, 56 + 17, 255));
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value, 0xaacc44ff_rgba);
+    CORRADE_COMPARE_WITH(value,
+        (Color4ub{64 + 15 + 97, 17 + 164 + 28, 56 + 17, 255}),
+        TestSuite::Compare::around(0x10101000_rgba));
     #endif
 }
 
@@ -2291,12 +2292,12 @@ void MeshGLTest::addVertexBufferMovedOutInstance() {
     Buffer buffer{NoCreate};
     Mesh mesh;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     mesh.addVertexBuffer(buffer, 0, Attribute<0, Float>{});
 
-    CORRADE_COMPARE(out.str(), "GL::Mesh::addVertexBuffer(): empty or moved-out Buffer instance was passed\n");
+    CORRADE_COMPARE(out, "GL::Mesh::addVertexBuffer(): empty or moved-out Buffer instance was passed\n");
 }
 
 void MeshGLTest::addVertexBufferTransferOwnwership() {
@@ -2456,18 +2457,9 @@ const Float indexedVertexData[] = {
     Math::unpack<Float, UnsignedByte>(64),
         Math::unpack<Float, UnsignedByte>(17),
             Math::unpack<Float, UnsignedByte>(56),
-    #ifndef MAGNUM_TARGET_GLES2
     Math::unpack<Float, UnsignedByte>(15),
         Math::unpack<Float, UnsignedByte>(164),
             Math::unpack<Float, UnsignedByte>(17),
-    #else
-    /* Using only RGBA4, supply less precision. This has to be one on the input
-       because SwiftShader stores RGBA4 as RGBA8 internally, thus preserving
-       the full precision of the input. */
-    Math::unpack<Float, UnsignedByte>(9),
-        Math::unpack<Float, UnsignedByte>(159),
-            Math::unpack<Float, UnsignedByte>(12),
-    #endif
     Math::unpack<Float, UnsignedByte>(97),
         Math::unpack<Float, UnsignedByte>(28),
 
@@ -2506,11 +2498,7 @@ const Float indexedVertexDataBaseVertex[] = {
             1.0f, -0.5f
 };
 
-#ifndef MAGNUM_TARGET_GLES2
 constexpr Color4ub indexedResult{64 + 15 + 97, 17 + 164 + 28, 56 + 17, 255};
-#else /* RGBA4, so less precision */
-constexpr Color4ub indexedResult{0xaa, 0xcc, 0x44, 0xff};
-#endif
 
 template<class T> void MeshGLTest::setIndexBuffer() {
     setTestCaseTemplateName(std::is_same<T, MeshIndexType>::value ?
@@ -2540,7 +2528,11 @@ template<class T> void MeshGLTest::setIndexBuffer() {
         mesh).get<Color4ub>(PixelFormat::RGBA, PixelType::UnsignedByte);
 
     MAGNUM_VERIFY_NO_GL_ERROR();
+    #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, indexedResult);
+    #else /* RGBA4, so less precision */
+    CORRADE_COMPARE_WITH(value, indexedResult, TestSuite::Compare::around(0x10101000_rgba));
+    #endif
 }
 
 template<class T> void MeshGLTest::setIndexBufferRange() {
@@ -2571,7 +2563,11 @@ template<class T> void MeshGLTest::setIndexBufferRange() {
         mesh).get<Color4ub>(PixelFormat::RGBA, PixelType::UnsignedByte);
 
     MAGNUM_VERIFY_NO_GL_ERROR();
+    #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, indexedResult);
+    #else /* RGBA4, so less precision */
+    CORRADE_COMPARE_WITH(value, indexedResult, TestSuite::Compare::around(0x10101000_rgba));
+    #endif
 }
 
 void MeshGLTest::setIndexBufferUnsignedInt() {
@@ -2604,7 +2600,11 @@ void MeshGLTest::setIndexBufferUnsignedInt() {
         mesh).get<Color4ub>(PixelFormat::RGBA, PixelType::UnsignedByte);
 
     MAGNUM_VERIFY_NO_GL_ERROR();
+    #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, indexedResult);
+    #else /* RGBA4, so less precision */
+    CORRADE_COMPARE_WITH(value, indexedResult, TestSuite::Compare::around(0x10101000_rgba));
+    #endif
 }
 
 void MeshGLTest::setIndexBufferMovedOutInstance() {
@@ -2613,12 +2613,12 @@ void MeshGLTest::setIndexBufferMovedOutInstance() {
     Buffer buffer{NoCreate};
     Mesh mesh;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     mesh.setIndexBuffer(buffer, 0, MeshIndexType::UnsignedByte);
 
-    CORRADE_COMPARE(out.str(), "GL::Mesh::setIndexBuffer(): empty or moved-out Buffer instance was passed\n");
+    CORRADE_COMPARE(out, "GL::Mesh::setIndexBuffer(): empty or moved-out Buffer instance was passed\n");
 }
 
 template<class T> void MeshGLTest::setIndexBufferTransferOwnership() {
@@ -2722,7 +2722,11 @@ void MeshGLTest::setIndexOffset() {
     const auto value = framebuffer.read({{}, Vector2i{1}}, {PixelFormat::RGBA, PixelType::UnsignedByte}).pixels<Color4ub>()[0][0];
 
     MAGNUM_VERIFY_NO_GL_ERROR();
+    #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, indexedResult);
+    #else /* RGBA4, so less precision */
+    CORRADE_COMPARE_WITH(value, indexedResult, TestSuite::Compare::around(0x10101000_rgba));
+    #endif
 }
 
 void MeshGLTest::indexTypeSetIndexOffsetNotIndexed() {
@@ -2731,12 +2735,12 @@ void MeshGLTest::indexTypeSetIndexOffsetNotIndexed() {
     Mesh mesh;
     MeshView view{mesh};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     mesh.indexType();
     mesh.setIndexOffset(3);
     view.setIndexOffset(3);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::Mesh::indexType(): mesh is not indexed\n"
         "GL::Mesh::setIndexOffset(): mesh is not indexed\n"
         "GL::MeshView::setIndexOffset(): mesh is not indexed\n");
@@ -2755,16 +2759,11 @@ void MeshGLTest::unbindVAOWhenSettingIndexBufferData() {
 
     typedef Attribute<0, Float> Attribute;
 
-    const Float data[] = { -0.7f, Math::unpack<Float, UnsignedByte>(
-        #ifndef MAGNUM_TARGET_GLES2
-        92
-        #else
-        /* Using only RGBA4, supply less precision. This has to be done on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        85
-        #endif
-    ), Math::unpack<Float, UnsignedByte>(32) };
+    const Float data[] = {
+        -0.7f,
+        Math::unpack<Float, UnsignedByte>(92),
+        Math::unpack<Float, UnsignedByte>(32)
+    };
     Buffer buffer{Buffer::TargetHint::Array};
     buffer.setData(data, BufferUsage::StaticDraw);
 
@@ -2793,7 +2792,7 @@ void MeshGLTest::unbindVAOWhenSettingIndexBufferData() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, 92);
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value, 85);
+    CORRADE_COMPARE_WITH(value, 92, TestSuite::Compare::around(16));
     #endif
 }
 
@@ -2810,16 +2809,11 @@ void MeshGLTest::unbindIndexBufferWhenBindingVao() {
 
     typedef Attribute<0, Float> Attribute;
 
-    const Float data[] = { -0.7f, Math::unpack<Float, UnsignedByte>(
-        #ifndef MAGNUM_TARGET_GLES2
-        92
-        #else
-        /* Using only RGBA4, supply less precision. This has to be done on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        85
-        #endif
-    ), Math::unpack<Float, UnsignedByte>(32) };
+    const Float data[] = {
+        -0.7f,
+        Math::unpack<Float, UnsignedByte>(92),
+        Math::unpack<Float, UnsignedByte>(32)
+    };
     Buffer vertices{Buffer::TargetHint::Array};
     vertices.setData(data, BufferUsage::StaticDraw);
 
@@ -2855,7 +2849,7 @@ void MeshGLTest::unbindIndexBufferWhenBindingVao() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, 92);
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value, 85);
+    CORRADE_COMPARE_WITH(value, 92, TestSuite::Compare::around(16));
     #endif
 }
 
@@ -2872,16 +2866,11 @@ void MeshGLTest::resetIndexBufferBindingWhenBindingVao() {
 
     typedef Attribute<0, Float> Attribute;
 
-    const Float data[] = { -0.7f, Math::unpack<Float, UnsignedByte>(
-        #ifndef MAGNUM_TARGET_GLES2
-        92
-        #else
-        /* Using only RGBA4, supply less precision. This has to be done on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        85
-        #endif
-    ), Math::unpack<Float, UnsignedByte>(32) };
+    const Float data[] = {
+        -0.7f,
+        Math::unpack<Float, UnsignedByte>(92),
+        Math::unpack<Float, UnsignedByte>(32)
+    };
     Buffer vertices{Buffer::TargetHint::Array};
     vertices.setData(data);
 
@@ -2915,7 +2904,7 @@ void MeshGLTest::resetIndexBufferBindingWhenBindingVao() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, 92);
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value, 85);
+    CORRADE_COMPARE_WITH(value, 92, TestSuite::Compare::around(16));
     #endif
 }
 
@@ -2930,16 +2919,11 @@ void MeshGLTest::unbindVAOBeforeEnteringExternalSection() {
 
     typedef Attribute<0, Float> Attribute;
 
-    const Float data[] = { -0.7f, Math::unpack<Float, UnsignedByte>(
-        #ifndef MAGNUM_TARGET_GLES2
-        92
-        #else
-        /* Using only RGBA4, supply less precision. This has to be done on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        85
-        #endif
-    ), Math::unpack<Float, UnsignedByte>(32) };
+    const Float data[] = {
+        -0.7f,
+        Math::unpack<Float, UnsignedByte>(92),
+        Math::unpack<Float, UnsignedByte>(32)
+    };
     Buffer buffer{Buffer::TargetHint::Array};
     buffer.setData(data, BufferUsage::StaticDraw);
 
@@ -2974,23 +2958,18 @@ void MeshGLTest::unbindVAOBeforeEnteringExternalSection() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, 92);
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value, 85);
+    CORRADE_COMPARE_WITH(value, 92, TestSuite::Compare::around(16));
     #endif
 }
 
 void MeshGLTest::bindScratchVaoWhenEnteringExternalSection() {
     typedef Attribute<0, Float> Attribute;
 
-    const Float data[] = { -0.7f, Math::unpack<Float, UnsignedByte>(
-        #ifndef MAGNUM_TARGET_GLES2
-        92
-        #else
-        /* Using only RGBA4, supply less precision. This has to be done on the
-           input because SwiftShader stores RGBA4 as RGBA8 internally, thus
-           preserving the full precision of the input. */
-        85
-        #endif
-    ), Math::unpack<Float, UnsignedByte>(32) };
+    const Float data[] = {
+        -0.7f,
+        Math::unpack<Float, UnsignedByte>(92),
+        Math::unpack<Float, UnsignedByte>(32)
+    };
     Buffer buffer{Buffer::TargetHint::Array};
     buffer.setData(data, BufferUsage::StaticDraw);
 
@@ -3044,7 +3023,7 @@ void MeshGLTest::bindScratchVaoWhenEnteringExternalSection() {
     #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, 92);
     #else /* RGBA4, so less precision */
-    CORRADE_COMPARE(value, 85);
+    CORRADE_COMPARE_WITH(value, 92, TestSuite::Compare::around(16));
     #endif
 }
 
@@ -3121,13 +3100,13 @@ void MeshGLTest::setBaseVertexNoExtensionAvailable() {
         .setBaseVertex(1)
         .setIndexBuffer(indices, 0, MeshIndexType::UnsignedShort);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultipleShader{}.draw(mesh);
     #if !(defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2))
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): no extension available for indexed mesh draw with base vertex specification\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): no extension available for indexed mesh draw with base vertex specification\n");
     #else
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): indexed mesh draw with base vertex specification possible only since WebGL 2.0\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): indexed mesh draw with base vertex specification possible only since WebGL 2.0\n");
     #endif
 }
 
@@ -3157,13 +3136,13 @@ void MeshGLTest::setBaseVertexRangeNoExtensionAvailable() {
         .setBaseVertex(1)
         .setIndexBuffer(indices, 0, MeshIndexType::UnsignedShort, 0, 2);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultipleShader{}.draw(mesh);
     #if !(defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2))
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): no extension available for indexed mesh draw with base vertex specification\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): no extension available for indexed mesh draw with base vertex specification\n");
     #else
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): indexed mesh draw with base vertex specification possible only since WebGL 2.0\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): indexed mesh draw with base vertex specification possible only since WebGL 2.0\n");
     #endif
 }
 #endif
@@ -3213,7 +3192,11 @@ void MeshGLTest::setInstanceCount() {
         mesh).get<UnsignedByte>(PixelFormat::RGBA, PixelType::UnsignedByte);
 
     MAGNUM_VERIFY_NO_GL_ERROR();
+    #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, 96);
+    #else /* RGBA4, so less precision */
+    CORRADE_COMPARE_WITH(value, 96, TestSuite::Compare::around(16));
+    #endif
 }
 
 #ifndef MAGNUM_TARGET_GLES2
@@ -3273,10 +3256,10 @@ void MeshGLTest::setInstanceCountBaseInstanceNoExtensionAvailable() {
         .setInstanceCount(2)
         .setBaseInstance(1);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultipleShader{}.draw(mesh);
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): no extension available for instanced mesh draw with base instance specification\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): no extension available for instanced mesh draw with base instance specification\n");
 }
 #endif
 #endif
@@ -3328,7 +3311,11 @@ void MeshGLTest::setInstanceCountIndexed() {
         mesh).get<Color4ub>(PixelFormat::RGBA, PixelType::UnsignedByte);
 
     MAGNUM_VERIFY_NO_GL_ERROR();
+    #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, indexedResult);
+    #else /* RGBA4, so less precision */
+    CORRADE_COMPARE_WITH(value, indexedResult, TestSuite::Compare::around(0x10101000_rgba));
+    #endif
 }
 
 #ifndef MAGNUM_TARGET_GLES2
@@ -3394,10 +3381,10 @@ void MeshGLTest::setInstanceCountIndexedBaseInstanceNoExtensionAvailable() {
         .setBaseInstance(1)
         .setIndexBuffer(indices, 0, MeshIndexType::UnsignedShort);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultipleShader{}.draw(mesh);
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): no extension available for instanced indexed mesh draw with base instance specification\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): no extension available for instanced indexed mesh draw with base instance specification\n");
 }
 #endif
 #endif
@@ -3484,13 +3471,13 @@ void MeshGLTest::setInstanceCountIndexedBaseVertexNoExtensionAvailable() {
         .setBaseVertex(1)
         .setIndexBuffer(indices, 0, MeshIndexType::UnsignedShort);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultipleShader{}.draw(mesh);
     #ifndef MAGNUM_TARGET_GLES2
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): no extension available for instanced indexed mesh draw with base vertex specification\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): no extension available for instanced indexed mesh draw with base vertex specification\n");
     #else
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): instanced indexed mesh draw with base vertex specification possible only since OpenGL ES 3.0\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): instanced indexed mesh draw with base vertex specification possible only since OpenGL ES 3.0\n");
     #endif
 }
 #endif
@@ -3562,13 +3549,13 @@ void MeshGLTest::setInstanceCountIndexedBaseVertexBaseInstanceNoExtensionAvailab
         .setBaseInstance(1)
         .setIndexBuffer(indices, 0, MeshIndexType::UnsignedShort);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultipleShader{}.draw(mesh);
     #ifndef MAGNUM_TARGET_GLES2
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): no extension available for instanced indexed mesh draw with base vertex and base instance specification\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): no extension available for instanced indexed mesh draw with base vertex and base instance specification\n");
     #else
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): instanced indexed mesh draw with base vertex specification possible only since OpenGL 3.0\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): instanced indexed mesh draw with base vertex specification possible only since OpenGL 3.0\n");
     #endif
 }
 #endif
@@ -3610,7 +3597,13 @@ void MeshGLTest::addVertexBufferInstancedFloat() {
 
     MAGNUM_VERIFY_NO_GL_ERROR();
 
-    const auto value = Checker(FloatShader("float", "vec4(valueInterpolated, 0.0, 0.0, 0.0)"),
+    const auto value = Checker(FloatShader("float", "vec4(valueInterpolated, 0.0, 0.0, 0.0)"
+        /* WebGL 1 requires that at least one attribute is not instanced. Add
+           a dummy input (that isn't even present in the mesh) to fix that. */
+        #if defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2)
+        , /* dummy */ true
+        #endif
+    ),
         #ifndef MAGNUM_TARGET_GLES2
         RenderbufferFormat::RGBA8,
         #else
@@ -3619,7 +3612,11 @@ void MeshGLTest::addVertexBufferInstancedFloat() {
         mesh).get<UnsignedByte>(PixelFormat::RGBA, PixelType::UnsignedByte);
 
     MAGNUM_VERIFY_NO_GL_ERROR();
+    #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(value, 96);
+    #else /* RGBA4, so less precision */
+    CORRADE_COMPARE_WITH(value, 96, TestSuite::Compare::around(16));
+    #endif
 }
 
 #ifndef MAGNUM_TARGET_GLES2
@@ -3824,7 +3821,13 @@ void MeshGLTest::drawInstancedAttributeSingleInstance() {
     framebuffer.attachRenderbuffer(Framebuffer::ColorAttachment{0}, renderbuffer)
                .bind();
 
-    FloatShader shader{"float", "vec4(valueInterpolated, 0.0, 0.0, 0.0)"};
+    FloatShader shader{"float", "vec4(valueInterpolated, 0.0, 0.0, 0.0)"
+        /* WebGL 1 requires that at least one attribute is not instanced. Add
+           a dummy input (that isn't even present in the mesh) to fix that. */
+        #if defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2)
+        , /* dummy */ true
+        #endif
+    };
 
     MAGNUM_VERIFY_NO_GL_ERROR();
 
@@ -3841,7 +3844,12 @@ void MeshGLTest::drawInstancedAttributeSingleInstance() {
 
     MAGNUM_VERIFY_NO_GL_ERROR();
 
+    #ifndef MAGNUM_TARGET_GLES2
     CORRADE_COMPARE(Containers::arrayCast<UnsignedByte>(framebuffer.read({{}, Vector2i{1}}, {PixelFormat::RGBA, PixelType::UnsignedByte}).data())[0], 96);
+    #else /* RGBA4, so less precision */
+    CORRADE_COMPARE_WITH(Containers::arrayCast<UnsignedByte>(framebuffer.read({{}, Vector2i{1}}, {PixelFormat::RGBA, PixelType::UnsignedByte}).data())[0], 96,
+        TestSuite::Compare::around(16));
+    #endif
 }
 
 struct MultiDrawShader: AbstractShaderProgram {
@@ -3889,7 +3897,17 @@ MultiDrawShader::MultiDrawShader(bool vertexId, bool drawId) {
         "in mediump vec4 value;\n"
         "out mediump float valueInterpolated;\n"
         "void main() {\n"
+        /* WebGL 1 doesn't allow dynamic indexing into a vec4. Similar thing is
+           in MultiDrawInstancedShader below or in the SUBSCRIPTING_WORKAROUND
+           in Shaders/MeshVisualizer.vert. */
+        #if defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2)
+        "         if(vertexOrDrawId == 0) valueInterpolated = value.x;\n"
+        "    else if(vertexOrDrawId == 1) valueInterpolated = value.y;\n"
+        "    else if(vertexOrDrawId == 2) valueInterpolated = value.z;\n"
+        "    else                         valueInterpolated = value.w;\n"
+        #else
         "    valueInterpolated = value[vertexOrDrawId];\n"
+        #endif
         "    gl_PointSize = 1.0;\n"
         "    gl_Position = vec4(position, 0.0, 1.0);\n"
         "}\n");
@@ -3926,7 +3944,6 @@ struct MultiDrawChecker {
     Framebuffer _framebuffer;
 };
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 MultiDrawChecker::MultiDrawChecker(): _framebuffer{{{}, Vector2i{2}}} {
     _renderbuffer.setStorage(
         #ifndef MAGNUM_TARGET_GLES2
@@ -3950,7 +3967,6 @@ Vector4 MultiDrawChecker::get() {
                                            redChannel[1][0],
                                            redChannel[1][1]});
 }
-#endif
 
 void MeshGLTest::multiDraw() {
     auto&& data = MultiDrawData[testCaseInstanceId()];
@@ -4470,11 +4486,11 @@ void MeshGLTest::multiDrawWrongVertexOffsetSize() {
     UnsignedInt counts[3]{};
     UnsignedInt vertexOffsets[2]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.draw(mesh, counts, vertexOffsets, nullptr);
     shader.draw(mesh, counts, nullptr, nullptr);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): expected 3 vertex offset items but got 2\n"
         "GL::AbstractShaderProgram::draw(): expected 3 vertex offset items but got 0\n");
 }
@@ -4489,11 +4505,11 @@ void MeshGLTest::multiDrawIndexedWrongVertexOffsetSize() {
     UnsignedInt vertexOffsets[2]{};
     UnsignedInt indexOffsets[3]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.draw(mesh, counts, vertexOffsets, indexOffsets);
     /* Omitting vertex offsets altogether is okay */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): expected 3 vertex offset items but got 2\n");
 }
 
@@ -4506,11 +4522,11 @@ void MeshGLTest::multiDrawIndexedWrongIndexOffsetSize() {
     UnsignedInt counts[3]{};
     UnsignedInt indexOffsets[2]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.draw(mesh, counts, nullptr, indexOffsets);
     shader.draw(mesh, counts, nullptr, nullptr);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): expected 3 index offset items but got 2\n"
         "GL::AbstractShaderProgram::draw(): expected 3 index offset items but got 0\n");
 }
@@ -4551,13 +4567,13 @@ void MeshGLTest::multiDrawIndexedBaseVertexNoExtensionAvailable() {
     UnsignedInt vertexOffsets[]{0};
     UnsignedInt indexOffsets[]{0};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultiDrawShader{}.draw(mesh, counts, vertexOffsets, indexOffsets);
     #if !(defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2))
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): no extension available for indexed mesh multi-draw with base vertex specification\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): no extension available for indexed mesh multi-draw with base vertex specification\n");
     #else
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): indexed mesh multi-draw with base vertex specification possible only since WebGL 2.0\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): indexed mesh multi-draw with base vertex specification possible only since WebGL 2.0\n");
     #endif
 }
 
@@ -4596,13 +4612,13 @@ void MeshGLTest::multiDrawIndexedViewsBaseVertexNoExtensionAvailable() {
     UnsignedInt vertexOffsets[]{1};
     UnsignedInt indexOffsets[]{0};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultiDrawShader{}.draw(mesh, counts, vertexOffsets, indexOffsets);
     #if !(defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2))
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): no extension available for indexed mesh multi-draw with base vertex specification\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): no extension available for indexed mesh multi-draw with base vertex specification\n");
     #else
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): indexed mesh multi-draw with base vertex specification possible only since WebGL 2.0\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): indexed mesh multi-draw with base vertex specification possible only since WebGL 2.0\n");
     #endif
 }
 #endif
@@ -4615,10 +4631,10 @@ void MeshGLTest::multiDrawViewsInstanced() {
     view.setCount(3)
         .setInstanceCount(2);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultiDrawShader{}.draw({view, view});
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): cannot multi-draw instanced meshes\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): cannot multi-draw instanced meshes\n");
 }
 
 void MeshGLTest::multiDrawViewsDifferentMeshes() {
@@ -4627,10 +4643,10 @@ void MeshGLTest::multiDrawViewsDifferentMeshes() {
     Mesh a, b;
     MeshView viewA{a}, viewB{b};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultiDrawShader{}.draw({viewA, viewB});
-    CORRADE_COMPARE(out.str(), Utility::formatString("GL::AbstractShaderProgram::draw(): all meshes must be views of the same original mesh, expected 0x{:x} but got 0x{:x} at index 1\n", reinterpret_cast<std::uintptr_t>(&a), reinterpret_cast<std::uintptr_t>(&b)));
+    CORRADE_COMPARE(out, Utility::format("GL::AbstractShaderProgram::draw(): all meshes must be views of the same original mesh, expected 0x{:x} but got 0x{:x} at index 1\n", reinterpret_cast<std::uintptr_t>(&a), reinterpret_cast<std::uintptr_t>(&b)));
 }
 
 #ifdef MAGNUM_TARGET_GLES
@@ -4695,6 +4711,13 @@ MultiDrawInstancedShader::MultiDrawInstancedShader(bool vertexId, bool drawId
         "void main() {\n"
         #ifndef MAGNUM_TARGET_GLES2
         "    valueInterpolated = value[vertexOrDrawIdOrInstanceOffset + gl_InstanceID];\n"
+        /* WebGL 1 doesn't allow dynamic indexing into a vec3. Similar thing is
+           in MultiDrawShader above or in the SUBSCRIPTING_WORKAROUND in
+           Shaders/MeshVisualizer.vert. */
+        #elif defined(MAGNUM_TARGET_WEBGL)
+        "         if(vertexOrDrawIdOrInstanceOffset + int(instanceId) == 0) valueInterpolated = value.x;\n"
+        "    else if(vertexOrDrawIdOrInstanceOffset + int(instanceId) == 1) valueInterpolated = value.y;\n"
+        "    else                                                           valueInterpolated = value.z;\n"
         #else
         "    valueInterpolated = value[vertexOrDrawIdOrInstanceOffset + int(instanceId)];\n"
         #endif
@@ -5114,11 +5137,11 @@ void MeshGLTest::multiDrawInstancedWrongInstanceCountSize() {
     UnsignedInt counts[3]{};
     UnsignedInt instanceCounts[2]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.draw(mesh, counts, instanceCounts, nullptr, nullptr);
     shader.draw(mesh, counts, nullptr, nullptr, nullptr);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): expected 3 instance count items but got 2\n"
         "GL::AbstractShaderProgram::draw(): expected 3 instance count items but got 0\n");
 }
@@ -5132,11 +5155,11 @@ void MeshGLTest::multiDrawInstancedWrongVertexOffsetSize() {
     UnsignedInt instanceCounts[3]{};
     UnsignedInt vertexOffsets[2]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.draw(mesh, counts, instanceCounts, vertexOffsets, nullptr);
     shader.draw(mesh, counts, instanceCounts, nullptr, nullptr);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): expected 3 vertex offset items but got 2\n"
         "GL::AbstractShaderProgram::draw(): expected 3 vertex offset items but got 0\n");
 }
@@ -5152,11 +5175,11 @@ void MeshGLTest::multiDrawInstancedWrongInstanceOffsetSize() {
     UnsignedInt vertexOffsets[3]{};
     UnsignedInt instanceOffsets[2]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.draw(mesh, counts, instanceCounts, vertexOffsets, nullptr, instanceOffsets);
     /* Omitting vertex offsets altogether is okay */
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): expected 3 instance offset items but got 2\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): expected 3 instance offset items but got 2\n");
 }
 #endif
 
@@ -5169,11 +5192,11 @@ void MeshGLTest::multiDrawInstancedIndexedWrongInstanceCountSize() {
     UnsignedInt counts[3]{};
     UnsignedInt instanceCounts[2]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.draw(mesh, counts, instanceCounts, nullptr, nullptr);
     shader.draw(mesh, counts, nullptr, nullptr, nullptr);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): expected 3 instance count items but got 2\n"
         "GL::AbstractShaderProgram::draw(): expected 3 instance count items but got 0\n");
 }
@@ -5189,11 +5212,11 @@ void MeshGLTest::multiDrawInstancedIndexedWrongVertexOffsetSize() {
     UnsignedInt vertexOffsets[2]{};
     UnsignedInt indexOffsets[3]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.draw(mesh, counts, instanceCounts, vertexOffsets, indexOffsets);
     /* Omitting vertex offsets altogether is okay */
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): expected 3 vertex offset items but got 2\n");
 }
 
@@ -5207,11 +5230,11 @@ void MeshGLTest::multiDrawInstancedIndexedWrongIndexOffsetSize() {
     UnsignedInt instanceCounts[3]{};
     UnsignedInt indexOffsets[2]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.draw(mesh, counts, instanceCounts, nullptr, indexOffsets);
     shader.draw(mesh, counts, instanceCounts, nullptr, nullptr);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): expected 3 index offset items but got 2\n"
         "GL::AbstractShaderProgram::draw(): expected 3 index offset items but got 0\n");
 }
@@ -5228,11 +5251,11 @@ void MeshGLTest::multiDrawInstancedIndexedWrongInstanceOffsetSize() {
     UnsignedInt indexOffsets[3]{};
     UnsignedInt instanceOffsets[2]{};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     shader.draw(mesh, counts, instanceCounts, nullptr, indexOffsets, instanceOffsets);
     /* Omitting instance offsets altogether is okay */
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): expected 3 instance offset items but got 2\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): expected 3 instance offset items but got 2\n");
 }
 
 void MeshGLTest::multiDrawInstancedBaseVertexNoExtensionAvailable() {
@@ -5258,13 +5281,13 @@ void MeshGLTest::multiDrawInstancedBaseVertexNoExtensionAvailable() {
     UnsignedInt vertexOffsets[]{0};
     UnsignedInt indexOffsets[]{0};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultiDrawInstancedShader{}.draw(mesh, counts, instanceCounts, vertexOffsets, indexOffsets);
     #ifndef MAGNUM_TARGET_GLES2
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): no extension available for instanced indexed mesh multi-draw with base vertex and base instance specification\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): no extension available for instanced indexed mesh multi-draw with base vertex and base instance specification\n");
     #else
-    CORRADE_COMPARE(out.str(), "GL::AbstractShaderProgram::draw(): instanced indexed mesh multi-draw with base vertex specification possible only since OpenGL ES 3.0 and WebGL 2.0\n");
+    CORRADE_COMPARE(out, "GL::AbstractShaderProgram::draw(): instanced indexed mesh multi-draw with base vertex specification possible only since OpenGL ES 3.0 and WebGL 2.0\n");
     #endif
 }
 
@@ -5293,11 +5316,11 @@ void MeshGLTest::multiDrawInstancedBaseInstanceNoExtensionAvailable() {
     UnsignedInt indexOffsets[]{0};
     UnsignedInt instanceOffsets[]{0};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     MultiDrawInstancedShader{}.draw(nonIndexed, counts, instanceCounts, vertexOffsets, nullptr, instanceOffsets);
     MultiDrawInstancedShader{}.draw(indexed, counts, instanceCounts, nullptr, indexOffsets, instanceOffsets);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::AbstractShaderProgram::draw(): no extension available for instanced mesh multi-draw with base instance specification\n"
         "GL::AbstractShaderProgram::draw(): no extension available for instanced indexed mesh multi-draw with base vertex and base instance specification\n");
 }

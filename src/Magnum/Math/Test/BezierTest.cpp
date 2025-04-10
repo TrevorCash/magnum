@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2016 Ashwin Ravichandran <ashwinravichandran24@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,9 +25,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
+#include <Corrade/Containers/ArrayView.h> /* arraySize() */
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Math/Bezier.h"
 #include "Magnum/Math/CubicHermite.h"
@@ -56,6 +58,8 @@ template<> struct BezierConverter<2, 2, Float, QBezier2D> {
 
 namespace Test { namespace {
 
+/* What's a typedef and not a using differs from the typedefs in root Magnum
+   namespace, or is not present there at all */
 using Magnum::Vector2;
 typedef Math::Bezier<1, 2, Float> LinearBezier2D;
 using Magnum::QuadraticBezier2D;
@@ -155,12 +159,7 @@ void BezierTest::constructNoInit() {
 }
 
 void BezierTest::constructConversion() {
-    #ifndef CORRADE_MSVC2017_COMPATIBILITY
     constexpr QuadraticBezier2Dd a{Vector2d{0.5, 1.0}, Vector2d{1.1, 0.3}, Vector2d{0.1, 1.2}};
-    #else
-    /* https://developercommunity.visualstudio.com/content/problem/259204/1572-regression-ice-in-constexpr-code-involving-de.html */
-    constexpr QuadraticBezier2Dd a{Vector<2, Double>{0.5, 1.0}, Vector<2, Double>{1.1, 0.3}, Vector<2, Double>{0.1, 1.2}};
-    #endif
     constexpr QuadraticBezier2D b{a};
 
     CORRADE_COMPARE(b, (QuadraticBezier2D{Vector2{0.5f, 1.0f}, Vector2{1.1f, 0.3f}, Vector2{0.1f, 1.2f}}));
@@ -196,12 +195,7 @@ void BezierTest::constructCopy() {
 
 void BezierTest::convert() {
     constexpr QBezier2D a{0.5f, 1.1f, 0.1f, 1.0f, 0.3f, 1.2f};
-    #ifndef CORRADE_MSVC2017_COMPATIBILITY
     constexpr QuadraticBezier2D b{Vector2{0.5f, 1.0f}, Vector2{1.1f, 0.3f}, Vector2{0.1f, 1.2f}};
-    #else
-    /* https://developercommunity.visualstudio.com/content/problem/259204/1572-regression-ice-in-constexpr-code-involving-de.html */
-    constexpr QuadraticBezier2D b{Vector<2, Float>{0.5f, 1.0f}, Vector<2, Float>{1.1f, 0.3f}, Vector<2, Float>{0.1f, 1.2f}};
-    #endif
 
     constexpr QuadraticBezier2D c{a};
     CORRADE_COMPARE(c, b);
@@ -344,9 +338,9 @@ void BezierTest::strictWeakOrdering() {
 }
 
 void BezierTest::debug() {
-    std::ostringstream out;
+    Containers::String out;
     Debug(&out) << CubicBezier2D{Vector2{0.0f, 1.0f}, Vector2{1.5f, -0.3f}, Vector2{2.1f, 0.5f}, Vector2{0.0f, 2.0f}};
-    CORRADE_COMPARE(out.str(), "Bezier({0, 1}, {1.5, -0.3}, {2.1, 0.5}, {0, 2})\n");
+    CORRADE_COMPARE(out, "Bezier({0, 1}, {1.5, -0.3}, {2.1, 0.5}, {0, 2})\n");
 }
 
 }}}}

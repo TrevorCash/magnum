@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -26,11 +27,16 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#ifdef MAGNUM_TARGET_GL
 /** @file
  * @brief Class @ref Magnum::Shaders::DistanceFieldVectorGL, typedef @ref Magnum::Shaders::DistanceFieldVectorGL2D, @ref Magnum::Shaders::DistanceFieldVectorGL3D
  * @m_since_latest
  */
+#endif
 
+#include "Magnum/configure.h"
+
+#ifdef MAGNUM_TARGET_GL
 #include <Corrade/Utility/Move.h>
 
 #include "Magnum/DimensionTraits.h"
@@ -49,7 +55,8 @@ namespace Implementation {
         #ifndef MAGNUM_TARGET_WEBGL
         ShaderStorageBuffers = UniformBuffers|(1 << 3),
         #endif
-        MultiDraw = UniformBuffers|(1 << 2)
+        MultiDraw = UniformBuffers|(1 << 2),
+        TextureArrays = 1 << 4
         #endif
     };
     typedef Containers::EnumSet<DistanceFieldVectorGLFlag> DistanceFieldVectorGLFlags;
@@ -61,7 +68,7 @@ namespace Implementation {
 @m_since_latest
 
 Renders vector graphics in a form of signed distance field. See
-@ref TextureTools::DistanceField for more information and @ref VectorGL for a
+@ref TextureTools::DistanceFieldGL for more information and @ref VectorGL for a
 simpler variant of this shader. Note that the final rendered outlook will
 greatly depend on radius of input distance field and value passed to
 @ref setSmoothness(). You need to provide @ref Position and
@@ -78,15 +85,25 @@ working on the framebuffer, you need to enable
 
 @image html shaders-distancefieldvector.png width=256px
 
+@note This class is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+
 @section Shaders-DistanceFieldVectorGL-usage Example usage
 
 Common mesh setup:
 
-@snippet MagnumShaders-gl.cpp DistanceFieldVectorGL-usage1
+@snippet Shaders-gl.cpp DistanceFieldVectorGL-usage1
 
 Common rendering setup:
 
-@snippet MagnumShaders-gl.cpp DistanceFieldVectorGL-usage2
+@snippet Shaders-gl.cpp DistanceFieldVectorGL-usage2
+
+If @ref Flag::TextureArrays is enabled, pass a @ref GL::Texture2DArray instance
+instead of @ref GL::Texture2D. The layer is taken from the third coordinate of
+@ref TextureArrayCoordinates, if used instead of @ref TextureCoordinates,
+otherwise layer @cpp 0 @ce is picked. Additionally, the value of
+@ref setTextureLayer(), which is @cpp 0 @ce by default, is added to the layer.
 
 @section Shaders-DistanceFieldVectorGL-ubo Uniform buffers
 
@@ -104,7 +121,7 @@ optional texture transformation a per-draw @ref TextureTransformationUniform
 buffer bound with @ref bindTextureTransformationBuffer() can be supplied as
 well. A uniform buffer setup equivalent to the above would look like this:
 
-@snippet MagnumShaders-gl.cpp DistanceFieldVectorGL-ubo
+@snippet Shaders-gl.cpp DistanceFieldVectorGL-ubo
 
 For a multidraw workflow enable @ref Flag::MultiDraw, supply desired material
 and draw count via @ref Configuration::setMaterialCount() and
@@ -147,9 +164,25 @@ template<UnsignedInt dimensions> class MAGNUM_SHADERS_EXPORT DistanceFieldVector
          * @brief 2D texture coordinates
          *
          * @ref shaders-generic "Generic attribute",
-         * @relativeref{Magnum,Vector2}.
+         * @relativeref{Magnum,Vector2}. Use either this or the
+         * @ref TextureArrayCoordinates attribute.
          */
         typedef typename GenericGL<dimensions>::TextureCoordinates TextureCoordinates;
+
+        #ifndef MAGNUM_TARGET_GLES2
+        /**
+         * @brief 2D array texture coordinates
+         *
+         * @ref shaders-generic "Generic attribute",
+         * @relativeref{Magnum,Vector3}. Use either this or the
+         * @ref TextureCoordinates attribute. The third component is used only
+         * if @ref Flag::TextureArrays is set.
+         * @requires_gl30 Extension @gl_extension{EXT,texture_array}
+         * @requires_gles30 Texture arrays are not available in OpenGL ES 2.0.
+         * @requires_webgl20 Texture arrays are not available in WebGL 1.0.
+         */
+        typedef typename GenericGL<dimensions>::TextureArrayCoordinates TextureArrayCoordinates;
+        #endif
 
         enum: UnsignedInt {
             /**
@@ -232,7 +265,27 @@ template<UnsignedInt dimensions> class MAGNUM_SHADERS_EXPORT DistanceFieldVector
              *      relies on uniform buffers, which require WebGL 2.0.
              * @m_since_latest
              */
-            MultiDraw = UniformBuffers|(1 << 2)
+            MultiDraw = UniformBuffers|(1 << 2),
+
+            /**
+             * Use 2D texture arrays. Expects that the texture is supplied via
+             * @ref bindVectorTexture(GL::Texture2DArray&) instead of
+             * @ref bindVectorTexture(GL::Texture2D&). The layer is taken from
+             * the third coordinate of @ref TextureArrayCoordinates, if used
+             * instead of @ref TextureCoordinates, otherwise layer @cpp 0 @ce
+             * is picked. Additionally, if @ref Flag::UniformBuffers is not
+             * enabled, the value of @ref setTextureLayer() is added to the
+             * layer; if @ref Flag::UniformBuffers is enabled and
+             * @ref Flag::TextureTransformation is enabled as well, the value
+             * of @ref TextureTransformationUniform::layer is added to the
+             * layer.
+             * @requires_gl30 Extension @gl_extension{EXT,texture_array}
+             * @requires_gles30 Texture arrays are not available in OpenGL ES
+             *      2.0.
+             * @requires_webgl20 Texture arrays are not available in WebGL 1.0.
+             * @m_since_latest
+             */
+            TextureArrays = 1 << 4,
             #endif
         };
 
@@ -426,6 +479,28 @@ template<UnsignedInt dimensions> class MAGNUM_SHADERS_EXPORT DistanceFieldVector
          * @ref bindTextureTransformationBuffer() instead.
          */
         DistanceFieldVectorGL<dimensions>& setTextureMatrix(const Matrix3& matrix);
+
+        #ifndef MAGNUM_TARGET_GLES2
+        /**
+         * @brief Set texture array layer
+         * @return Reference to self (for method chaining)
+         * @m_since_latest
+         *
+         * Expects that the shader was created with @ref Flag::TextureArrays
+         * enabled. Initial value is @cpp 0 @ce. If a three-component
+         * @ref TextureArrayCoordinates attribute is used instead of
+         * @ref TextureCoordinates, this value is added to the layer coming
+         * from the third component.
+         *
+         * Expects that @ref Flag::UniformBuffers is not set, in that case fill
+         * @ref TextureTransformationUniform::layer and call
+         * @ref bindTextureTransformationBuffer() instead.
+         * @requires_gl30 Extension @gl_extension{EXT,texture_array}
+         * @requires_gles30 Texture arrays are not available in OpenGL ES 2.0.
+         * @requires_webgl20 Texture arrays are not available in WebGL 1.0.
+         */
+        DistanceFieldVectorGL<dimensions>& setTextureLayer(UnsignedInt layer);
+        #endif
 
         /**
          * @brief Set fill color
@@ -621,12 +696,31 @@ template<UnsignedInt dimensions> class MAGNUM_SHADERS_EXPORT DistanceFieldVector
          * @brief Bind a vector texture
          * @return Reference to self (for method chaining)
          *
-         * @see @ref DistanceFieldVectorGL::Flag::TextureTransformation,
-         *      @ref VectorGL::Flag::TextureTransformation,
-         *      @ref DistanceFieldVectorGL::setTextureMatrix(),
-         *      @ref VectorGL::setTextureMatrix()
+         * If @ref Flag::TextureArrays is enabled, use
+         * @ref bindVectorTexture(GL::Texture2DArray&) instead.
+         * @see @ref Flag::TextureTransformation, @ref setTextureMatrix()
          */
         DistanceFieldVectorGL<dimensions>& bindVectorTexture(GL::Texture2D& texture);
+
+        #ifndef MAGNUM_TARGET_GLES2
+        /**
+         * @brief Bind a vector array texture
+         * @return Reference to self (for method chaining)
+         * @m_since_latest
+         *
+         * Expects that the shader was created with @ref Flag::TextureArrays
+         * enabled. The layer is taken from the third coordinate of
+         * @ref TextureArrayCoordinates, if used instead of
+         * @ref TextureCoordinates, otherwise layer @cpp 0 @ce is picked.
+         * Additionally, if @ref Flag::UniformBuffers is not enabled, the layer
+         * index is offset with the value set in @ref setTextureLayer(); if
+         * @ref Flag::UniformBuffers is enabled and
+         * @ref Flag::TextureTransformation is enabled as well, the layer index
+         * is offset with @ref TextureTransformationUniform::layer.
+         * @see @ref Flag::TextureTransformation, @ref setTextureMatrix()
+         */
+        DistanceFieldVectorGL<dimensions>& bindVectorTexture(GL::Texture2DArray& texture);
+        #endif
 
         /**
          * @}
@@ -645,10 +739,13 @@ template<UnsignedInt dimensions> class MAGNUM_SHADERS_EXPORT DistanceFieldVector
         #endif
         Int _transformationProjectionMatrixUniform{0},
             _textureMatrixUniform{1},
-            _colorUniform{2},
-            _outlineColorUniform{3},
-            _outlineRangeUniform{4},
-            _smoothnessUniform{5};
+            #ifndef MAGNUM_TARGET_GLES2
+            _textureLayerUniform{2},
+            #endif
+            _colorUniform{3},
+            _outlineColorUniform{4},
+            _outlineRangeUniform{5},
+            _smoothnessUniform{6};
         #ifndef MAGNUM_TARGET_GLES2
         /* Used instead of all other uniforms when Flag::UniformBuffers is set,
            so it can alias them */
@@ -795,12 +892,20 @@ template<UnsignedInt dimensions> class DistanceFieldVectorGL<dimensions>::Compil
 /**
 @brief Two-dimensional distance field vector OpenGL shader
 @m_since_latest
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 */
 typedef DistanceFieldVectorGL<2> DistanceFieldVectorGL2D;
 
 /**
 @brief Three-dimensional distance field vector OpenGL shader
 @m_since_latest
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 */
 typedef DistanceFieldVectorGL<3> DistanceFieldVectorGL3D;
 
@@ -818,5 +923,8 @@ namespace Implementation {
 #endif
 
 }}
+#else
+#error this header is available only in the OpenGL build
+#endif
 
 #endif

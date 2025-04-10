@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2022 Vladislav Oleshko <vladislav.oleshko@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -26,11 +27,16 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#ifdef MAGNUM_TARGET_GL
 /** @file
  * @brief Class @ref Magnum::Shaders::FlatGL, typedef @ref Magnum::Shaders::FlatGL2D, @ref Magnum::Shaders::FlatGL3D
  * @m_since_latest
  */
+#endif
 
+#include "Magnum/configure.h"
+
+#ifdef MAGNUM_TARGET_GL
 #include <Corrade/Utility/Move.h>
 
 #include "Magnum/DimensionTraits.h"
@@ -84,15 +90,19 @@ configure the shader.
 
 @image html shaders-flat.png width=256px
 
+@note This function is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
+
 @section Shaders-FlatGL-colored Colored rendering
 
 Common mesh setup:
 
-@snippet MagnumShaders-gl.cpp FlatGL-usage-colored1
+@snippet Shaders-gl.cpp FlatGL-usage-colored1
 
 Common rendering setup:
 
-@snippet MagnumShaders-gl.cpp FlatGL-usage-colored2
+@snippet Shaders-gl.cpp FlatGL-usage-colored2
 
 @section Shaders-FlatGL-textured Textured rendering
 
@@ -102,11 +112,15 @@ If you want to use a texture, you need to provide also the
 also the texture via @ref bindTexture(). The texture is multiplied by the
 color, which is by default set to @cpp 0xffffffff_rgbaf @ce. Common mesh setup:
 
-@snippet MagnumShaders-gl.cpp FlatGL-usage-textured1
+@snippet Shaders-gl.cpp FlatGL-usage-textured1
 
 Common rendering setup:
 
-@snippet MagnumShaders-gl.cpp FlatGL-usage-textured2
+@snippet Shaders-gl.cpp FlatGL-usage-textured2
+
+If @ref Flag::TextureArrays is enabled, pass a @ref GL::Texture2DArray instance
+instead of @ref GL::Texture2D. By default layer @cpp 0 @ce is used, call
+@ref setTextureLayer() to pick a different texture array layer.
 
 For coloring the texture based on intensity you can use the @ref VectorGL
 shader. The 3D version of this shader is equivalent to @ref PhongGL with zero
@@ -138,7 +152,7 @@ portability you should use @ref GL::Framebuffer::clearColor() instead of
 @ref GL::Framebuffer::clear() as the former usually emits GL errors when called
 on framebuffers with integer attachments.
 
-@snippet MagnumShaders-gl.cpp FlatGL-usage-object-id
+@snippet Shaders-gl.cpp FlatGL-usage-object-id
 
 If you have a batch of meshes with different object IDs, enable
 @ref Flag::InstancedObjectId and supply per-vertex IDs to the @ref ObjectId
@@ -190,7 +204,7 @@ enabled (similarly to transformation, applied before @ref setTextureMatrix()).
 The snippet below shows adding a buffer with per-instance transformation and
 color to a mesh:
 
-@snippet MagnumShaders-gl.cpp FlatGL-usage-instancing
+@snippet Shaders-gl.cpp FlatGL-usage-instancing
 
 For instanced skinning the joint buffer is assumed to contain joint
 transformations for all instances. By default all instances use the same joint
@@ -221,7 +235,11 @@ transformation a per-draw @ref TextureTransformationUniform buffer bound with
 buffer setup equivalent to
 the @ref Shaders-FlatGL-colored "colored case at the top" would look like this:
 
-@snippet MagnumShaders-gl.cpp FlatGL-ubo
+@snippet Shaders-gl.cpp FlatGL-ubo
+
+When uniform buffers with @ref Flag::TextureArrays are used,
+@ref Flag::TextureTransformation has to be enabled as well in order to supply
+the texture layer using @ref TextureTransformationUniform::layer.
 
 For a multidraw workflow enable @ref Flag::MultiDraw (and possibly
 @ref Flag::TextureArrays), supply desired material and draw count via
@@ -1581,12 +1599,20 @@ template<UnsignedInt dimensions> class FlatGL<dimensions>::CompileState: public 
 /**
 @brief 2D flat OpenGL shader
 @m_since_latest
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 */
 typedef FlatGL<2> FlatGL2D;
 
 /**
 @brief 3D flat OpenGL shader
 @m_since_latest
+
+@note This typedef is available only if Magnum is compiled with
+    @ref MAGNUM_TARGET_GL enabled (done by default). See @ref building-features
+    for more information.
 */
 typedef FlatGL<3> FlatGL3D;
 
@@ -1604,5 +1630,8 @@ namespace Implementation {
 #endif
 
 }}
+#else
+#error this header is available only in the OpenGL build
+#endif
 
 #endif

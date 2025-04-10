@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,16 +24,15 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <string> /** @todo remove once file callbacks are std::string-free */
 #include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/StridedArrayView.h>
 #include <Corrade/Containers/String.h>
-#include <Corrade/Containers/StringStl.h> /** @todo remove once Debug is stream-free */
 #include <Corrade/Containers/Triple.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Container.h>
 #include <Corrade/TestSuite/Compare/String.h>
-#include <Corrade/Utility/DebugStl.h> /** @todo remove once Debug is stream-free */
 #include <Corrade/Utility/Path.h>
 
 #include "Magnum/FileCallback.h"
@@ -82,12 +82,23 @@ struct AbstractFontTest: TestSuite::Tester {
 
     void glyphId();
     void glyphIdNoFont();
+    void glyphIdInvalidSize();
+    void glyphIdOutOfRange();
+
+    void glyphName();
+    void glyphNameNotImplemented();
+    void glyphNameNoFont();
+    void glyphNameOutOfRange();
 
     void glyphSizeAdvance();
     void glyphSizeAdvanceNoFont();
     void glyphSizeAdvanceOutOfRange();
 
     void fillGlyphCache();
+    void fillGlyphCacheOutOfRange();
+    void fillGlyphCacheNotUnique();
+    void fillGlyphCacheFromString();
+    void fillGlyphCacheFailed();
     void fillGlyphCacheNotSupported();
     void fillGlyphCacheNotImplemented();
     void fillGlyphCacheNoFont();
@@ -145,12 +156,23 @@ AbstractFontTest::AbstractFontTest() {
 
               &AbstractFontTest::glyphId,
               &AbstractFontTest::glyphIdNoFont,
+              &AbstractFontTest::glyphIdInvalidSize,
+              &AbstractFontTest::glyphIdOutOfRange,
+
+              &AbstractFontTest::glyphName,
+              &AbstractFontTest::glyphNameNotImplemented,
+              &AbstractFontTest::glyphNameNoFont,
+              &AbstractFontTest::glyphNameOutOfRange,
 
               &AbstractFontTest::glyphSizeAdvance,
               &AbstractFontTest::glyphSizeAdvanceNoFont,
               &AbstractFontTest::glyphSizeAdvanceOutOfRange,
 
               &AbstractFontTest::fillGlyphCache,
+              &AbstractFontTest::fillGlyphCacheOutOfRange,
+              &AbstractFontTest::fillGlyphCacheNotUnique,
+              &AbstractFontTest::fillGlyphCacheFromString,
+              &AbstractFontTest::fillGlyphCacheFailed,
               &AbstractFontTest::fillGlyphCacheNotSupported,
               &AbstractFontTest::fillGlyphCacheNotImplemented,
               &AbstractFontTest::fillGlyphCacheNoFont,
@@ -187,7 +209,7 @@ void AbstractFontTest::construct() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -211,7 +233,7 @@ void AbstractFontTest::openData() {
             return {size, 1.0f, 2.0f, 3.0f, 15};
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -241,7 +263,7 @@ void AbstractFontTest::openFileAsData() {
             return {size, 1.0f, 2.0f, 3.0f, 15};
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -266,17 +288,17 @@ void AbstractFontTest::openFileAsDataNotFound() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_VERIFY(!font.openFile("nonexistent.foo", 12.0f));
     /* There's an error message from Path::read() before */
-    CORRADE_COMPARE_AS(out.str(),
+    CORRADE_COMPARE_AS(out,
         "\nText::AbstractFont::openFile(): cannot open file nonexistent.foo\n",
         TestSuite::Compare::StringHasSuffix);
 }
@@ -290,16 +312,16 @@ void AbstractFontTest::openFileNotImplemented() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.openFile("file.foo", 34.0f);
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::openFile(): not implemented\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::openFile(): not implemented\n");
 }
 
 void AbstractFontTest::openDataNotSupported() {
@@ -311,16 +333,16 @@ void AbstractFontTest::openDataNotSupported() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.openData(nullptr, 34.0f);
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::openData(): feature not supported\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::openData(): feature not supported\n");
 }
 
 void AbstractFontTest::openDataNotImplemented() {
@@ -331,16 +353,16 @@ void AbstractFontTest::openDataNotImplemented() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.openData(nullptr, 34.0f);
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::openData(): feature advertised but not implemented\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::openData(): feature advertised but not implemented\n");
 }
 
 void AbstractFontTest::setFileCallback() {
@@ -352,7 +374,7 @@ void AbstractFontTest::setFileCallback() {
             *static_cast<int*>(userData) = 1337;
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -377,7 +399,7 @@ void AbstractFontTest::setFileCallbackTemplate() {
             called = true;
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -408,7 +430,7 @@ void AbstractFontTest::setFileCallbackTemplateNull() {
             called = !callback && !userData;
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -432,7 +454,7 @@ void AbstractFontTest::setFileCallbackTemplateConst() {
             called = true;
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -458,19 +480,19 @@ void AbstractFontTest::setFileCallbackFileOpened() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     font.setFileCallback([](const std::string&, InputFileCallbackPolicy, void*) {
         return Containers::Optional<Containers::ArrayView<const char>>{};
     });
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::setFileCallback(): can't be set while a font is opened\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::setFileCallback(): can't be set while a font is opened\n");
 }
 
 void AbstractFontTest::setFileCallbackNotImplemented() {
@@ -479,7 +501,7 @@ void AbstractFontTest::setFileCallbackNotImplemented() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -503,20 +525,20 @@ void AbstractFontTest::setFileCallbackNotSupported() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     int a;
     font.setFileCallback([](const std::string&, InputFileCallbackPolicy, void*) {
         return Containers::Optional<Containers::ArrayView<const char>>{};
     }, &a);
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::setFileCallback(): font plugin supports neither loading from data nor via callbacks, callbacks can't be used\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::setFileCallback(): font plugin supports neither loading from data nor via callbacks, callbacks can't be used\n");
 }
 
 void AbstractFontTest::setFileCallbackOpenFileDirectly() {
@@ -537,7 +559,7 @@ void AbstractFontTest::setFileCallbackOpenFileDirectly() {
             return {};
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -578,7 +600,7 @@ void AbstractFontTest::setFileCallbackOpenFileThroughBaseImplementation() {
             return {size, 1.0f, 2.0f, 3.0f, 15};
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -631,7 +653,7 @@ void AbstractFontTest::setFileCallbackOpenFileThroughBaseImplementationFailed() 
             return AbstractFont::doOpenFile(filename, size);
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -643,12 +665,12 @@ void AbstractFontTest::setFileCallbackOpenFileThroughBaseImplementationFailed() 
         return {};
     });
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_VERIFY(!font.openFile("file.dat", 42.0f));
     CORRADE_VERIFY(font.openFileCalled);
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::openFile(): cannot open file file.dat\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::openFile(): cannot open file file.dat\n");
 }
 
 void AbstractFontTest::setFileCallbackOpenFileAsData() {
@@ -667,7 +689,7 @@ void AbstractFontTest::setFileCallbackOpenFileAsData() {
             return {size, 1.0f, 2.0f, 3.0f, 15};
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -721,7 +743,7 @@ void AbstractFontTest::setFileCallbackOpenFileAsDataFailed() {
             return {};
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -733,12 +755,12 @@ void AbstractFontTest::setFileCallbackOpenFileAsDataFailed() {
         return Containers::Optional<Containers::ArrayView<const char>>{};
     });
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     CORRADE_VERIFY(!font.openFile("file.dat", 132.0f));
     CORRADE_VERIFY(!font.openFileCalled);
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::openFile(): cannot open file file.dat\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::openFile(): cannot open file file.dat\n");
 }
 
 void AbstractFontTest::properties() {
@@ -752,7 +774,7 @@ void AbstractFontTest::properties() {
             return {size, 1.0f, 2.0f, 3.0f, 15};
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -776,20 +798,20 @@ void AbstractFontTest::propertiesNoFont() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.size();
     font.ascent();
     font.descent();
     font.lineHeight();
     font.glyphCount();
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Text::AbstractFont::size(): no font opened\n"
         "Text::AbstractFont::ascent(): no font opened\n"
         "Text::AbstractFont::descent(): no font opened\n"
@@ -799,16 +821,41 @@ void AbstractFontTest::propertiesNoFont() {
 
 void AbstractFontTest::glyphId() {
     struct MyFont: AbstractFont {
-        FontFeatures doFeatures() const override { return {}; }
-        bool doIsOpened() const override { return true; }
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t a) override { return a*10; }
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 1280};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>& characters, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) override {
+            for(std::size_t i = 0; i != characters.size(); ++i)
+                glyphs[i] = characters[i]*10;
+        }
+
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+
+        private:
+            bool _opened = false;
     } font;
 
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
+
+    const char32_t characters[]{U'a', U'W', U'!'};
+    UnsignedInt glyphs[3];
+    font.glyphIdsInto(characters, glyphs);
+    CORRADE_COMPARE_AS(Containers::arrayView(glyphs), Containers::arrayView({
+        970u, 870u, 330u
+    }), TestSuite::Compare::Container);
+
+    /* Single-item convenience overload */
     CORRADE_COMPARE(font.glyphId(U'a'), 970);
 }
 
@@ -820,16 +867,208 @@ void AbstractFontTest::glyphIdNoFont() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
+    font.glyphIdsInto({}, {});
     font.glyphId('a');
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::glyphId(): no font opened\n");
+    CORRADE_COMPARE(out,
+        "Text::AbstractFont::glyphIdsInto(): no font opened\n"
+        /* Both delegate to the same function so the assert is the same */
+        "Text::AbstractFont::glyphIdsInto(): no font opened\n");
+}
+
+void AbstractFontTest::glyphIdInvalidSize() {
+    CORRADE_SKIP_IF_NO_ASSERT();
+
+    struct MyFont: AbstractFont {
+        FontFeatures doFeatures() const override { return {}; }
+        bool doIsOpened() const override { return true; }
+        void doClose() override {}
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
+        Vector2 doGlyphSize(UnsignedInt) override { return {}; }
+        Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
+        Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+    } font;
+
+    char32_t characters[3];
+    UnsignedInt glyphs[4];
+
+    Containers::String out;
+    Error redirectError{&out};
+    font.glyphIdsInto(characters, glyphs);
+    CORRADE_COMPARE(out, "Text::AbstractFont::glyphIdsInto(): expected the characters and glyphs views to have the same size but got 3 and 4\n");
+}
+
+void AbstractFontTest::glyphIdOutOfRange() {
+    CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
+
+    struct MyFont: AbstractFont {
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
+        void doClose() override {}
+
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 4};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) override {
+            for(std::size_t i = 0; i != glyphs.size(); ++i)
+                glyphs[i] = i;
+        }
+
+        Vector2 doGlyphSize(UnsignedInt) override { return {}; }
+        Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
+        Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+
+        private:
+            bool _opened = false;
+    } font;
+
+    const char32_t characters[6]{U'\x1234', U'\x5678', U'\xabcd',
+                                 U'\xef01', U'\x2345', U'\x6789'};
+    UnsignedInt glyphs[6];
+
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
+
+    Containers::String out;
+    Error redirectError{&out};
+    font.glyphIdsInto(characters, glyphs);
+    CORRADE_COMPARE(out, "Text::AbstractFont::glyphIdsInto(): implementation-returned index 4 for character U+2345 out of range for 4 glyphs\n");
+}
+
+void AbstractFontTest::glyphName() {
+    struct MyFont: AbstractFont {
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
+        void doClose() override {}
+
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 4};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
+        Containers::String doGlyphName(UnsignedInt glyph) override {
+            return glyph == 3 ? "WHATEVER" : "";
+        }
+        UnsignedInt doGlyphForName(Containers::StringView name) override {
+            return name == "whatever" ? 3 : 0;
+        }
+        Vector2 doGlyphSize(UnsignedInt) override { return {}; }
+        Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
+        Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+
+        private:
+            bool _opened = false;
+    } font;
+
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
+
+    CORRADE_COMPARE(font.glyphName(3), "WHATEVER");
+    CORRADE_COMPARE(font.glyphForName("whatever"), 3);
+}
+
+void AbstractFontTest::glyphNameNotImplemented() {
+    struct MyFont: AbstractFont {
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
+        void doClose() override {}
+
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 4};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
+        Vector2 doGlyphSize(UnsignedInt) override { return {}; }
+        Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
+        Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+
+        private:
+            bool _opened = false;
+    } font;
+
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
+
+    CORRADE_COMPARE(font.glyphName(3), "");
+    CORRADE_COMPARE(font.glyphForName("whatever"), 0);
+}
+
+void AbstractFontTest::glyphNameNoFont() {
+    CORRADE_SKIP_IF_NO_ASSERT();
+
+    struct MyFont: AbstractFont {
+        FontFeatures doFeatures() const override { return {}; }
+        bool doIsOpened() const override { return false; }
+        void doClose() override {}
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
+        Vector2 doGlyphSize(UnsignedInt) override { return {}; }
+        Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
+        Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+    } font;
+
+    Containers::String out;
+    Error redirectError{&out};
+    font.glyphName(0);
+    font.glyphForName("");
+    CORRADE_COMPARE(out,
+        "Text::AbstractFont::glyphName(): no font opened\n"
+        "Text::AbstractFont::glyphForName(): no font opened\n");
+}
+
+void AbstractFontTest::glyphNameOutOfRange() {
+    CORRADE_SKIP_IF_NO_ASSERT();
+
+    struct MyFont: AbstractFont {
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
+        void doClose() override {}
+
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 4};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
+        UnsignedInt doGlyphForName(Containers::StringView) override { return 4; }
+        Vector2 doGlyphSize(UnsignedInt) override { return {}; }
+        Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
+        Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+
+        private:
+            bool _opened = false;
+    } font;
+
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
+
+    Containers::String out;
+    Error redirectError{&out};
+    font.glyphName(4);
+    font.glyphForName("");
+    CORRADE_COMPARE(out,
+        "Text::AbstractFont::glyphName(): index 4 out of range for 4 glyphs\n"
+        "Text::AbstractFont::glyphForName(): implementation-returned index 4 out of range for 4 glyphs\n");
 }
 
 void AbstractFontTest::glyphSizeAdvance() {
@@ -842,7 +1081,7 @@ void AbstractFontTest::glyphSizeAdvance() {
             _opened = true;
             return {0.0f, 0.0f, 0.0f, 0.0f, 98};
         }
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt a) override { return {a*2.0f, a/3.0f}; }
         Vector2 doGlyphAdvance(UnsignedInt a) override { return {a*10.0f, -Float(a)/10.0f}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -864,17 +1103,17 @@ void AbstractFontTest::glyphSizeAdvanceNoFont() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.glyphSize(33);
     font.glyphAdvance(97);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Text::AbstractFont::glyphSize(): no font opened\n"
         "Text::AbstractFont::glyphAdvance(): no font opened\n");
 }
@@ -891,7 +1130,7 @@ void AbstractFontTest::glyphSizeAdvanceOutOfRange() {
             _opened = true;
             return {0.0f, 0.0f, 0.0f, 0.0f, 3};
         }
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -902,11 +1141,11 @@ void AbstractFontTest::glyphSizeAdvanceOutOfRange() {
     /* Have to explicitly open in order to make glyphCount() non-zero */
     CORRADE_VERIFY(font.openData(nullptr, 0.0f));
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.glyphSize(3);
     font.glyphAdvance(3);
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "Text::AbstractFont::glyphSize(): index 3 out of range for 3 glyphs\n"
         "Text::AbstractFont::glyphAdvance(): index 3 out of range for 3 glyphs\n");
 }
@@ -920,33 +1159,234 @@ struct DummyGlyphCache: AbstractGlyphCache {
 
 void AbstractFontTest::fillGlyphCache() {
     struct MyFont: AbstractFont {
-        FontFeatures doFeatures() const override { return {}; }
-        bool doIsOpened() const override { return true; }
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 17};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {
+            CORRADE_FAIL("This should not be called.");
+        }
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
 
-        void doFillGlyphCache(AbstractGlyphCache& cache, Containers::ArrayView<const char32_t> characters) override {
+        bool doFillGlyphCache(AbstractGlyphCache& cache, const Containers::StridedArrayView1D<const UnsignedInt>& glyphs) override {
             CORRADE_COMPARE(cache.size(), (Vector3i{100, 100, 1}));
-            CORRADE_COMPARE_AS(characters, Containers::arrayView<char32_t>({
-                'h', 'e', 'l', 'o'
+            /* The glyph list isn't sorted in this case, nothing is implicitly
+               added to it either */
+            CORRADE_COMPARE_AS(glyphs, Containers::arrayView({
+                16u, 5u, 11u, 2u
             }), TestSuite::Compare::Container);
-            called = true;
+            ++called;
+            return true;
         }
 
-        bool called = false;
+        Int called = 0;
+
+        private:
+            bool _opened = false;
     } font;
 
-    /* Capture correct function name */
-    CORRADE_VERIFY(true);
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
 
     DummyGlyphCache cache{PixelFormat::R8Unorm, {100, 100}};
 
-    font.fillGlyphCache(cache, "helo");
-    CORRADE_VERIFY(font.called);
+    CORRADE_VERIFY(font.fillGlyphCache(cache, Containers::arrayView({16u, 5u, 11u, 2u})));
+    CORRADE_COMPARE(font.called, 1);
+
+    /* Also the initializer list overload */
+    CORRADE_VERIFY(font.fillGlyphCache(cache, {16, 5, 11, 2}));
+    CORRADE_COMPARE(font.called, 2);
+}
+
+void AbstractFontTest::fillGlyphCacheOutOfRange() {
+    CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
+
+    struct MyFont: AbstractFont {
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
+        void doClose() override {}
+
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 16};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
+        Vector2 doGlyphSize(UnsignedInt) override { return {}; }
+        Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
+        Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+
+        private:
+            bool _opened = false;
+    } font;
+
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
+
+    Containers::String out;
+    Error redirectError{&out};
+    DummyGlyphCache cache{PixelFormat::R8Unorm, {100, 100}};
+    font.fillGlyphCache(cache, Containers::arrayView({0u, 15u, 3u, 16u, 80u}));
+    font.fillGlyphCache(cache, {0, 15, 3, 16, 80});
+    CORRADE_COMPARE(out,
+        "Text::AbstractFont::fillGlyphCache(): index 16 out of range for 16 glyphs\n"
+        "Text::AbstractFont::fillGlyphCache(): index 16 out of range for 16 glyphs\n");
+}
+
+void AbstractFontTest::fillGlyphCacheNotUnique() {
+    CORRADE_SKIP_IF_NO_DEBUG_ASSERT();
+
+    struct MyFont: AbstractFont {
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
+        void doClose() override {}
+
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 16};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
+        Vector2 doGlyphSize(UnsignedInt) override { return {}; }
+        Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
+        Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+
+        private:
+            bool _opened = false;
+    } font;
+
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
+
+    Containers::String out;
+    Error redirectError{&out};
+    DummyGlyphCache cache{PixelFormat::R8Unorm, {100, 100}};
+    font.fillGlyphCache(cache, Containers::arrayView({0u, 15u, 3u, 15u, 80u}));
+    CORRADE_COMPARE(out,
+        "Text::AbstractFont::fillGlyphCache(): duplicate glyph 15\n");
+}
+
+void AbstractFontTest::fillGlyphCacheFromString() {
+    struct MyFont: AbstractFont {
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
+        void doClose() override {}
+
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 17};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>& characters, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) override {
+            CORRADE_COMPARE_AS(characters, Containers::arrayView<char32_t>({
+                'h', 'e', 'l', 'l', 'o'
+            }), TestSuite::Compare::Container);
+            glyphs[0] = 16;
+            glyphs[1] = 2;
+            glyphs[2] = 11;
+            glyphs[3] = 11;
+            glyphs[4] = 5;
+            ++glyphIdsIntoCalled;
+        }
+        Vector2 doGlyphSize(UnsignedInt) override { return {}; }
+        Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
+        Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+
+        bool doFillGlyphCache(AbstractGlyphCache& cache, const Containers::StridedArrayView1D<const UnsignedInt>& glyphs) override {
+            CORRADE_COMPARE(cache.size(), (Vector3i{100, 100, 1}));
+            /* The array should be sorted by ID, without duplicates and with
+               the first ID being 0 if the cache doesn't have this font yet */
+            if(!cache.fontCount())
+                CORRADE_COMPARE_AS(glyphs, Containers::arrayView({
+                    0u, 2u, 5u, 11u, 16u
+                }), TestSuite::Compare::Container);
+            else
+                CORRADE_COMPARE_AS(glyphs, Containers::arrayView({
+                    2u, 5u, 11u, 16u
+                }), TestSuite::Compare::Container);
+            ++fillGlyphCacheCalled;
+            return true;
+        }
+
+        Int glyphIdsIntoCalled = 0,
+            fillGlyphCacheCalled = 0;
+
+        private:
+            bool _opened = false;
+    } font;
+
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
+
+    DummyGlyphCache cache{PixelFormat::R8Unorm, {100, 100}};
+
+    /* First time it should include the zero glyph as well */
+    CORRADE_VERIFY(font.fillGlyphCache(cache, "hello"));
+    CORRADE_COMPARE(font.glyphIdsIntoCalled, 1);
+    CORRADE_COMPARE(font.fillGlyphCacheCalled, 1);
+
+    /* Second time not anymore */
+    cache.addFont(10, &font);
+    CORRADE_VERIFY(font.fillGlyphCache(cache, "hello"));
+    CORRADE_COMPARE(font.glyphIdsIntoCalled, 2);
+    CORRADE_COMPARE(font.fillGlyphCacheCalled, 2);
+}
+
+void AbstractFontTest::fillGlyphCacheFailed() {
+    struct MyFont: AbstractFont {
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
+        void doClose() override {}
+
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 1};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) override {
+            /* Set all to 0 to avoid an assert that the IDs are out of range */
+            for(UnsignedInt& i: glyphs)
+                i = 0;
+        }
+        Vector2 doGlyphSize(UnsignedInt) override { return {}; }
+        Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
+        Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+
+        bool doFillGlyphCache(AbstractGlyphCache&, const Containers::StridedArrayView1D<const UnsignedInt>&) override {
+            return false;
+        }
+
+        bool called = false;
+
+        private:
+            bool _opened = false;
+    } font;
+
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
+
+    DummyGlyphCache cache{PixelFormat::R8Unorm, {100, 100}};
+
+    CORRADE_VERIFY(!font.fillGlyphCache(cache, Containers::ArrayView<const UnsignedInt>{}));
+    CORRADE_VERIFY(!font.fillGlyphCache(cache, {}));
+    CORRADE_VERIFY(!font.fillGlyphCache(cache, ""));
 }
 
 void AbstractFontTest::fillGlyphCacheNotSupported() {
@@ -957,38 +1397,65 @@ void AbstractFontTest::fillGlyphCacheNotSupported() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>& glyphs) override {
+            /* Set all to 0 to avoid an assert that the IDs are out of range */
+            for(UnsignedInt& i: glyphs)
+                i = 0;
+        }
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DummyGlyphCache cache{PixelFormat::R8Unorm, {100, 100}};
+    font.fillGlyphCache(cache, Containers::arrayView({0u, 15u}));
+    font.fillGlyphCache(cache, {0u, 15u});
     font.fillGlyphCache(cache, "hello");
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::fillGlyphCache(): feature not supported\n");
+    CORRADE_COMPARE(out,
+        "Text::AbstractFont::fillGlyphCache(): feature not supported\n"
+        "Text::AbstractFont::fillGlyphCache(): feature not supported\n"
+        "Text::AbstractFont::fillGlyphCache(): feature not supported\n");
 }
 
 void AbstractFontTest::fillGlyphCacheNotImplemented() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
     struct MyFont: AbstractFont {
-        FontFeatures doFeatures() const override { return {}; }
-        bool doIsOpened() const override { return true; }
+        FontFeatures doFeatures() const override {
+            return FontFeature::OpenData;
+        }
+        bool doIsOpened() const override { return _opened; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        Properties doOpenData(Containers::ArrayView<const char>, Float) override {
+            _opened = true;
+            return {0.0f, 0.0f, 0.0f, 0.0f, 1};
+        }
+
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
+
+        private:
+            bool _opened = false;
     } font;
 
-    std::ostringstream out;
+    /* Have to explicitly open in order to make glyphCount() non-zero */
+    CORRADE_VERIFY(font.openData(nullptr, 0.0f));
+
+    Containers::String out;
     Error redirectError{&out};
     DummyGlyphCache cache{PixelFormat::R8Unorm, {100, 100}};
+    font.fillGlyphCache(cache, Containers::arrayView({0u}));
+    font.fillGlyphCache(cache, {0});
     font.fillGlyphCache(cache, "hello");
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::fillGlyphCache(): feature advertised but not implemented\n");
+    CORRADE_COMPARE(out,
+        "Text::AbstractFont::fillGlyphCache(): feature advertised but not implemented\n"
+        "Text::AbstractFont::fillGlyphCache(): feature advertised but not implemented\n"
+        "Text::AbstractFont::fillGlyphCache(): feature advertised but not implemented\n");
 }
 
 void AbstractFontTest::fillGlyphCacheNoFont() {
@@ -999,17 +1466,22 @@ void AbstractFontTest::fillGlyphCacheNoFont() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DummyGlyphCache cache{PixelFormat::R8Unorm, {100, 100}};
+    font.fillGlyphCache(cache, Containers::arrayView({0u, 15u}));
+    font.fillGlyphCache(cache, {0, 15});
     font.fillGlyphCache(cache, "hello");
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::fillGlyphCache(): no font opened\n");
+    CORRADE_COMPARE(out,
+        "Text::AbstractFont::fillGlyphCache(): no font opened\n"
+        "Text::AbstractFont::fillGlyphCache(): no font opened\n"
+        "Text::AbstractFont::fillGlyphCache(): no font opened\n");
 }
 
 void AbstractFontTest::fillGlyphCacheInvalidUtf8() {
@@ -1020,17 +1492,17 @@ void AbstractFontTest::fillGlyphCacheInvalidUtf8() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DummyGlyphCache cache{PixelFormat::R8Unorm, {100, 100}};
     font.fillGlyphCache(cache, "he\xffo");
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::fillGlyphCache(): not a valid UTF-8 string: he\xffo\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::fillGlyphCache(): not a valid UTF-8 string: he\xffo\n");
 }
 
 void AbstractFontTest::createGlyphCache() {
@@ -1039,7 +1511,7 @@ void AbstractFontTest::createGlyphCache() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -1063,16 +1535,16 @@ void AbstractFontTest::createGlyphCacheNotSupported() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.createGlyphCache();
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::createGlyphCache(): feature not supported\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::createGlyphCache(): feature not supported\n");
 }
 
 void AbstractFontTest::createGlyphCacheNotImplemented() {
@@ -1083,16 +1555,16 @@ void AbstractFontTest::createGlyphCacheNotImplemented() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.createGlyphCache();
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::createGlyphCache(): feature advertised but not implemented\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::createGlyphCache(): feature advertised but not implemented\n");
 }
 
 void AbstractFontTest::createGlyphCacheNoFont() {
@@ -1103,16 +1575,16 @@ void AbstractFontTest::createGlyphCacheNoFont() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.createGlyphCache();
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::createGlyphCache(): no font opened\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::createGlyphCache(): no font opened\n");
 }
 
 void AbstractFontTest::createShaper() {
@@ -1125,6 +1597,7 @@ void AbstractFontTest::createShaper() {
 
         void doGlyphIdsInto(const Containers::StridedArrayView1D<UnsignedInt>&) const override {}
         void doGlyphOffsetsAdvancesInto(const Containers::StridedArrayView1D<Vector2>&, const Containers::StridedArrayView1D<Vector2>&) const override {}
+        void doGlyphClustersInto(const Containers::StridedArrayView1D<UnsignedInt>&) const override {}
     };
 
     struct MyFont: AbstractFont {
@@ -1132,7 +1605,7 @@ void AbstractFontTest::createShaper() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return Containers::pointer<Shaper>(*this); }
@@ -1150,16 +1623,16 @@ void AbstractFontTest::createShaperNoFont() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.createShaper();
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::createShaper(): no font opened\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::createShaper(): no font opened\n");
 }
 
 void AbstractFontTest::createShaperNullptr() {
@@ -1170,16 +1643,16 @@ void AbstractFontTest::createShaperNullptr() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return nullptr; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     font.createShaper();
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::createShaper(): implementation returned nullptr\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::createShaper(): implementation returned nullptr\n");
 }
 
 #ifdef MAGNUM_BUILD_DEPRECATED
@@ -1202,6 +1675,10 @@ void AbstractFontTest::layout() {
                            {10.0f, 0.0f},
                            {20.0f, 0.0f}}, advances);
         }
+        void doGlyphClustersInto(const Containers::StridedArrayView1D<UnsignedInt>&) const override {
+            /* Nothing in the old AbstractLayouter uses this */
+            CORRADE_FAIL("This shouldn't be called.");
+        }
     };
 
     struct MyFont: AbstractFont {
@@ -1214,7 +1691,7 @@ void AbstractFontTest::layout() {
             return {0.5f, 0.0f, 0.0f, 0.0f, 666};
         }
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override {
@@ -1228,7 +1705,8 @@ void AbstractFontTest::layout() {
     font.openFile({}, {});
     CORRADE_COMPARE(font.size(), 0.5f);
 
-    DummyGlyphCache cache{PixelFormat::R8Unorm, {10, 20}};
+    /* Default padding is 1 to avoid artifacts, set that to 0 to simplify */
+    DummyGlyphCache cache{PixelFormat::R8Unorm, {10, 20}, {}};
 
     UnsignedInt fontId = cache.addFont(15, &font);
 
@@ -1293,7 +1771,7 @@ void AbstractFontTest::layoutArrayGlyphCache() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -1301,12 +1779,12 @@ void AbstractFontTest::layoutArrayGlyphCache() {
 
     DummyGlyphCache cache{PixelFormat::R8Unorm, {1, 2, 3}};
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_IGNORE_DEPRECATED_PUSH
     font.layout(cache, 0.25f, "hello");
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::layout(): array glyph caches are not supported\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::layout(): array glyph caches are not supported\n");
 }
 
 void AbstractFontTest::layoutGlyphCacheFontNotFound() {
@@ -1315,7 +1793,7 @@ void AbstractFontTest::layoutGlyphCacheFontNotFound() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
@@ -1326,13 +1804,13 @@ void AbstractFontTest::layoutGlyphCacheFontNotFound() {
     cache.addFont(3);
     cache.addFont(17);
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_IGNORE_DEPRECATED_PUSH
     Containers::Pointer<AbstractLayouter> layouter = font.layout(cache, 0.25f, "hello");
     CORRADE_IGNORE_DEPRECATED_POP
     CORRADE_VERIFY(!layouter);
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::layout(): font not found among 2 fonts in passed glyph cache\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::layout(): font not found among 2 fonts in passed glyph cache\n");
 }
 
 void AbstractFontTest::layoutGlyphOutOfRange() {
@@ -1351,6 +1829,7 @@ void AbstractFontTest::layoutGlyphOutOfRange() {
             for(UnsignedInt& i: ids) i = 0;
         }
         void doGlyphOffsetsAdvancesInto(const Containers::StridedArrayView1D<Vector2>&, const Containers::StridedArrayView1D<Vector2>&) const override {}
+        void doGlyphClustersInto(const Containers::StridedArrayView1D<UnsignedInt>&) const override {}
     };
 
     struct MyFont: AbstractFont {
@@ -1358,7 +1837,7 @@ void AbstractFontTest::layoutGlyphOutOfRange() {
         bool doIsOpened() const override { return true; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override {
@@ -1381,12 +1860,12 @@ void AbstractFontTest::layoutGlyphOutOfRange() {
     Range2D rectangle;
     Vector2 cursorPosition;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     CORRADE_IGNORE_DEPRECATED_PUSH /* MSVC warns here too */
     layouter->renderGlyph(3, cursorPosition, rectangle);
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Text::AbstractLayouter::renderGlyph(): index 3 out of range for 3 glyphs\n");
+    CORRADE_COMPARE(out, "Text::AbstractLayouter::renderGlyph(): index 3 out of range for 3 glyphs\n");
 }
 
 void AbstractFontTest::layoutNoFont() {
@@ -1397,48 +1876,48 @@ void AbstractFontTest::layoutNoFont() {
         bool doIsOpened() const override { return false; }
         void doClose() override {}
 
-        UnsignedInt doGlyphId(char32_t) override { return {}; }
+        void doGlyphIdsInto(const Containers::StridedArrayView1D<const char32_t>&, const Containers::StridedArrayView1D<UnsignedInt>&) override {}
         Vector2 doGlyphSize(UnsignedInt) override { return {}; }
         Vector2 doGlyphAdvance(UnsignedInt) override { return {}; }
         Containers::Pointer<AbstractShaper> doCreateShaper() override { return {}; }
     } font;
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     DummyGlyphCache cache{PixelFormat::R8Unorm, {100, 200}};
     CORRADE_IGNORE_DEPRECATED_PUSH
     font.layout(cache, 0.25f, "hello");
     CORRADE_IGNORE_DEPRECATED_POP
-    CORRADE_COMPARE(out.str(), "Text::AbstractFont::layout(): no font opened\n");
+    CORRADE_COMPARE(out, "Text::AbstractFont::layout(): no font opened\n");
 }
 #endif
 
 void AbstractFontTest::debugFeature() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << FontFeature::OpenData << FontFeature(0xf0);
-    CORRADE_COMPARE(out.str(), "Text::FontFeature::OpenData Text::FontFeature(0xf0)\n");
+    CORRADE_COMPARE(out, "Text::FontFeature::OpenData Text::FontFeature(0xf0)\n");
 }
 
 void AbstractFontTest::debugFeaturePacked() {
-    std::ostringstream out;
+    Containers::String out;
     /* Last is not packed, ones before should not make any flags persistent */
     Debug{&out} << Debug::packed << FontFeature::OpenData << Debug::packed << FontFeature(0xf0) << FontFeature::FileCallback;
-    CORRADE_COMPARE(out.str(), "OpenData 0xf0 Text::FontFeature::FileCallback\n");
+    CORRADE_COMPARE(out, "OpenData 0xf0 Text::FontFeature::FileCallback\n");
 }
 
 void AbstractFontTest::debugFeatures() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << (FontFeature::OpenData|FontFeature::PreparedGlyphCache) << FontFeatures{};
-    CORRADE_COMPARE(out.str(), "Text::FontFeature::OpenData|Text::FontFeature::PreparedGlyphCache Text::FontFeatures{}\n");
+    CORRADE_COMPARE(out, "Text::FontFeature::OpenData|Text::FontFeature::PreparedGlyphCache Text::FontFeatures{}\n");
 }
 
 void AbstractFontTest::debugFeaturesPacked() {
-    std::ostringstream out;
+    Containers::String out;
     /* Last is not packed, ones before should not make any flags persistent */
     Debug{&out} << Debug::packed << (FontFeature::OpenData|FontFeature::PreparedGlyphCache) << Debug::packed << FontFeatures{} << FontFeature::FileCallback;
-    CORRADE_COMPARE(out.str(), "OpenData|PreparedGlyphCache {} Text::FontFeature::FileCallback\n");
+    CORRADE_COMPARE(out, "OpenData|PreparedGlyphCache {} Text::FontFeature::FileCallback\n");
 }
 
 }}}}

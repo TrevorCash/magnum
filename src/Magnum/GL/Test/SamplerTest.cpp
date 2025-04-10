@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,9 +24,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Sampler.h"
 #include "Magnum/GL/Sampler.h"
@@ -87,11 +87,11 @@ void SamplerTest::mapFilter() {
 void SamplerTest::mapFilterInvalid() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     samplerFilter(Magnum::SamplerFilter(0x123));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::samplerFilter(): invalid filter SamplerFilter(0x123)\n");
 }
 
@@ -104,11 +104,11 @@ void SamplerTest::mapMipmap() {
 void SamplerTest::mapMipmapInvalid() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     samplerMipmap(Magnum::SamplerMipmap(0x123));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::samplerMipmap(): invalid mode SamplerMipmap(0x123)\n");
 }
 
@@ -140,12 +140,12 @@ void SamplerTest::mapWrappingVector() {
 void SamplerTest::mapWrappingInvalid() {
     CORRADE_SKIP_IF_NO_ASSERT();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
 
     hasSamplerWrapping(Magnum::SamplerWrapping(0x123));
     samplerWrapping(Magnum::SamplerWrapping(0x123));
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::hasSamplerWrapping(): invalid wrapping SamplerWrapping(0x123)\n"
         "GL::samplerWrapping(): invalid wrapping SamplerWrapping(0x123)\n");
 }
@@ -156,59 +156,59 @@ void SamplerTest::mapWrappingUnsupported() {
     #else
     CORRADE_VERIFY(!hasSamplerWrapping(Magnum::SamplerWrapping::MirrorClampToEdge));
 
-    std::ostringstream out;
+    Containers::String out;
     {
         Error redirectError{&out};
         samplerWrapping(Magnum::SamplerWrapping::MirrorClampToEdge);
     }
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "GL::samplerWrapping(): wrapping SamplerWrapping::MirrorClampToEdge is not supported on this target\n");
     #endif
 }
 
 void SamplerTest::debugFilter() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << SamplerFilter::Linear << SamplerFilter(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::SamplerFilter::Linear GL::SamplerFilter(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::SamplerFilter::Linear GL::SamplerFilter(0xdead)\n");
 }
 
 void SamplerTest::debugMipmap() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << SamplerMipmap::Base << SamplerMipmap(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::SamplerMipmap::Base GL::SamplerMipmap(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::SamplerMipmap::Base GL::SamplerMipmap(0xdead)\n");
 }
 
 void SamplerTest::debugWrapping() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << SamplerWrapping::ClampToEdge << SamplerWrapping(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::SamplerWrapping::ClampToEdge GL::SamplerWrapping(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::SamplerWrapping::ClampToEdge GL::SamplerWrapping(0xdead)\n");
 }
 
 #if !(defined(MAGNUM_TARGET_WEBGL) && defined(MAGNUM_TARGET_GLES2))
 void SamplerTest::debugCompareMode() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << SamplerCompareMode::CompareRefToTexture << SamplerCompareMode(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::SamplerCompareMode::CompareRefToTexture GL::SamplerCompareMode(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::SamplerCompareMode::CompareRefToTexture GL::SamplerCompareMode(0xdead)\n");
 }
 
 void SamplerTest::debugCompareFunction() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << SamplerCompareFunction::GreaterOrEqual << SamplerCompareFunction(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::SamplerCompareFunction::GreaterOrEqual GL::SamplerCompareFunction(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::SamplerCompareFunction::GreaterOrEqual GL::SamplerCompareFunction(0xdead)\n");
 }
 #endif
 
 #ifndef MAGNUM_TARGET_GLES
 void SamplerTest::debugDepthStencilMode() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug(&out) << SamplerDepthStencilMode::StencilIndex << SamplerDepthStencilMode(0xdead);
-    CORRADE_COMPARE(out.str(), "GL::SamplerDepthStencilMode::StencilIndex GL::SamplerDepthStencilMode(0xdead)\n");
+    CORRADE_COMPARE(out, "GL::SamplerDepthStencilMode::StencilIndex GL::SamplerDepthStencilMode(0xdead)\n");
 }
 #endif
 

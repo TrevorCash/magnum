@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -56,7 +57,7 @@ corresponding image size and pixel format properties. Because this is a
 GL-centric class, it's common to specify the format using @ref GL::PixelFormat
 and @link GL::PixelType @endlink:
 
-@snippet MagnumGL.cpp BufferImage-usage
+@snippet GL.cpp BufferImage-usage
 
 It's also possible to pass the generic @ref Magnum::PixelFormat to it, however
 the @ref format() and @ref type() queries will always return the GL-specific
@@ -71,13 +72,13 @@ it, for example to use buffer storage and other advanced functionality. The
 image will take an ownership of the buffer, you can use @ref Buffer::wrap() to
 make a non-owning copy.
 
-@snippet MagnumGL.cpp BufferImage-usage-wrap
+@snippet GL.cpp BufferImage-usage-wrap
 
 It's also possible to create just an image placeholder, storing only the image
 properties without data or size. That is useful for example to specify desired
 format of image queries in graphics APIs:
 
-@snippet MagnumGL.cpp BufferImage-usage-query
+@snippet GL.cpp BufferImage-usage-query
 
 Similarly to @ref ImageView, this class supports extra storage parameters.
 See @ref ImageView-usage for more information.
@@ -285,7 +286,7 @@ template<UnsignedInt dimensions> class BufferImage {
          *
          * @see @ref Magnum::pixelFormatSize(), @ref GL::pixelFormatSize()
          */
-        UnsignedInt pixelSize() const;
+        UnsignedInt pixelSize() const { return _pixelSize; }
 
         /** @brief Image size in pixels */
         VectorTypeFor<Dimensions, Int> size() const { return _size; }
@@ -373,6 +374,7 @@ template<UnsignedInt dimensions> class BufferImage {
         PixelType _type;
         Math::Vector<Dimensions, Int> _size;
         Buffer _buffer;
+        UnsignedInt _pixelSize;
         std::size_t _dataSize;
 };
 
@@ -404,7 +406,7 @@ corresponding image size and compression format properties. Because this is a
 GL-centric class, it's common to specify the format using
 @link GL::CompressedPixelFormat @endlink:
 
-@snippet MagnumGL.cpp CompressedBufferImage-usage
+@snippet GL.cpp CompressedBufferImage-usage
 
 It's also possible to pass the generic @ref Magnum::CompressedPixelFormat to
 it, however the @ref format() query will always return the GL-specific value.
@@ -414,13 +416,13 @@ it, for example to use buffer storage and other advanced functionality. The
 image will take an ownership of the buffer, you can use @ref Buffer::wrap() to
 make a non-owning copy.
 
-@snippet MagnumGL.cpp CompressedBufferImage-usage-wrap
+@snippet GL.cpp CompressedBufferImage-usage-wrap
 
 It's also possible to create just an image placeholder, storing only the image
 properties without data or size. That is useful for example to specify desired
 format of image queries in graphics APIs:
 
-@snippet MagnumGL.cpp CompressedBufferImage-usage-query
+@snippet GL.cpp CompressedBufferImage-usage-query
 
 Similarly to @ref CompressedImageView, this class supports extra storage
 parameters. See @ref CompressedImageView-usage for more information.
@@ -453,9 +455,9 @@ template<UnsignedInt dimensions> class CompressedBufferImage {
          * @param usage             Image buffer usage
          *
          * @requires_gl42 Extension @gl_extension{ARB,compressed_texture_pixel_storage}
-         *      for non-default compressed pixel storage
-         * @requires_gl Compressed pixel storage is hardcoded in OpenGL ES and
-         *      WebGL.
+         *      for non-default @ref CompressedPixelStorage
+         * @requires_gl Non-default @ref CompressedPixelStorage is not
+         *      available in OpenGL ES and WebGL.
          */
         explicit CompressedBufferImage(CompressedPixelStorage storage, CompressedPixelFormat format, const VectorTypeFor<dimensions, Int>& size, Containers::ArrayView<const void> data, BufferUsage usage);
 
@@ -508,9 +510,9 @@ template<UnsignedInt dimensions> class CompressedBufferImage {
          * If @p dataSize is @cpp 0 @ce, the buffer is unconditionally
          * reallocated on the first call to @ref setData().
          * @requires_gl42 Extension @gl_extension{ARB,compressed_texture_pixel_storage}
-         *      for non-default compressed pixel storage
-         * @requires_gl Compressed pixel storage is hardcoded in OpenGL ES and
-         *      WebGL.
+         *      for non-default @ref CompressedPixelStorage
+         * @requires_gl Non-default @ref CompressedPixelStorage is not
+         *      available in OpenGL ES and WebGL.
          */
         explicit CompressedBufferImage(CompressedPixelStorage storage, CompressedPixelFormat format, const VectorTypeFor<dimensions, Int>& size, Buffer&& buffer, std::size_t dataSize) noexcept;
 
@@ -559,9 +561,9 @@ template<UnsignedInt dimensions> class CompressedBufferImage {
          * Format is undefined, size is zero and buffer is empty, call
          * @ref setData() to fill the image with data.
          * @requires_gl42 Extension @gl_extension{ARB,compressed_texture_pixel_storage}
-         *      for non-default compressed pixel storage
-         * @requires_gl Compressed pixel storage is hardcoded in OpenGL ES and
-         *      WebGL.
+         *      for non-default @ref CompressedPixelStorage
+         * @requires_gl Non-default @ref CompressedPixelStorage is not
+         *      available in OpenGL ES and WebGL.
          */
         /*implicit*/ CompressedBufferImage(CompressedPixelStorage storage);
 
@@ -615,8 +617,9 @@ template<UnsignedInt dimensions> class CompressedBufferImage {
          * See @ref CompressedPixelStorage::dataProperties() for more
          * information.
          * @requires_gl42 Extension @gl_extension{ARB,compressed_texture_pixel_storage}
-         * @requires_gl Compressed pixel storage is hardcoded in OpenGL ES and
-         *      WebGL.
+         *      for non-default @ref CompressedPixelStorage
+         * @requires_gl Non-default @ref CompressedPixelStorage is not
+         *      available in OpenGL ES and WebGL.
          */
         std::pair<VectorTypeFor<dimensions, std::size_t>, VectorTypeFor<dimensions, std::size_t>> dataProperties() const;
 
@@ -638,11 +641,14 @@ template<UnsignedInt dimensions> class CompressedBufferImage {
          * @param data              Image data
          * @param usage             Image buffer usage
          *
-         * Updates the image buffer with given data.
+         * Updates the image buffer with given data. Passing @cpp nullptr @ce
+         * zero-sized @p data will not reallocate current storage, but expects
+         * that current data size is large enough for the new parameters.
          * @see @ref Buffer::setData()
          * @requires_gl42 Extension @gl_extension{ARB,compressed_texture_pixel_storage}
-         * @requires_gl Compressed pixel storage is hardcoded in OpenGL ES and
-         *      WebGL.
+         *      for non-default @ref CompressedPixelStorage
+         * @requires_gl Non-default @ref CompressedPixelStorage is not
+         *      available in OpenGL ES and WebGL.
          */
         void setData(CompressedPixelStorage storage, CompressedPixelFormat format, const VectorTypeFor<dimensions, Int>& size, Containers::ArrayView<const void> data, BufferUsage usage);
 

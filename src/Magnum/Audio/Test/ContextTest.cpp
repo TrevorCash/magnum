@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2015 Jonathan Hale <squareys@googlemail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -25,11 +26,9 @@
 */
 
 #include <set>
-#include <sstream>
 #include <Corrade/Containers/ArrayView.h>
-#include <Corrade/Containers/StringView.h>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Audio/Context.h"
 
@@ -72,14 +71,14 @@ void ContextTest::constructCopyMove() {
 void ContextTest::extensions() {
     const char* used[Implementation::ExtensionCount]{};
 
-    std::set<std::string> unique;
+    std::set<Containers::StringView> unique;
 
     /* Check that all extension indices are unique, are listed just once etc. */
-    std::string previous;
+    Containers::StringView previous;
     for(const Extension& e: Extension::extensions()) {
         CORRADE_ITERATION(e.string());
 
-        CORRADE_FAIL_IF(!previous.empty() && previous >= e.string(),
+        CORRADE_FAIL_IF(previous && previous >= e.string(),
             "Extension not sorted after" << previous);
 
         CORRADE_FAIL_IF(e.index() >= Implementation::ExtensionCount,
@@ -102,9 +101,9 @@ void ContextTest::extensions() {
 }
 
 void ContextTest::debugHrtfStatus() {
-    std::ostringstream out;
+    Containers::String out;
     Debug(&out) << Context::HrtfStatus::Denied << Context::HrtfStatus(0xdead);
-    CORRADE_COMPARE(out.str(), "Audio::Context::HrtfStatus::Denied Audio::Context::HrtfStatus(0xdead)\n");
+    CORRADE_COMPARE(out, "Audio::Context::HrtfStatus::Denied Audio::Context::HrtfStatus(0xdead)\n");
 }
 
 }}}}

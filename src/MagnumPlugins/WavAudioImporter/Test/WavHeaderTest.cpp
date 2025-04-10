@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2016 Alice Margatroid <loveoverwhelming@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,9 +25,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/DebugStl.h>
 
 #include "Magnum/Magnum.h"
 #include "MagnumPlugins/WavAudioImporter/WavHeader.h"
@@ -44,10 +44,10 @@ WavHeaderTest::WavHeaderTest() {
 }
 
 void WavHeaderTest::debugAudioFormat() {
-    std::ostringstream out;
+    Containers::String out;
 
     Debug{&out} << Implementation::WavAudioFormat::IeeeFloat << Implementation::WavAudioFormat(0xdead);
-    CORRADE_COMPARE(out.str(), "Audio::WavAudioFormat::IeeeFloat Audio::WavAudioFormat(0xdead)\n");
+    CORRADE_COMPARE(out, "Audio::WavAudioFormat::IeeeFloat Audio::WavAudioFormat(0xdead)\n");
 }
 
 }}}}

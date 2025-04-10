@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -44,7 +45,7 @@ bound somewhere. Method chaining encourages you to configure whole object in
 one run, effectively reducing the number of needed bindings. Consider the
 following example:
 
-@snippet MagnumGL.cpp method-chaining-texture
+@snippet GL.cpp method-chaining-texture
 
 This code is written that similar configuration steps are grouped together,
 which might be good when somebody needs to change something for all three
@@ -53,7 +54,7 @@ names and after each configuration step the texture must be rebound to another.
 With method chaining used the code looks much lighter and each object is
 configured in one run, reducing count of bind calls from 9 to 3.
 
-@snippet MagnumGL.cpp method-chaining-texture-chained
+@snippet GL.cpp method-chaining-texture-chained
 
 Method chaining is not used on non-configuring functions, such as
 @ref GL::Framebuffer::clear() or @ref GL::AbstractShaderProgram::draw(), as

@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -29,6 +30,7 @@
  * @brief Class @ref Magnum::GL::Mesh, enum @ref Magnum::GL::MeshPrimitive, @ref Magnum::GL::MeshIndexType, function @ref Magnum::GL::meshPrimitive(), @ref Magnum::GL::meshIndexType(), @ref Magnum::GL::meshIndexTypeSize()
  */
 
+#include <Corrade/Containers/Array.h>
 #include <Corrade/Utility/ConfigurationValue.h>
 
 #include "Magnum/Tags.h"
@@ -250,7 +252,7 @@ If you have a @ref Trade::MeshData instance that you got for example from
 @ref Trade::AbstractImporter::mesh() or from the @ref Primitives library, the
 simplest possible way is to use @ref MeshTools::compile():
 
-@snippet MagnumTrade.cpp MeshData-usage-compile
+@snippet Trade.cpp MeshData-gpu-opengl
 
 This one-liner uploads the data and configures the mesh for all attributes
 known by Magnum that are present in it, making it suitable to be drawn by
@@ -285,7 +287,7 @@ type expected by @ref Shaders::FlatGL3D::Position, so the default constructor
 is sufficient for it. The @ref GL-Mesh-configuration-formats section below
 shows cases where the types don't match.
 
-@snippet MagnumGL.cpp Mesh-vertices
+@snippet GL.cpp Mesh-vertices
 
 Here's a mesh with a position and a normal interleaved together, as is needed
 for @ref Shaders::PhongGL. See the docs of @ref addVertexBuffer() for
@@ -295,12 +297,12 @@ specified. Note that @ref Shaders::FlatGL::Position and
 @ref Shaders::GenericGL::Position, meaning you can render a mesh configured for
 the Phong shader with the Flat shader as well:
 
-@snippet MagnumGL.cpp Mesh-vertices-interleaved
+@snippet GL.cpp Mesh-vertices-interleaved
 
 Indexed meshes have the index buffer and corresponding index type set using
 @ref setIndexBuffer().
 
-@snippet MagnumGL.cpp Mesh-indices
+@snippet GL.cpp Mesh-indices
 
 <b></b>
 
@@ -330,13 +332,13 @@ use @ref MeshTools::interleave() to interleave them together. The usage
 including the padding specification, is similar to @ref addVertexBuffer(). The
 above vertex buffer setup but with separate position and normal arrays that get interleaved can be expressed like this:
 
-@snippet MagnumGL.cpp Mesh-vertices-interleaved-tool
+@snippet GL.cpp Mesh-vertices-interleaved-tool
 
 For indices it's often beneficial to store them in a 16-bit type if they don't
 need the full 32-bit range. That's what @ref MeshTools::compressIndices() is
 for:
 
-@snippet MagnumGL.cpp Mesh-indices-tool
+@snippet GL.cpp Mesh-indices-tool
 
 The ultimate generic tool is the already-shown @ref MeshTools::compile(),
 together with all @ref MeshTools APIs that operate on @ref Trade::MeshData
@@ -354,7 +356,7 @@ the normal is a packed normalized @relativeref{Magnum,Vector3s}, together with
 padding for having vertex boundaries aligned to four bytes to make the GPU
 happier:
 
-@snippet MagnumGL.cpp Mesh-formats
+@snippet GL.cpp Mesh-formats
 
 @subsection GL-Mesh-configuration-dynamic Dynamically specified attributes
 
@@ -367,7 +369,7 @@ specifying also the stride. Adding a RGB attribute at location 3 normalized
 from unsigned byte to float with one byte padding at the end (or, in other
 words, stride of four bytes) could then look like this:
 
-@snippet MagnumGL.cpp Mesh-dynamic
+@snippet GL.cpp Mesh-dynamic
 
 The @ref DynamicAttribute also allows @ref VertexFormat to be used for
 specifying attribute types instead of the rather verbose
@@ -375,7 +377,7 @@ specifying attribute types instead of the rather verbose
 @relativeref{GL::Attribute,DataOptions} tuple that GL itself accepts. The above
 packed position + normal attribute specification would then look like this:
 
-@snippet MagnumGL.cpp Mesh-formats-vertexformat
+@snippet GL.cpp Mesh-formats-vertexformat
 
 @subsection GL-Mesh-buffer-ownership Transferring buffer ownership
 
@@ -387,20 +389,20 @@ a @ref Buffer as a rvalue. While this allows you to discard the buffer
 instances and pass just the mesh around, it also means you lose a way to access
 or update the buffers afterwards.
 
-@snippet MagnumGL.cpp Mesh-buffer-ownership
+@snippet GL.cpp Mesh-buffer-ownership
 
 If adding the same buffer multiple times or using it for both vertex and index
 data, be sure to transfer the ownership last to avoid the other functions
 getting only a moved-out instance. For example:
 
-@snippet MagnumGL.cpp Mesh-buffer-ownership-multiple
+@snippet GL.cpp Mesh-buffer-ownership-multiple
 
 @section GL-Mesh-rendering Rendering meshes
 
 With a framebuffer bound and a compatible shader set up, it's only a matter of
 calling @ref AbstractShaderProgram::draw():
 
-@snippet MagnumGL.cpp Mesh-draw
+@snippet GL.cpp Mesh-draw
 
 @section GL-Mesh-webgl-restrictions WebGL restrictions
 
@@ -752,7 +754,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
          * @brief Index offset
          * @m_since_latest
          */
-        Int indexOffset() const { return _indexOffset; }
+        GLintptr indexOffset() const { return _indexOffset; }
 
         /**
          * @brief Set index offset
@@ -767,7 +769,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
          * @p start and @p end parameters may help to improve memory access
          * performance, as only a portion of vertex buffer needs to be
          * acccessed. On OpenGL ES 2.0 this function behaves the same as
-         * @ref setIndexOffset(Int), as index range functionality is not
+         * @ref setIndexOffset(GLintptr), as index range functionality is not
          * available there. Ignored when calling
          * @ref AbstractShaderProgram::drawTransformFeedback().
          *
@@ -775,7 +777,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
          * @see @ref setCount(), @ref isIndexed()
          */
         /* MinGW/MSVC needs inline also here to avoid linkage conflicts */
-        inline Mesh& setIndexOffset(Int offset, UnsignedInt start, UnsignedInt end);
+        inline Mesh& setIndexOffset(GLintptr offset, UnsignedInt start, UnsignedInt end);
 
         /**
          * @brief Set index offset
@@ -784,14 +786,14 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
          *
          * The offset gets multiplied by index type size and added to the base
          * offset that was specified in @ref Mesh::setIndexBuffer(). Prefer to
-         * use @ref setIndexOffset(Int, UnsignedInt, UnsignedInt) for potential
-         * better performance on certain drivers. Ignored when calling
-         * @ref AbstractShaderProgram::drawTransformFeedback().
+         * use @ref setIndexOffset(GLintptr, UnsignedInt, UnsignedInt) for
+         * potential better performance on certain drivers. Ignored when
+         * calling @ref AbstractShaderProgram::drawTransformFeedback().
          *
          * Expects that the mesh is indexed.
          * @see @ref setCount(), @ref isIndexed()
          */
-        Mesh& setIndexOffset(Int offset);
+        Mesh& setIndexOffset(GLintptr offset);
 
         /** @brief Instance count */
         Int instanceCount() const { return _instanceCount; }
@@ -851,7 +853,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
          * @brief Add buffer with (interleaved) vertex attributes for use with given shader
          * @return Reference to self (for method chaining)
          *
-         * Parameter @p offset is offset of the array from the beginning,
+         * The @p offset is a byte offset from the beginning of the buffer, the
          * attribute list is combination of @ref Attribute "attribute definitions"
          * (specified in implementation of given shader) and offsets between
          * interleaved attributes.
@@ -865,14 +867,14 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
          * accepts only a position and a normal, so you have to skip the weight
          * and the texture coordinate in each vertex:
          *
-         * @snippet MagnumGL.cpp Mesh-addVertexBuffer1
+         * @snippet GL.cpp Mesh-addVertexBuffer1
          *
          * You can also achieve the same effect by calling @ref addVertexBuffer()
          * more times with explicitly specified gaps before and after the
          * attributes. This can be used for e.g. runtime-dependent
          * configuration, as it isn't dependent on the variadic template:
          *
-         * @snippet MagnumGL.cpp Mesh-addVertexBuffer2
+         * @snippet GL.cpp Mesh-addVertexBuffer2
          *
          * If specifying more than one attribute, the function assumes that
          * the array is interleaved. Adding non-interleaved vertex buffer can
@@ -880,7 +882,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
          * Above example with the position and normal arrays one after another
          * (non-interleaved):
          *
-         * @snippet MagnumGL.cpp Mesh-addVertexBuffer3
+         * @snippet GL.cpp Mesh-addVertexBuffer3
          *
          * If @gl_extension{ARB,vertex_array_object} (part of OpenGL 3.0), OpenGL
          * ES 3.0, WebGL 2.0, @gl_extension{OES,vertex_array_object} in OpenGL
@@ -909,7 +911,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
         template<class ...T
             #ifndef DOXYGEN_GENERATING_OUTPUT
             /* So it doesn't clash with the DynamicAttribute overload */
-            , class = typename std::enable_if<!Implementation::IsDynamicAttribute<T...>::value>::type
+            , typename std::enable_if<!Implementation::IsDynamicAttribute<T...>::value, int>::type = 0
             #endif
         > Mesh& addVertexBuffer(Buffer& buffer, GLintptr offset, const T&... attributes) {
             addVertexBufferInternal(buffer, offset, strideOfInterleaved(attributes...), 0, attributes...);
@@ -950,9 +952,9 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
         template<class ...T
             #ifndef DOXYGEN_GENERATING_OUTPUT
             /* So it doesn't clash with the DynamicAttribute overload */
-            , class = typename std::enable_if<!Implementation::IsDynamicAttribute<T...>::value>::type
+            , typename std::enable_if<!Implementation::IsDynamicAttribute<T...>::value, int>::type = 0
             #endif
-        > inline Mesh& addVertexBufferInstanced(Buffer& buffer, UnsignedInt divisor, GLintptr offset, const T&... attributes) {
+        > Mesh& addVertexBufferInstanced(Buffer& buffer, UnsignedInt divisor, GLintptr offset, const T&... attributes) {
             addVertexBufferInternal(buffer, offset, strideOfInterleaved(attributes...), divisor, attributes...);
             return *this;
         }
@@ -994,9 +996,9 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
         template<class ...T
             #ifndef DOXYGEN_GENERATING_OUTPUT
             /* So it doesn't clash with the DynamicAttribute overload */
-            , class = typename std::enable_if<!Implementation::IsDynamicAttribute<T...>::value>::type
+            , typename std::enable_if<!Implementation::IsDynamicAttribute<T...>::value, int>::type = 0
             #endif
-        > inline Mesh& addVertexBuffer(Buffer&& buffer, GLintptr offset, const T&... attributes) {
+        > Mesh& addVertexBuffer(Buffer&& buffer, GLintptr offset, const T&... attributes) {
             addVertexBuffer<T...>(buffer, offset, attributes...);
             acquireVertexBuffer(Utility::move(buffer));
             return *this;
@@ -1013,9 +1015,9 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
         template<class ...T
             #ifndef DOXYGEN_GENERATING_OUTPUT
             /* So it doesn't clash with the DynamicAttribute overload */
-            , class = typename std::enable_if<!Implementation::IsDynamicAttribute<T...>::value>::type
+            , typename std::enable_if<!Implementation::IsDynamicAttribute<T...>::value, int>::type = 0
             #endif
-        > inline Mesh& addVertexBufferInstanced(Buffer&& buffer, UnsignedInt divisor, GLintptr offset, const T&... attributes) {
+        > Mesh& addVertexBufferInstanced(Buffer&& buffer, UnsignedInt divisor, GLintptr offset, const T&... attributes) {
             addVertexBufferInstanced<T...>(buffer, divisor, offset, attributes...);
             acquireVertexBuffer(Utility::move(buffer));
             return *this;
@@ -1195,6 +1197,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
 
         struct MAGNUM_GL_LOCAL AttributeLayout;
 
+        /* Used by wrap() */
         explicit Mesh(GLuint id, MeshPrimitive primitive, ObjectFlags flags);
 
         void MAGNUM_GL_LOCAL createIfNotAlready();
@@ -1221,7 +1224,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
         }
         void addVertexBufferInternal(Buffer&, GLintptr, GLsizei, GLuint) {}
 
-        template<UnsignedInt location, class T> void addVertexAttribute(typename std::enable_if<std::is_same<typename Implementation::Attribute<T>::ScalarType, Float>::value, Buffer&>::type buffer, const Attribute<location, T>& attribute, GLintptr offset, GLsizei stride, GLuint divisor) {
+        template<UnsignedInt location, class T, typename std::enable_if<std::is_same<typename Implementation::Attribute<T>::ScalarType, Float>::value, int>::type = 0> void addVertexAttribute(Buffer& buffer, const Attribute<location, T>& attribute, GLintptr offset, GLsizei stride, GLuint divisor) {
             for(UnsignedInt i = 0; i != Attribute<location, T>::Vectors; ++i)
                 attributePointerInternal(buffer,
                     location+i,
@@ -1234,7 +1237,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
         }
 
         #ifndef MAGNUM_TARGET_GLES2
-        template<UnsignedInt location, class T> void addVertexAttribute(typename std::enable_if<std::is_integral<typename Implementation::Attribute<T>::ScalarType>::value, Buffer&>::type buffer, const Attribute<location, T>& attribute, GLintptr offset, GLsizei stride, GLuint divisor) {
+        template<UnsignedInt location, class T, typename std::enable_if<std::is_integral<typename Implementation::Attribute<T>::ScalarType>::value, int>::type = 0> void addVertexAttribute(Buffer& buffer, const Attribute<location, T>& attribute, GLintptr offset, GLsizei stride, GLuint divisor) {
             attributePointerInternal(buffer,
                 location,
                 GLint(attribute.components()),
@@ -1246,7 +1249,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
         }
 
         #ifndef MAGNUM_TARGET_GLES
-        template<UnsignedInt location, class T> void addVertexAttribute(typename std::enable_if<std::is_same<typename Implementation::Attribute<T>::ScalarType, Double>::value, Buffer&>::type buffer, const Attribute<location, T>& attribute, GLintptr offset, GLsizei stride, GLuint divisor) {
+        template<UnsignedInt location, class T, typename std::enable_if<std::is_same<typename Implementation::Attribute<T>::ScalarType, Double>::value, int>::type = 0> void addVertexAttribute(Buffer& buffer, const Attribute<location, T>& attribute, GLintptr offset, GLsizei stride, GLuint divisor) {
             for(UnsignedInt i = 0; i != Attribute<location, T>::Vectors; ++i)
                 attributePointerInternal(buffer,
                     location+i,
@@ -1315,19 +1318,14 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
         MAGNUM_GL_LOCAL void drawInternal(TransformFeedback& xfb, UnsignedInt stream, Int instanceCount);
         #endif
 
-        static void MAGNUM_GL_LOCAL createImplementationDefault(Mesh& self, bool);
-        static void MAGNUM_GL_LOCAL createImplementationVAO(Mesh& self, bool createObject);
+        static void MAGNUM_GL_LOCAL createImplementationDefault(Mesh& self);
+        static void MAGNUM_GL_LOCAL createImplementationVAO(Mesh& self);
         #ifndef MAGNUM_TARGET_GLES
-        static void MAGNUM_GL_LOCAL createImplementationVAODSA(Mesh& self, bool createObject);
+        static void MAGNUM_GL_LOCAL createImplementationVAODSA(Mesh& self);
         #endif
 
-        static void MAGNUM_GL_LOCAL moveConstructImplementationDefault(Mesh& self, Mesh&& other);
-        static void MAGNUM_GL_LOCAL moveConstructImplementationVAO(Mesh& self, Mesh&& other);
-        static void MAGNUM_GL_LOCAL moveAssignImplementationDefault(Mesh& self, Mesh&& other);
-        static void MAGNUM_GL_LOCAL moveAssignImplementationVAO(Mesh& self, Mesh&& other);
-
-        static void MAGNUM_GL_LOCAL destroyImplementationDefault(Mesh& self, bool);
-        static void MAGNUM_GL_LOCAL destroyImplementationVAO(Mesh& self, bool deleteObject);
+        static void MAGNUM_GL_LOCAL destroyImplementationDefault(Mesh& self);
+        static void MAGNUM_GL_LOCAL destroyImplementationVAO(Mesh& self);
 
         void attributePointerInternal(const Buffer& buffer, GLuint location, GLint size, GLenum type, DynamicAttribute::Kind kind, GLintptr offset, GLsizei stride, GLuint divisor);
         void MAGNUM_GL_LOCAL attributePointerInternal(AttributeLayout&& attribute);
@@ -1420,9 +1418,7 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
         /* using a separate bool for _count instead of Optional to make use of
            the 3-byte gap after _flags */
         bool _countSet{};
-        /* Whether the _attributes storage was constructed (it's not when the
-           object is constructed using NoCreate). Also fits in the gap. */
-        bool _constructed{};
+        /* 1 byte free */
         #ifdef MAGNUM_TARGET_GLES
         /* See the "angle-instanced-attributes-always-draw-instanced" workaround */
         bool _instanced{};
@@ -1432,14 +1428,14 @@ class MAGNUM_GL_EXPORT Mesh: public AbstractObject {
         UnsignedInt _baseInstance{};
         UnsignedInt _indexStart{}, _indexEnd{};
         #endif
-        GLintptr _indexBufferOffset{}, _indexOffset{};
         MeshIndexType _indexType{};
+        /* 4 bytes free on ES2 */
+        GLintptr _indexBufferOffset{}, _indexOffset{};
         Buffer _indexBuffer{NoCreate};
 
-        /* Storage for either std::vector<AttributeLayout> (in case of no VAOs)
-           or std::vector<Buffer> (in case of VAOs). 4 pointers should be one
-           pointer more than enough. */
-        struct { std::intptr_t data[4]; } _attributes;
+        /* Stores attribute layouts in case VAOs are not supported or disabled,
+           abused for capturing buffer ownership if VAOs are supported. */
+        Containers::Array<AttributeLayout> _attributes;
 };
 
 /** @debugoperatorenum{MeshPrimitive} */
@@ -1448,7 +1444,7 @@ MAGNUM_GL_EXPORT Debug& operator<<(Debug& debug, MeshPrimitive value);
 /** @debugoperatorenum{MeshIndexType} */
 MAGNUM_GL_EXPORT Debug& operator<<(Debug& debug, MeshIndexType value);
 
-inline Mesh& Mesh::setIndexOffset(Int first, UnsignedInt start, UnsignedInt end) {
+inline Mesh& Mesh::setIndexOffset(GLintptr first, UnsignedInt start, UnsignedInt end) {
     setIndexOffset(first);
     #ifndef MAGNUM_TARGET_GLES2
     _indexStart = start;

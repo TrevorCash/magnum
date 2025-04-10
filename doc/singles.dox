@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -47,6 +48,8 @@ sources using the builtin @ref acme "single-header generator tool".
 Class or library            | Single-header version
 --------------------------- | ----------------------------
 @ref Math, \n @ref EigenIntegration, \n @ref GlmIntegration | [MagnumMath.hpp](https://github.com/mosra/magnum-singles/tree/master/MagnumMath.hpp), depends on `CorradePair.h`
+@ref Math batch APIs        | [MagnumMathBatch.hpp](https://github.com/mosra/magnum-singles/tree/master/MagnumMathBatch.hpp), depends on `MagnumMath.hpp` and `CorradeStridedArrayView.h`
+@ref MeshTools              | [MagnumMeshTools.hpp](https://github.com/mosra/magnum-singles/tree/master/MagnumMeshTools.hpp), depends on `MagnumMathBatch.hpp` and `CorradeArray.h`
 
 There are also @ref corrade-singles "single-header libraries for Corrade APIs".
 

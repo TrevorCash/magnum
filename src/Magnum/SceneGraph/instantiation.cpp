@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -50,7 +51,6 @@ namespace Magnum { namespace SceneGraph {
 #define MAGNUM_SCENEGRAPH_EXPORT_HPP
 #endif
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 template class MAGNUM_SCENEGRAPH_EXPORT_HPP AbstractObject<2, Float>;
 template class MAGNUM_SCENEGRAPH_EXPORT_HPP AbstractObject<3, Float>;
 template class MAGNUM_SCENEGRAPH_EXPORT_HPP AbstractTransformation<2, Float>;
@@ -89,6 +89,5 @@ template class MAGNUM_SCENEGRAPH_EXPORT_HPP Object<BasicTranslationRotationScali
 template class MAGNUM_SCENEGRAPH_EXPORT_HPP Object<BasicTranslationRotationScalingTransformation3D<Float>>;
 template class MAGNUM_SCENEGRAPH_EXPORT_HPP Object<TranslationTransformation<2, Float>>;
 template class MAGNUM_SCENEGRAPH_EXPORT_HPP Object<TranslationTransformation<3, Float>>;
-#endif
 
 }}

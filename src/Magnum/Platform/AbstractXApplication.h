@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
     Copyright © 2019, 2020 Konstantinos Chatzilygeroudis <costashatz@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
@@ -62,6 +63,7 @@ typedef int Bool;
 #include "Magnum/Magnum.h"
 #include "Magnum/Tags.h"
 #include "Magnum/Math/Vector2.h"
+#include "Magnum/Platform/Platform.h"
 #include "Magnum/Platform/GLContext.h"
 
 #ifdef MAGNUM_BUILD_DEPRECATED
@@ -103,8 +105,39 @@ class AbstractXApplication {
         class ViewportEvent;
         class InputEvent;
         class KeyEvent;
+        class PointerEvent;
+        class PointerMoveEvent;
+        #ifdef MAGNUM_BUILD_DEPRECATED
         class MouseEvent;
         class MouseMoveEvent;
+        #endif
+        class ScrollEvent;
+
+        /* The damn thing cannot handle forward enum declarations */
+        #ifndef DOXYGEN_GENERATING_OUTPUT
+        enum class Modifier: unsigned int;
+        enum class Key: KeySym;
+        enum class PointerEventSource: UnsignedByte;
+        enum class Pointer: UnsignedByte;
+        #endif
+
+        /**
+         * @brief Set of keyboard modifiers
+         * @m_since_latest
+         *
+         * @see @ref InputEvent::modifiers(), @ref platform-windowed-key-events
+         */
+        typedef Containers::EnumSet<Modifier> Modifiers;
+
+        /**
+         * @brief Set of pointer types
+         * @m_since_latest
+         *
+         * @see @ref KeyEvent::pointers(), @ref PointerMoveEvent::pointers(),
+         *      @ref ScrollEvent::pointers(),
+         *      @ref platform-windowed-pointer-events
+         */
+        typedef Containers::EnumSet<Pointer> Pointers;
 
         /** @brief Copying is not allowed */
         AbstractXApplication(const AbstractXApplication&) = delete;
@@ -154,7 +187,7 @@ class AbstractXApplication {
          * need to explicitly @cpp return @ce after calling it, as it can't
          * exit the constructor on its own:
          *
-         * @snippet MagnumPlatform.cpp exit-from-constructor
+         * @snippet Platform.cpp exit-from-constructor
          *
          * When called from the main loop, the application exits cleanly
          * before next main loop iteration is executed.
@@ -258,6 +291,7 @@ class AbstractXApplication {
          * cameras, framebuffers etc. in application constructor rather than
          * relying on this function to be called. Size of the window can be
          * retrieved using @ref windowSize().
+         * @see @ref platform-windowed-viewport-events
          */
         virtual void viewportEvent(ViewportEvent& event);
 
@@ -272,10 +306,20 @@ class AbstractXApplication {
 
         /** @{ @name Keyboard handling */
 
-        /** @copydoc Sdl2Application::keyPressEvent() */
+        /**
+         * @brief Key press event
+         *
+         * Called when a key is pressed. Default implementation does nothing.
+         * @see @ref platform-windowed-key-events
+         */
         virtual void keyPressEvent(KeyEvent& event);
 
-        /** @copydoc Sdl2Application::keyReleaseEvent() */
+        /**
+         * @brief Key release event
+         *
+         * Called when a key is released. Default implementation does nothing.
+         * @see @ref platform-windowed-key-events
+         */
         virtual void keyReleaseEvent(KeyEvent& event);
 
         /* Since 1.8.17, the original short-hand group closing doesn't work
@@ -284,16 +328,110 @@ class AbstractXApplication {
          * @}
          */
 
-        /** @{ @name Mouse handling */
+        /** @{ @name Pointer handling */
 
-        /** @copydoc Sdl2Application::mousePressEvent() */
-        virtual void mousePressEvent(MouseEvent& event);
+        /**
+         * @brief Pointer press event
+         * @m_since_latest
+         *
+         * Called when a mouse is pressed. Note that if at least one mouse
+         * button is already pressed and another button gets pressed in
+         * addition, @ref pointerMoveEvent() with the new combination is
+         * called, not this function.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mousePressEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
+         * nothing.
+         * @see @ref platform-windowed-pointer-events
+         */
+        virtual void pointerPressEvent(PointerEvent& event);
 
-        /** @copydoc Sdl2Application::mouseReleaseEvent() */
-        virtual void mouseReleaseEvent(MouseEvent& event);
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse press event
+         * @m_deprecated_since_latest Use @ref pointerPressEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use pointerPressEvent() instead") void mousePressEvent(MouseEvent& event);
+        #endif
 
-        /** @copydoc Sdl2Application::mouseMoveEvent() */
-        virtual void mouseMoveEvent(MouseMoveEvent& event);
+        /**
+         * @brief Pointer release event
+         * @m_since_latest
+         *
+         * Called when a mouse is released. Note that if multiple mouse buttons
+         * are pressed and one of these is released, @ref pointerMoveEvent()
+         * with the new combination is called, not this function.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mouseReleaseEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
+         * nothing.
+         * @see @ref platform-windowed-pointer-events
+         */
+        virtual void pointerReleaseEvent(PointerEvent& event);
+
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse release event
+         * @m_deprecated_since_latest Use @ref pointerReleaseEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use pointerReleaseEvent() instead") void mouseReleaseEvent(MouseEvent& event);
+        #endif
+
+        /**
+         * @brief Pointer move event
+         * @m_since_latest
+         *
+         * Called when any of the currently pressed pointers is moved or
+         * changes its properties. Gets called also if the set of pressed mouse
+         * buttons changes.
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mouseMoveEvent(), or if
+         * @ref PointerMoveEvent::pointer() is not
+         * @relativeref{Corrade,Containers::NullOpt}, to either
+         * @ref mousePressEvent() or @ref mouseReleaseEvent(). On builds with
+         * deprecated functionality disabled, default implementation does
+         * nothing.
+         * @see @ref platform-windowed-pointer-events
+         */
+        virtual void pointerMoveEvent(PointerMoveEvent& event);
+
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse move event
+         * @m_deprecated_since_latest Use @ref pointerMoveEvent() instead,
+         *      which is a better abstraction for covering both mouse and touch
+         *      / pen input.
+         *
+         * Default implementation does nothing.
+         */
+        virtual CORRADE_DEPRECATED("use pointerMoveEvent() instead") void mouseMoveEvent(MouseMoveEvent& event);
+        #endif
+
+        /**
+         * @brief Mouse scroll event
+         * @m_since_latest
+         *
+         * Called when a scrolling device is used (mouse wheel or scrolling
+         * area on a touchpad).
+         *
+         * On builds with @ref MAGNUM_BUILD_DEPRECATED enabled, default
+         * implementation delegates to @ref mousePressEvent() and
+         * @ref mouseReleaseEvent() with @ref MouseEvent::Button::WheelDown and
+         * @ref MouseEvent::Button::WheelUp.
+         * @see @ref platform-windowed-pointer-events
+         */
+        virtual void scrollEvent(ScrollEvent& event);
 
         /* Since 1.8.17, the original short-hand group closing doesn't work
            anymore. FFS. */
@@ -311,6 +449,13 @@ class AbstractXApplication {
         explicit AbstractXApplication(Implementation::AbstractContextHandler<GLConfiguration, Display*, VisualID, Window>* contextHandler, const Arguments& arguments, NoCreateT);
 
     private:
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /* Calls the base pointer*Event() in order to delegate to deprecated
+           mouse events */
+        template<class> friend class BasicScreenedApplication;
+        template<class, bool> friend struct Implementation::ApplicationScrollEventMixin;
+        #endif
+
         enum class Flag: unsigned int {
             Redraw = 1 << 0,
             Exit = 1 << 1
@@ -334,6 +479,436 @@ class AbstractXApplication {
 
         Flags _flags;
 };
+
+/**
+@brief Keyboard modifier
+@m_since_latest
+
+@see @ref Modifiers, @ref InputEvent::modifiers(),
+    @ref platform-windowed-key-events
+*/
+enum class AbstractXApplication::Modifier: unsigned int {
+    /**
+     * Shift
+     *
+     * @see @ref KeyEvent::Key::LeftShift, @ref KeyEvent::Key::RightShift
+     */
+    Shift = ShiftMask,
+
+    /**
+     * Ctrl
+     *
+     * @see @ref KeyEvent::Key::LeftCtrl, @ref KeyEvent::Key::RightCtrl
+     */
+    Ctrl = ControlMask,
+
+    /**
+     * Alt
+     *
+     * @see @ref KeyEvent::Key::LeftAlt, @ref KeyEvent::Key::RightAlt
+     */
+    Alt = Mod1Mask,
+
+    AltGr = Mod5Mask,           /**< AltGr */
+
+    /**
+     * Caps lock
+     *
+     * @see @ref KeyEvent::Key::CapsLock
+     */
+    CapsLock = LockMask,
+
+    /**
+     * Num lock
+     *
+     * @see @ref KeyEvent::Key::NumLock
+     */
+    NumLock = Mod2Mask
+};
+
+CORRADE_ENUMSET_OPERATORS(AbstractXApplication::Modifiers)
+
+/**
+@brief Key
+@m_since_latest
+
+@see @ref KeyEvent::key(), @ref platform-windowed-key-events
+*/
+enum class AbstractXApplication::Key: KeySym {
+    /**
+     * Left Shift
+     * @m_since_latest
+     *
+     * @see @ref InputEvent::Modifier::Shift
+     */
+    LeftShift = XK_Shift_L,
+
+    /**
+     * Right Shift
+     * @m_since_latest
+     *
+     * @see @ref InputEvent::Modifier::Shift
+     */
+    RightShift = XK_Shift_R,
+
+    /**
+     * Left Ctrl
+     * @m_since_latest
+     *
+     * @see @ref InputEvent::Modifier::Ctrl
+     */
+    LeftCtrl = XK_Control_L,
+
+    /**
+     * Right Ctrl
+     * @m_since_latest
+     *
+     * @see @ref InputEvent::Modifier::Ctrl
+     */
+    RightCtrl = XK_Control_R,
+
+    /**
+     * Left Alt
+     * @m_since_latest
+     *
+     * @see @ref InputEvent::Modifier::Alt
+     */
+    LeftAlt = XK_Alt_L,
+
+    /**
+     * Right Alt
+     * @m_since_latest
+     *
+     * @see @ref InputEvent::Modifier::Alt
+     */
+    RightAlt = XK_Alt_R,
+
+    /**
+     * Left Super key (Windows/⌘)
+     * @m_since_latest
+     */
+    LeftSuper = XK_Super_L,
+
+    /**
+     * Right Super key (Windows/⌘)
+     * @m_since_latest
+     */
+    RightSuper = XK_Super_R,
+
+    /* AltGr missing */
+
+    Enter = XK_Return,          /**< Enter */
+    Esc = XK_Escape,            /**< Escape */
+
+    Up = XK_Up,                 /**< Up arrow */
+    Down = XK_Down,             /**< Down arrow */
+    Left = XK_Left,             /**< Left arrow */
+    Right = XK_Right,           /**< Right arrow */
+    Home = XK_Home,             /**< Home */
+    End = XK_End,               /**< End */
+    PageUp = XK_Page_Up,        /**< Page up */
+    PageDown = XK_Page_Down,    /**< Page down */
+
+    /**
+     * Backspace
+     * @m_since_latest
+     */
+    Backspace = XK_BackSpace,
+
+    /**
+     * Insert
+     * @m_since_latest
+     */
+    Insert = XK_Insert,
+
+    /**
+     * Delete
+     * @m_since_latest
+     */
+    Delete = XK_Delete,
+
+    F1 = XK_F1,                 /**< F1 */
+    F2 = XK_F2,                 /**< F2 */
+    F3 = XK_F3,                 /**< F3 */
+    F4 = XK_F4,                 /**< F4 */
+    F5 = XK_F5,                 /**< F5 */
+    F6 = XK_F6,                 /**< F6 */
+    F7 = XK_F7,                 /**< F7 */
+    F8 = XK_F8,                 /**< F8 */
+    F9 = XK_F9,                 /**< F9 */
+    F10 = XK_F10,               /**< F10 */
+    F11 = XK_F11,               /**< F11 */
+    F12 = XK_F12,               /**< F12 */
+
+    Space = XK_space,           /**< Space */
+
+    /**
+     * Tab
+     * @m_since_latest
+     */
+    Tab = XK_Tab,
+
+    /**
+     * Quote (<tt>'</tt>)
+     * @m_since_latest
+     */
+    Quote = XK_apostrophe,
+
+    Comma = XK_comma,           /**< Comma */
+    Period = XK_period,         /**< Period */
+    Minus = XK_minus,           /**< Minus */
+    Plus = XK_plus,             /**< Plus */
+    Slash = XK_slash,           /**< Slash */
+    Percent = XK_percent,       /**< Percent */
+
+    /**
+     * Semicolon (`;`)
+     * @m_since_latest
+     */
+    Semicolon = XK_semicolon,
+
+    Equal = XK_equal,           /**< Equal */
+
+    /**
+     * Left bracket (`[`)
+     * @m_since_latest
+     */
+    LeftBracket = XK_bracketleft,
+
+    /**
+     * Right bracket (`]`)
+     * @m_since_latest
+     */
+    RightBracket = XK_bracketright,
+
+    /**
+     * Backslash (`\`)
+     * @m_since_latest
+     */
+    Backslash = XK_backslash,
+
+    /**
+     * Backquote (<tt>`</tt>)
+     * @m_since_latest
+     */
+    Backquote = XK_grave,
+
+    Zero = XK_0,                /**< Zero */
+    One = XK_1,                 /**< One */
+    Two = XK_2,                 /**< Two */
+    Three = XK_3,               /**< Three */
+    Four = XK_4,                /**< Four */
+    Five = XK_5,                /**< Five */
+    Six = XK_6,                 /**< Six */
+    Seven = XK_7,               /**< Seven */
+    Eight = XK_8,               /**< Eight */
+    Nine = XK_9,                /**< Nine */
+
+    A = XK_a,                   /**< Small letter A */
+    B = XK_b,                   /**< Small letter B */
+    C = XK_c,                   /**< Small letter C */
+    D = XK_d,                   /**< Small letter D */
+    E = XK_e,                   /**< Small letter E */
+    F = XK_f,                   /**< Small letter F */
+    G = XK_g,                   /**< Small letter G */
+    H = XK_h,                   /**< Small letter H */
+    I = XK_i,                   /**< Small letter I */
+    J = XK_j,                   /**< Small letter J */
+    K = XK_k,                   /**< Small letter K */
+    L = XK_l,                   /**< Small letter L */
+    M = XK_m,                   /**< Small letter M */
+    N = XK_n,                   /**< Small letter N */
+    O = XK_o,                   /**< Small letter O */
+    P = XK_p,                   /**< Small letter P */
+    Q = XK_q,                   /**< Small letter Q */
+    R = XK_r,                   /**< Small letter R */
+    S = XK_s,                   /**< Small letter S */
+    T = XK_t,                   /**< Small letter T */
+    U = XK_u,                   /**< Small letter U */
+    V = XK_v,                   /**< Small letter V */
+    W = XK_w,                   /**< Small letter W */
+    X = XK_x,                   /**< Small letter X */
+    Y = XK_y,                   /**< Small letter Y */
+    Z = XK_z,                   /**< Small letter Z */
+
+    /**
+     * Caps lock
+     *
+     * @see @ref InputEvent::Modifier::CapsLock
+     * @m_since_latest
+     */
+    CapsLock = XK_Caps_Lock,
+
+    /**
+     * Scroll lock
+     * @m_since_latest
+     */
+    ScrollLock = XK_Scroll_Lock,
+
+    /**
+     * Num lock
+     *
+     * @see @ref InputEvent::Modifier::NumLock
+     * @m_since_latest
+     */
+    NumLock = XK_Num_Lock,
+
+    /**
+     * Print screen
+     * @m_since_latest
+     */
+    PrintScreen = XK_Print,
+
+    /* Pause, Menu missing */
+
+    /**
+     * Numpad zero
+     * @m_since_latest
+     */
+    NumZero = XK_KP_0,
+
+    /**
+     * Numpad one
+     * @m_since_latest
+     */
+    NumOne = XK_KP_1,
+
+    /**
+     * Numpad two
+     * @m_since_latest
+     */
+    NumTwo = XK_KP_2,
+
+    /**
+     * Numpad three
+     * @m_since_latest
+     */
+    NumThree = XK_KP_3,
+
+    /**
+     * Numpad four
+     * @m_since_latest
+     */
+    NumFour = XK_KP_4,
+
+    /**
+     * Numpad five
+     * @m_since_latest
+     */
+    NumFive = XK_KP_5,
+
+    /**
+     * Numpad six
+     * @m_since_latest
+     */
+    NumSix = XK_KP_6,
+
+    /**
+     * Numpad seven
+     * @m_since_latest
+     */
+    NumSeven = XK_KP_7,
+
+    /**
+     * Numpad eight
+     * @m_since_latest
+     */
+    NumEight = XK_KP_8,
+
+    /**
+     * Numpad nine
+     * @m_since_latest
+     */
+    NumNine = XK_KP_9,
+
+    /**
+     * Numpad decimal
+     * @m_since_latest
+     */
+    NumDecimal = XK_KP_Decimal,
+
+    /**
+     * Numpad divide
+     * @m_since_latest
+     */
+    NumDivide = XK_KP_Divide,
+
+    /**
+     * Numpad multiply
+     * @m_since_latest
+     */
+    NumMultiply = XK_KP_Multiply,
+
+    /**
+     * Numpad subtract
+     * @m_since_latest
+     */
+    NumSubtract = XK_KP_Subtract,
+
+    /**
+     * Numpad add
+     * @m_since_latest
+     */
+    NumAdd = XK_KP_Add,
+
+    /**
+     * Numpad enter
+     * @m_since_latest
+     */
+    NumEnter = XK_KP_Enter,
+
+    /**
+     * Numpad equal
+     * @m_since_latest
+     */
+    NumEqual = XK_KP_Equal
+};
+
+/**
+@brief Pointer event source
+@m_since_latest
+
+@see @ref PointerEvent::source(), @ref PointerMoveEvent::source(),
+    @ref platform-windowed-pointer-events
+*/
+enum class AbstractXApplication::PointerEventSource: UnsignedByte {
+    /**
+     * The event is coming from a mouse
+     * @see @ref Pointer::MouseLeft, @ref Pointer::MouseMiddle,
+     *      @ref Pointer::MouseRight
+     */
+    Mouse,
+};
+
+/**
+@brief Pointer type
+@m_since_latest
+
+@see @ref Pointers, @ref KeyEvent::pointers(), @ref PointerEvent::pointer(),
+    @ref PointerMoveEvent::pointer(), @ref PointerMoveEvent::pointers(),
+    @ref ScrollEvent::pointers(), @ref platform-windowed-pointer-events
+*/
+enum class AbstractXApplication::Pointer: UnsignedByte {
+    /**
+     * Left mouse button. Corresponds to `Button1` / `Button1Mask`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseLeft = 1 << 0,
+
+    /**
+     * Middle mouse button. Corresponds to `Button2` / `Button2Mask`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseMiddle = 1 << 1,
+
+    /**
+     * Right mouse button. Corresponds to `Button3` / `Button3Mask`.
+     * @see @ref PointerEventSource::Mouse
+     */
+    MouseRight = 1 << 2
+};
+
+CORRADE_ENUMSET_OPERATORS(AbstractXApplication::Pointers)
 
 /**
 @brief OpenGL context configuration
@@ -382,7 +957,7 @@ class AbstractXApplication::GLConfiguration: public GL::Context::Configuration {
         /**
          * @brief Context flags
          *
-         * @see @ref setFlags(), @ref Context::Flags
+         * @see @ref setFlags(), @ref GL::Context::Flags
          */
         typedef Containers::EnumSet<Flag> Flags;
 
@@ -504,7 +1079,7 @@ class AbstractXApplication::Configuration {
 /**
 @brief Viewport event
 
-@see @ref viewportEvent()
+@see @ref viewportEvent(), @ref platform-windowed-viewport-events
 */
 class AbstractXApplication::ViewportEvent {
     public:
@@ -547,39 +1122,32 @@ class AbstractXApplication::ViewportEvent {
 /**
 @brief Base for input events
 
-@see @ref KeyEvent, @ref MouseEvent, @ref MouseMoveEvent, @ref keyPressEvent(),
-    @ref keyReleaseEvent(), @ref mousePressEvent(), @ref mouseReleaseEvent(),
-    @ref mouseMoveEvent()
+@see @ref KeyEvent, @ref PointerEvent, @ref PointerMoveEvent, @ref ScrollEvent,
+    @ref keyPressEvent(), @ref keyReleaseEvent(), @ref pointerPressEvent(),
+    @ref pointerReleaseEvent(), @ref pointerMoveEvent(), @ref scrollEvent()
 */
 class AbstractXApplication::InputEvent {
     public:
+        #ifdef MAGNUM_BUILD_DEPRECATED
         /**
-         * @brief Modifier
-         *
-         * @see @ref Modifiers, @ref modifiers()
+         * @brief @copybrief AbstractXApplication::Modifier
+         * @m_deprecated_since_latest Use @ref AbstractXApplication::Modifier
+         *      instead.
          */
-        enum class Modifier: unsigned int {
-            Shift = ShiftMask,          /**< Shift */
-            Ctrl = ControlMask,         /**< Ctrl */
-            Alt = Mod1Mask,             /**< Alt */
-            AltGr = Mod5Mask,           /**< AltGr */
-            CapsLock = LockMask,        /**< Caps lock */
-            NumLock = Mod2Mask          /**< Num lock */
-        };
+        typedef CORRADE_DEPRECATED("use AbstractXApplication::Modifier instead") AbstractXApplication::Modifier Modifier;
 
         /**
-         * @brief Set of modifiers
-         *
-         * @see @ref modifiers()
+         * @brief @copybrief AbstractXApplication::Modifiers
+         * @m_deprecated_since_latest Use @ref AbstractXApplication::Modifiers
+         *      instead.
          */
-        typedef Containers::EnumSet<Modifier> Modifiers;
+        typedef CORRADE_DEPRECATED("use AbstractXApplication::Modifiers instead") AbstractXApplication::Modifiers Modifiers;
 
         /**
          * @brief Mouse button
-         *
-         * @see @ref Buttons, @ref buttons()
+         * @m_deprecated_since_latest Use @ref Pointer instead.
          */
-        enum class Button: unsigned int {
+        enum class CORRADE_DEPRECATED_ENUM("use Pointer instead") Button: unsigned int {
             Left = Button1Mask,     /**< Left button */
             Middle = Button2Mask,   /**< Middle button */
             Right = Button3Mask     /**< Right button */
@@ -587,10 +1155,12 @@ class AbstractXApplication::InputEvent {
 
         /**
          * @brief Set of mouse buttons
-         *
-         * @see @ref buttons()
+         * @m_deprecated_since_latest Use @ref Pointers instead.
          */
-        typedef Containers::EnumSet<Button> Buttons;
+        CORRADE_IGNORE_DEPRECATED_PUSH
+        typedef CORRADE_DEPRECATED("use Pointers instead") Containers::EnumSet<Button> Buttons;
+        CORRADE_IGNORE_DEPRECATED_POP
+        #endif
 
         /** @brief Copying is not allowed */
         InputEvent(const InputEvent&) = delete;
@@ -610,135 +1180,161 @@ class AbstractXApplication::InputEvent {
         /** @copydoc Sdl2Application::InputEvent::isAccepted() */
         bool isAccepted() const { return _accepted; }
 
-        /** @brief Modifiers */
-        Modifiers modifiers() const { return _modifiers; }
+        /** @brief Keyboard modifiers */
+        AbstractXApplication::Modifiers modifiers() const {
+            return AbstractXApplication::Modifiers(_modifiers & (ShiftMask|ControlMask|Mod1Mask|Mod5Mask|LockMask|Mod2Mask));
+        }
 
-        /** @brief Mouse buttons */
-        Buttons buttons() const { return Button(static_cast<unsigned int>(_modifiers)); }
+        #ifdef MAGNUM_BUILD_DEPRECATED
+        /**
+         * @brief Mouse buttons
+         * @m_deprecated_since_latest Use @ref KeyEvent::pointers() or
+         *      @ref PointerMoveEvent::pointers() instead.
+         */
+        CORRADE_DEPRECATED("use pointers() instead") Buttons buttons() const {
+            return Buttons(_modifiers & (Button1Mask|Button2Mask|Button3Mask));
+        }
+        #endif
 
     #ifndef DOXYGEN_GENERATING_OUTPUT
     protected:
-        explicit InputEvent(Modifiers modifiers): _modifiers(modifiers), _accepted(false) {}
+        explicit InputEvent(unsigned int modifiers): _modifiers(modifiers), _accepted(false) {}
 
         ~InputEvent() = default;
     #endif
 
     private:
-        Modifiers _modifiers;
+        friend AbstractXApplication;
+
+        unsigned int _modifiers;
         bool _accepted;
 };
 
-CORRADE_ENUMSET_OPERATORS(AbstractXApplication::InputEvent::Modifiers)
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
 CORRADE_ENUMSET_OPERATORS(AbstractXApplication::InputEvent::Buttons)
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
 
 /**
 @brief Key event
 
-@see @ref keyPressEvent(), @ref keyReleaseEvent()
+@see @ref keyPressEvent(), @ref keyReleaseEvent(),
+    @ref platform-windowed-key-events
 */
 class AbstractXApplication::KeyEvent: public AbstractXApplication::InputEvent {
-    friend AbstractXApplication;
-
     public:
+        #ifdef MAGNUM_BUILD_DEPRECATED
         /**
-         * @brief Key
-         *
-         * @see @ref key()
+         * @brief @copybrief AbstractXApplication::Key
+         * @m_deprecated_since_latest Use @ref AbstractXApplication::Key
+         *      instead.
          */
-        enum class Key: KeySym {
-            Enter = XK_Return,          /**< Enter */
-            Esc = XK_Escape,            /**< Escape */
-
-            Up = XK_Up,                 /**< Up arrow */
-            Down = XK_Down,             /**< Down arrow */
-            Left = XK_Left,             /**< Left arrow */
-            Right = XK_Right,           /**< Right arrow */
-            F1 = XK_F1,                 /**< F1 */
-            F2 = XK_F2,                 /**< F2 */
-            F3 = XK_F3,                 /**< F3 */
-            F4 = XK_F4,                 /**< F4 */
-            F5 = XK_F5,                 /**< F5 */
-            F6 = XK_F6,                 /**< F6 */
-            F7 = XK_F7,                 /**< F7 */
-            F8 = XK_F8,                 /**< F8 */
-            F9 = XK_F9,                 /**< F9 */
-            F10 = XK_F10,               /**< F10 */
-            F11 = XK_F11,               /**< F11 */
-            F12 = XK_F12,               /**< F12 */
-            Home = XK_Home,             /**< Home */
-            End = XK_End,               /**< End */
-            PageUp = XK_Page_Up,        /**< Page up */
-            PageDown = XK_Page_Down,    /**< Page down */
-
-            Space = XK_space,           /**< Space */
-            Comma = XK_comma,           /**< Comma */
-            Period = XK_period,         /**< Period */
-            Minus = XK_minus,           /**< Minus */
-            Plus = XK_plus,             /**< Plus */
-            Slash = XK_slash,           /**< Slash */
-            Percent = XK_percent,       /**< Percent */
-            Equal = XK_equal,           /**< Equal */
-
-            Zero = XK_0,                /**< Zero */
-            One = XK_1,                 /**< One */
-            Two = XK_2,                 /**< Two */
-            Three = XK_3,               /**< Three */
-            Four = XK_4,                /**< Four */
-            Five = XK_5,                /**< Five */
-            Six = XK_6,                 /**< Six */
-            Seven = XK_7,               /**< Seven */
-            Eight = XK_8,               /**< Eight */
-            Nine = XK_9,                /**< Nine */
-
-            A = XK_a,                   /**< Small letter A */
-            B = XK_b,                   /**< Small letter B */
-            C = XK_c,                   /**< Small letter C */
-            D = XK_d,                   /**< Small letter D */
-            E = XK_e,                   /**< Small letter E */
-            F = XK_f,                   /**< Small letter F */
-            G = XK_g,                   /**< Small letter G */
-            H = XK_h,                   /**< Small letter H */
-            I = XK_i,                   /**< Small letter I */
-            J = XK_j,                   /**< Small letter J */
-            K = XK_k,                   /**< Small letter K */
-            L = XK_l,                   /**< Small letter L */
-            M = XK_m,                   /**< Small letter M */
-            N = XK_n,                   /**< Small letter N */
-            O = XK_o,                   /**< Small letter O */
-            P = XK_p,                   /**< Small letter P */
-            Q = XK_q,                   /**< Small letter Q */
-            R = XK_r,                   /**< Small letter R */
-            S = XK_s,                   /**< Small letter S */
-            T = XK_t,                   /**< Small letter T */
-            U = XK_u,                   /**< Small letter U */
-            V = XK_v,                   /**< Small letter V */
-            W = XK_w,                   /**< Small letter W */
-            X = XK_x,                   /**< Small letter X */
-            Y = XK_y,                   /**< Small letter Y */
-            Z = XK_z                    /**< Small letter Z */
-        };
+        typedef CORRADE_DEPRECATED("use AbstractXApplication::Key instead") AbstractXApplication::Key Key;
+        #endif
 
         /** @brief Key */
-        Key key() const { return _key; }
+        AbstractXApplication::Key key() const { return _key; }
 
         /** @brief Position */
         Vector2i position() const { return _position; }
 
-    private:
-        explicit KeyEvent(Key key, Modifiers modifiers, const Vector2i& position): InputEvent(modifiers), _key(key), _position(position) {}
+        /**
+         * @brief Pointer types pressed in this event
+         * @m_since_latest
+         *
+         * Returns an empty set if no pointers are pressed in addition to the
+         * key.
+         */
+        Pointers pointers() const;
 
-        const Key _key;
+    private:
+        friend AbstractXApplication;
+
+        explicit KeyEvent(AbstractXApplication::Key key, unsigned int modifiers, const Vector2i& position): InputEvent(modifiers), _key(key), _position(position) {}
+
+        const AbstractXApplication::Key _key;
         const Vector2i _position;
 };
 
 /**
-@brief Mouse event
+@brief Pointer event
+@m_since_latest
 
-@see @ref MouseMoveEvent, @ref mousePressEvent(), @ref mouseReleaseEvent()
+@see @ref PointerMoveEvent, @ref pointerPressEvent(),
+    @ref pointerReleaseEvent(), @ref platform-windowed-pointer-events
 */
-class AbstractXApplication::MouseEvent: public AbstractXApplication::InputEvent {
-    friend AbstractXApplication;
+class AbstractXApplication::PointerEvent: public InputEvent {
+    public:
+        /** @brief Copying is not allowed */
+        PointerEvent(const PointerEvent&) = delete;
 
+        /** @brief Moving is not allowed */
+        PointerEvent(PointerEvent&&) = delete;
+
+        /** @brief Copying is not allowed */
+        PointerEvent& operator=(const PointerEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerEvent& operator=(PointerEvent&&) = delete;
+
+        /**
+         * @brief Pointer event source
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @ref PointerEventSource::Mouse.
+         */
+        PointerEventSource source() const { return PointerEventSource::Mouse; }
+
+        /** @brief Pointer type that was pressed or released */
+        Pointer pointer() const { return _pointer; }
+
+        /**
+         * @brief Whether the pointer is primary
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @cpp true @ce.
+         */
+        bool isPrimary() const { return true; }
+
+        /**
+         * @brief Pointer ID
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @cpp 0 @ce.
+         */
+        Long id() const { return 0; }
+
+        /**
+         * @brief Position
+         *
+         * For mouse input the position is always reported in whole pixels.
+         */
+        Vector2 position() const { return _position; }
+
+    private:
+        friend AbstractXApplication;
+
+        explicit PointerEvent(Pointer pointer, const Vector2& position, unsigned int modifiers): InputEvent{modifiers}, _pointer(pointer), _position{position} {}
+
+        const Pointer _pointer;
+        const Vector2 _position;
+};
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+/**
+@brief Mouse event
+@m_deprecated_since_latest Use @ref PointerEvent, @ref pointerPressEvent() and
+    @ref pointerReleaseEvent() instead, which is a better abstraction for
+    covering both mouse and touch / pen input.
+
+@see @ref MouseMoveEvent, @ref ScrollEvent, @ref mousePressEvent(),
+    @ref mouseReleaseEvent()
+*/
+class CORRADE_DEPRECATED("use PointerEvent, pointerPressEvent() and pointerReleaseEvent() instead") AbstractXApplication::MouseEvent: public AbstractXApplication::InputEvent {
     public:
         /**
          * @brief Mouse button
@@ -749,8 +1345,20 @@ class AbstractXApplication::MouseEvent: public AbstractXApplication::InputEvent 
             Left      = 1 /*Button1*/,  /**< Left button */
             Middle    = 2 /*Button2*/,  /**< Middle button */
             Right     = 3 /*Button3*/,  /**< Right button */
-            WheelUp   = 4 /*Button4*/,  /**< Wheel up */
-            WheelDown = 5 /*Button5*/   /**< Wheel down */
+
+            #ifdef MAGNUM_BUILD_DEPRECATED
+            /**
+             * Wheel up
+             * @m_deprecated_since_latest Implement @ref scrollEvent() instead.
+             */
+            WheelUp CORRADE_DEPRECATED_ENUM("implement scrollEvent() instead") = 4,
+
+            /**
+             * Wheel down
+             * @m_deprecated_since_latest Implement @ref scrollEvent() instead.
+             */
+            WheelDown CORRADE_DEPRECATED_ENUM("implement scrollEvent() instead") = 5
+            #endif
         };
 
         /** @brief Button */
@@ -760,28 +1368,163 @@ class AbstractXApplication::MouseEvent: public AbstractXApplication::InputEvent 
         Vector2i position() const { return _position; }
 
     private:
-        explicit MouseEvent(Button button, Modifiers modifiers, const Vector2i& position): InputEvent(modifiers), _button(button), _position(position) {}
+        friend AbstractXApplication;
+
+        explicit MouseEvent(Button button, unsigned int modifiers, const Vector2i& position): InputEvent(modifiers), _button(button), _position(position) {}
 
         const Button _button;
         const Vector2i _position;
 };
+#endif
 
 /**
-@brief Mouse move event
+@brief Pointer move event
+@m_since_latest
 
-@see @ref MouseEvent, @ref mouseMoveEvent()
+@see @ref PointerEvent, @ref pointerMoveEvent(),
+    @ref platform-windowed-pointer-events
 */
-class AbstractXApplication::MouseMoveEvent: public AbstractXApplication::InputEvent {
-    friend AbstractXApplication;
+class AbstractXApplication::PointerMoveEvent: public InputEvent {
+    public:
+        /** @brief Copying is not allowed */
+        PointerMoveEvent(const PointerMoveEvent&) = delete;
 
+        /** @brief Moving is not allowed */
+        PointerMoveEvent(PointerMoveEvent&&) = delete;
+
+        /** @brief Copying is not allowed */
+        PointerMoveEvent& operator=(const PointerMoveEvent&) = delete;
+
+        /** @brief Moving is not allowed */
+        PointerMoveEvent& operator=(PointerMoveEvent&&) = delete;
+
+        /**
+         * @brief Pointer event source
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @ref PointerEventSource::Mouse.
+         */
+        PointerEventSource source() const { return PointerEventSource::Mouse; }
+
+        /**
+         * @brief Pointer type that was added or removed from the set of pressed pointers
+         *
+         * Use @ref pointers() to query the set of pointers pressed in this
+         * event. This field is is non-empty only in case a mouse button was
+         * pressed in addition to an already pressed button, or if one mouse
+         * button from multiple pressed buttons was released. If non-empty and
+         * @ref pointers() don't contain given @ref Pointer value, the button
+         * was released, if they contain given value, the button was pressed.
+         * @see @ref source()
+         */
+        Containers::Optional<Pointer> pointer() const { return _pointer; }
+
+        /**
+         * @brief Pointer types pressed in this event
+         *
+         * Returns an empty set if no pointers are pressed, which happens for
+         * example when a mouse is just moved around.
+         * @see @ref pointer()
+         */
+        Pointers pointers() const { return _pointers; }
+
+        /**
+         * @brief Whether the pointer is primary
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @cpp true @ce.
+         */
+        bool isPrimary() const { return true; }
+
+        /**
+         * @brief Pointer ID
+         *
+         * Included mainly for compatibility with touch-aware application
+         * implementations such as @ref Sdl2Application, returns always
+         * @cpp 0 @ce.
+         */
+        Long id() const { return 0; }
+
+        /**
+         * @brief Position
+         *
+         * For mouse input the position is always reported in whole pixels.
+         */
+        Vector2 position() const { return _position; }
+
+    private:
+        friend AbstractXApplication;
+
+        explicit PointerMoveEvent(Containers::Optional<Pointer> pointer, Pointers pointers, const Vector2& position, unsigned int modifiers): InputEvent{modifiers}, _pointer{pointer}, _pointers{pointers}, _position{position} {}
+
+        const Containers::Optional<Pointer> _pointer;
+        Pointers _pointers;
+        const Vector2 _position;
+};
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+/**
+@brief Mouse move event
+@m_deprecated_since_latest Use @ref PointerMoveEvent and
+    @ref pointerMoveEvent() instead, which is a better abstraction for covering
+    both mouse and touch / pen input.
+
+@see @ref MouseEvent, @ref ScrollEvent, @ref mouseMoveEvent()
+*/
+class CORRADE_DEPRECATED("use PointerMoveEvent and pointerMoveEvent() instead") AbstractXApplication::MouseMoveEvent: public AbstractXApplication::InputEvent {
     public:
         /** @brief Position */
         Vector2i position() const { return _position; }
 
     private:
-        explicit MouseMoveEvent(Modifiers modifiers, const Vector2i& position): InputEvent(modifiers), _position(position) {}
+        friend AbstractXApplication;
+
+        explicit MouseMoveEvent(unsigned int modifiers, const Vector2i& position): InputEvent(modifiers), _position(position) {}
 
         const Vector2i _position;
+};
+#endif
+
+/**
+@brief Scroll event
+@m_since_latest
+
+@see @ref PointerEvent, @ref PointerMoveEvent, @ref scrollEvent(),
+    @ref platform-windowed-pointer-events
+*/
+class AbstractXApplication::ScrollEvent: public InputEvent {
+    public:
+        /**
+         * @brief Scroll offset
+         *
+         * Is always either @cpp -1.0f @ce or @cpp +1.0f @ce.
+         */
+        Vector2 offset() const { return _offset; }
+
+        /**
+         * @brief Position
+         *
+         * For mouse input the position is always reported in whole pixels.
+         */
+        Vector2 position() const { return _position; }
+
+        /**
+         * @brief Pointer types pressed in this event
+         *
+         * Returns an empty set if no pointers are pressed in addition to the
+         * mouse wheel.
+         */
+        Pointers pointers() const;
+
+    private:
+        friend AbstractXApplication;
+
+        explicit ScrollEvent(const Vector2& offset, const Vector2& position, unsigned int modifiers): InputEvent{modifiers}, _offset{offset}, _position{position} {}
+
+        const Vector2 _offset;
+        const Vector2 _position;
 };
 
 }}

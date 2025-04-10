@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -269,14 +270,14 @@ following cases apply:
     user code changes as well), for example when renaming a "open file" method
 -   Bump only the minor version if signature of some methods change,
     potentially requiring changes in user code, for example when porting from
-    @ref std::string to @ref Containers::StringView
+    @ref std::string to @relativeref{Corrade,Containers::StringView}
 -   Bump only the patch version if the change doesn't affect existing user code
     but breaks ABI, for example when adding a new virtual function --- this is
     mainly to prevent crashes when loading of plugins built against an older
     interface. A rather exhaustive list of ABI-affecting changes is in the KDE
     Community Wiki: https://community.kde.org/Policies/Binary_Compatibility_Issues_With_C%2B%2B
 
-@subsection developers-plugin-interface-updating-importers Checklist for updating the @ref Trade::AbstractImporter plugin interface
+@subsection developers-plugin-interface-updating-importers Checklist for updating the `Trade::AbstractImporter` plugin interface
 
 -   Newly added `do*()` APIs need to be also handled in all proxies:
     -   @relativeref{Trade,AnyImageImporter}
@@ -299,7 +300,7 @@ following cases apply:
     need a corresponding change in @ref Trade::AbstractImageConverter and
     @ref Trade::AbstractSceneConverter
 
-@subsection developers-plugin-interface-updating-image-converters Checklist for updating the @ref Trade::AbstractImageConverter plugin interface
+@subsection developers-plugin-interface-updating-image-converters Checklist for updating the `Trade::AbstractImageConverter` plugin interface
 
 -   Newly added `do*()` APIs need to be also handled in all proxies:
     -   @relativeref{Trade,AnyImageConverter}
@@ -314,7 +315,7 @@ following cases apply:
 -   It's highly likely that APIs added to / changed in the image converter will
     also need a corresponding change in @ref Trade::AbstractSceneConverter
 
-@subsection developers-plugin-interface-updating-scene-converters Checklist for updating the @ref Trade::AbstractSceneConverter plugin interface
+@subsection developers-plugin-interface-updating-scene-converters Checklist for updating the `Trade::AbstractSceneConverter` plugin interface
 
 -   Newly added `do*()` APIs need to be also handled in all proxies:
     -   @relativeref{Trade,AnySceneConverter}
@@ -1133,13 +1134,17 @@ inverse.
     info in all files, replacing existing `Copyright © ...` with
     `Copyright © ..., 20XZ` in the root directory of every project, so nothing
     gets left out
+    -   If the line gets over 79 characters, wrap the name on the new line
+        where the first letter is aligned under the `©`
 3.  Examples use partially MIT (mainly in docs) and partially UNLICENSE,
     replace `... —` with `..., 20XZ —` there as well
 4.  Copy all `Find*.cmake` modules to dependent projects to update the
     copyright year in these as well
 5.  Update other occurrences by hand:
-    -   `package/debian/copyright`
+    -   `COPYING`
     -   `doc/conf.py`
+    -   `doc/mainpage.dox`
+    -   `package/debian/copyright`
     -   All flextGL `*.template` files in `src/external/OpenGL` and
         `src/external/Vulkan` because wheezy template needs the `@` escaped to
         `@@`

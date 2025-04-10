@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -40,9 +41,9 @@ Queries timestamp after all previous OpenGL calls have been processed. It can
 query either duration of sequence of commands or absolute timestamp. Example
 usage of both methods:
 
-@snippet MagnumGL.cpp TimeQuery-usage1
+@snippet GL.cpp TimeQuery-usage1
 
-@snippet MagnumGL.cpp TimeQuery-usage2
+@snippet GL.cpp TimeQuery-usage2
 
 Using the latter results in fewer OpenGL calls when doing more measures. All
 times are reported in nanoseconds.

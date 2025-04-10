@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -219,6 +220,19 @@ constexpr Containers::StringView KnownWorkarounds[]{
    to that device. On well-behaved driver versions, eglQueryDeviceAttribEXT()
    returns false instead of segfaulting. */
 "nv-egl-crashy-query-device-attrib"_s,
+
+/* On NV driver 572.83 and likely 566.24 as well, DSA buffer APIs don't work.
+   This was reported on Windows with a NVIDIA RTX 2000 ADA generation graphics
+   card, and downgrading to 556.39 fixes that. On Arch, RTX 3050 and 570.86 it
+   doesn't happen. Not sure if it's really specific to that GPU generation or
+   it's just a regression in the platform-independent GL frontend that affects
+   only some cards somehow.
+
+   The behavior is similar to the one explained below in the
+   "intel-windows-crazy-broken-buffer-dsa" workaround (ImGui rendering
+   flickering a lot), but as I cannot reproduce locally I'm not doing the same
+   investigation. Yet at least. */
+"nv-broken-buffer-dsa"_s,
 #endif
 
 #ifndef MAGNUM_TARGET_GLES
@@ -353,7 +367,9 @@ constexpr Containers::StringView KnownWorkarounds[]{
      like the workaround would be incomplete with some code paths still relying
      on DSA that's not there. It's clearly Intel drivers fault.
    - With both enabled, things seem to be fine, and I hope it stays that way
-     also for future driver updates. */
+     also for future driver updates.
+
+   See also the "nv-broken-buffer-dsa" workaround, which is similar. */
 "intel-windows-crazy-broken-buffer-dsa"_s,
 "intel-windows-crazy-broken-vao-dsa"_s,
 
@@ -376,7 +392,8 @@ constexpr Containers::StringView KnownWorkarounds[]{
 "intel-windows-broken-dsa-layered-cubemap-array-framebuffer-attachment"_s,
 
 /* DSA glClearNamedFramebuffer*() on Intel Windows drivers doesn't do anything.
-   Using the non-DSA code path as a workaournd. */
+   Using the non-DSA code path as a workaournd. See also
+   "mesa-broken-dsa-framebuffer-clear" below. */
 "intel-windows-broken-dsa-framebuffer-clear"_s,
 
 /* Using DSA glCreateQueries() on Intel Windows drivers breaks
@@ -408,6 +425,17 @@ constexpr Containers::StringView KnownWorkarounds[]{
    Generic error again (driver version 27). Because this is impossible to
    prevent, the extension is completely disabled on all Intel Windows drivers. */
 "intel-windows-explicit-uniform-location-is-less-explicit-than-you-hoped"_s,
+#endif
+
+#ifndef MAGNUM_TARGET_GLES
+/* Mesa 24 (or, 24.2 at least) crashes on exit deep inside X11 if the DSA
+   glClearNamedFramebuffer() APIs are used. Not sure what's up, couldn't find
+   any relevant changelog entry and unfortunately the previous version I had
+   was only 23.3.5, so it could be anything in between. My hunch is that it's
+   due to some new code that deals with framebuffer compression and which was
+   only correctly cleaned up in the non-DSA code path. Or something. See also
+   "intel-windows-broken-dsa-framebuffer-clear" above. */
+"mesa-broken-dsa-framebuffer-clear"_s,
 #endif
 
 #ifndef MAGNUM_TARGET_GLES
@@ -650,7 +678,15 @@ void Context::setupDriverWorkarounds() {
            as it neither has any dependencies nor has code that may benefit
            from settings-based preprocessing done for minification */
         #pragma GCC diagnostic push
+        /* The damn thing moved the warning to another group in some version.
+           Not sure if it happened in Clang 10 already, but -Wc++20-extensions
+           is new in Clang 10, so just ignore both. HOWEVER, Emscripten often
+           uses a prerelease Clang, so if it reports version 10, it's likely
+           version 9. So check for versions _above_ 10 instead. */
         #pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+        #if __clang_major__ > 10
+        #pragma GCC diagnostic ignored "-Wc++20-extensions"
+        #endif
         const Int firefoxVersion = EM_ASM_INT({
             var match = navigator.userAgent.match(/Firefox\\\\/(\\\\d+)/);
             if(match) return match[1]|0; /* coerce to an int (remember asm.js?) */
@@ -732,6 +768,16 @@ void Context::setupDriverWorkarounds() {
     #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ < 20000
     _setRequiredVersion(WEBGL::multi_draw, None);
     #endif
+    /* EXT_clip_control, EXT_polygon_offset_clamp and WEBGL_polygon_mode
+       entrypoints are only available since Emscripten 3.1.66:
+       https://github.com/emscripten-core/emscripten/pull/20841
+       However, the extension is advertised even on older versions and we have
+       no way to link to those entrypoints there. */
+    #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ < 30166
+    _setRequiredVersion(EXT::clip_control, None);
+    _setRequiredVersion(EXT::polygon_offset_clamp, None);
+    _setRequiredVersion(WEBGL::polygon_mode, None);
+    #endif
     #ifndef MAGNUM_TARGET_GLES2
     /* WEBGL_multi_draw_instanced_base_vertex_base_instance only since
        Emscripten 2.0.5: https://github.com/emscripten-core/emscripten/pull/12282 */
@@ -744,6 +790,81 @@ void Context::setupDriverWorkarounds() {
     _setRequiredVersion(WEBGL::draw_instanced_base_vertex_base_instance, None);
     #endif
     #endif
+    #endif
+
+    /* WEBGL_compressed_texture_astc has an extremely silly way of reporting
+       whether the LDR or HDR profile is supported. All other platforms simply
+       expose a _hdr / _ldr variants of the extension, here I have to call some
+       fucking getter. Restore sanity and provide this info in fake
+       Magnum-specific MAGNUM_compressed_texture_astc_ldr / _hdr extensions
+       instead.
+
+       What's the most funny about this is that the extension at
+        https://registry.khronos.org/webgl/extensions/WEBGL_compressed_texture_astc/
+       explicitly says that
+        The intent of the getSupportedProfiles function is to allow easy
+        reconstruction of the underlying OpenGL or OpenGL ES extension strings
+        for environments like Emscripten, by prepending the string GL_KHR_texture_compression_astc_ to the returned profile names.
+       Which ... is a noble _intent_, but it only misses one small thing, to
+       have someone actually TELL THE EMSCRIPTEN DEVS TO IMPLEMENT SUCH A
+       THING!!! Which of course never happened. Since 2015. Goddamit.
+
+       And even then, still, why couldn't you just do it like ALL OTHER
+       PLATFORMS? WHY SUCH A STUPID SPECIAL CASE?! */
+    #ifdef MAGNUM_TARGET_WEBGL
+    if(isExtensionSupported<Extensions::WEBGL::compressed_texture_astc>()) {
+        /* Unlike other EM_ASM() macros, this one isn't put into a JS library
+           as it neither has any dependencies nor has code that may benefit
+           from settings-based preprocessing done for minification */
+
+        #pragma GCC diagnostic push
+        /* The damn thing moved the warning to another group in some version.
+           Not sure if it happened in Clang 10 already, but -Wc++20-extensions
+           is new in Clang 10, so just ignore both. HOWEVER, Emscripten often
+           uses a prerelease Clang, so if it reports version 10, it's likely
+           version 9. So check for versions _above_ 10 instead. */
+        #pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+        #if __clang_major__ > 10
+        #pragma GCC diagnostic ignored "-Wc++20-extensions"
+        #endif
+        #ifdef MAGNUM_TARGET_GLES2
+        const UnsignedInt which = EM_ASM_INT({
+            /* Originally this was accessing GL.contexts[$0].GLctx where $0 was
+               an integer passed from emscripten_webgl_get_current_context(),
+               basically relying on some undocumented part of Emscripten
+               internals. Moreover it didn't work with closure compiler enabled
+               (which mangled even the GL variable, causing it to be impossible
+               to find). Accessing Module.canvas should work, and according to
+                https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
+               calling getContext() on it again (with a correct string,
+               matching what was created in the first place) should return the
+               existing context, not creating a new one.
+
+               In this case, the closure compiler *may* mangle the Module name,
+               but will do so in a way that sill matches it, fortunately, The
+               getSupportedProfiles it will however not, so it has to be
+               queried as a string. */
+            var supported = Module.canvas.getContext('webgl').getExtension('WEBGL_compressed_texture_astc')['getSupportedProfiles']();
+            return
+                (supported.indexOf('ldr') >= 0 ? 1 : 0)|
+                (supported.indexOf('hdr') >= 0 ? 2 : 0);
+        });
+        #else
+        const UnsignedInt which = EM_ASM_INT({
+            /* Because yes of course there's no way to pass a compile-time
+               macro into EM_ASM_INT so I have to duplicate like a madman. I
+               could pass it as an argument, but that'd be allocating a
+               JavaScript string. Do I look like I want to deal with that? */
+            var supported = Module.canvas.getContext('webgl2').getExtension('WEBGL_compressed_texture_astc')['getSupportedProfiles']();
+            return
+                (supported.indexOf('ldr') >= 0 ? 1 : 0)|
+                (supported.indexOf('hdr') >= 0 ? 2 : 0);
+        });
+        #endif
+        #pragma GCC diagnostic pop
+        _extensionStatus.set(Extensions::MAGNUM::compressed_texture_astc_ldr::Index, which & 0x01);
+        _extensionStatus.set(Extensions::MAGNUM::compressed_texture_astc_hdr::Index, which & 0x02);
+    }
     #endif
 
     #undef _setRequiredVersion

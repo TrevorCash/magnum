@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -823,6 +824,37 @@ typedef struct __GLsync *GLsync;
 #define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT 0x8C4E
 #define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT 0x8C4F
 
+/* GL_EXT_polygon_offset_clamp */
+
+#define GL_POLYGON_OFFSET_CLAMP_EXT 0x8E1B
+
+/* GL_EXT_clip_control */
+
+#define GL_LOWER_LEFT_EXT 0x8CA1
+#define GL_UPPER_LEFT_EXT 0x8CA2
+#define GL_NEGATIVE_ONE_TO_ONE_EXT 0x935E
+#define GL_ZERO_TO_ONE_EXT 0x935F
+#define GL_CLIP_ORIGIN_EXT 0x935C
+#define GL_CLIP_DEPTH_MODE_EXT 0x935D
+
+/* GL_EXT_depth_clamp */
+
+#define GL_DEPTH_CLAMP_EXT 0x864F
+
+/* GL_EXT_texture_mirror_clamp_to_edge */
+
+#define GL_MIRROR_CLAMP_TO_EDGE_EXT 0x8743
+
+/* GL_EXT_blend_func_extended */
+
+#define GL_SRC1_COLOR_EXT 0x88F9
+#define GL_SRC1_ALPHA_EXT 0x8589
+#define GL_ONE_MINUS_SRC1_COLOR_EXT 0x88FA
+#define GL_ONE_MINUS_SRC1_ALPHA_EXT 0x88FB
+#define GL_SRC_ALPHA_SATURATE_EXT 0x0308
+#define GL_LOCATION_INDEX_EXT 0x930F
+#define GL_MAX_DUAL_SOURCE_DRAW_BUFFERS_EXT 0x88FC
+
 /* GL_IMG_texture_compression_pvrtc */
 
 #define GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG 0x8C00
@@ -884,21 +916,33 @@ typedef struct __GLsync *GLsync;
 #define GL_MAX_SHADER_COMPILER_THREADS_KHR 0x91B0
 #define GL_COMPLETION_STATUS_KHR 0x91B1
 
+/* GL_ANGLE_stencil_texturing */
+
+#define GL_DEPTH_STENCIL_TEXTURE_MODE_ANGLE 0x90EA
+#define GL_STENCIL_INDEX_ANGLE 0x1901
+
+/* GL_WEBGL_polygon_mode */
+
+#define GL_POLYGON_MODE_WEBGL 0x0B40
+#define GL_LINE_WEBGL 0x1B01
+#define GL_FILL_WEBGL 0x1B02
+#define GL_POLYGON_OFFSET_LINE_WEBGL 0x2A02
+
 /* Function prototypes */
 
 /* GL_ANGLE_base_vertex_base_instance */
 
 GLAPI void glDrawArraysInstancedBaseInstanceANGLE(GLenum, GLint, GLsizei, GLsizei, GLuint);
-GLAPI void glDrawElementsInstancedBaseVertexBaseInstanceANGLE(GLenum, GLsizei, GLenum, const GLvoid *, GLsizei, GLint, GLuint);
+GLAPI void glDrawElementsInstancedBaseVertexBaseInstanceANGLE(GLenum, GLsizei, GLenum, const void *, GLsizei, GLint, GLuint);
 GLAPI void glMultiDrawArraysInstancedBaseInstanceANGLE(GLenum, const GLint *, const GLsizei *, const GLsizei *, const GLuint *, GLsizei);
-GLAPI void glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE(GLenum, const GLsizei *, GLenum, const GLvoid *const*, const GLsizei *, const GLint *, const GLuint *, GLsizei);
+GLAPI void glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE(GLenum, const GLsizei *, GLenum, const void *const*, const GLsizei *, const GLint *, const GLuint *, GLsizei);
 
 /* GL_ANGLE_multi_draw */
 
 GLAPI void glMultiDrawArraysANGLE(GLenum, const GLint *, const GLsizei *, GLsizei);
 GLAPI void glMultiDrawArraysInstancedANGLE(GLenum, const GLint *, const GLsizei *, const GLsizei *, GLsizei);
-GLAPI void glMultiDrawElementsANGLE(GLenum, const GLsizei *, GLenum, const GLvoid *const*, GLsizei);
-GLAPI void glMultiDrawElementsInstancedANGLE(GLenum, const GLsizei *, GLenum, const GLvoid *const*, const GLsizei*, GLsizei);
+GLAPI void glMultiDrawElementsANGLE(GLenum, const GLsizei *, GLenum, const void *const*, GLsizei);
+GLAPI void glMultiDrawElementsInstancedANGLE(GLenum, const GLsizei *, GLenum, const void *const*, const GLsizei*, GLsizei);
 
 /* GL_ES_VERSION_2_0 */
 
@@ -1152,6 +1196,10 @@ GLAPI void glVertexAttribI4uiv(GLuint, const GLuint *);
 GLAPI void glVertexAttribIPointer(GLuint, GLint, GLenum, GLsizei, const void *);
 GLAPI void glWaitSync(GLsync, GLbitfield, GLuint64);
 
+/* GL_EXT_clip_control */
+
+GLAPI void glClipControlEXT(GLenum, GLenum);
+
 /* GL_EXT_disjoint_timer_query */
 
 GLAPI void glBeginQueryEXT(GLenum, GLuint);
@@ -1178,6 +1226,10 @@ GLAPI void glDisableiEXT(GLenum, GLuint);
 GLAPI void glEnableiEXT(GLenum, GLuint);
 GLAPI GLboolean glIsEnablediEXT(GLenum, GLuint);
 
+/* GL_EXT_polygon_offset_clamp */
+
+GLAPI void glPolygonOffsetClampEXT(GLfloat, GLfloat, GLfloat);
+
 /* GL_MAGNUM_what_webgl_has_but_es_not */
 
 GLAPI void glGetBufferSubData(GLenum, GLintptr, GLsizeiptr, void *);
@@ -1185,6 +1237,11 @@ GLAPI void glGetBufferSubData(GLenum, GLintptr, GLsizeiptr, void *);
 /* GL_OVR_multiview */
 
 GLAPI void glFramebufferTextureMultiviewOVR(GLenum, GLenum, GLuint, GLint, GLint, GLsizei);
+GLAPI void glNamedFramebufferTextureMultiviewOVR(GLuint, GLenum, GLuint, GLint, GLint, GLsizei);
+
+/* GL_WEBGL_polygon_mode */
+
+GLAPI void glPolygonModeWEBGL(GLenum, GLenum);
 
 #ifdef __cplusplus
 }

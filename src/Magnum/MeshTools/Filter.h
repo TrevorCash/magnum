@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -51,9 +52,24 @@ This function only operates on the attribute metadata --- if you'd like to have
 the vertex data repacked to contain just the remaining attributes as well, pass
 the output to @ref interleave(const Trade::MeshData&, Containers::ArrayView<const Trade::MeshAttributeData>, InterleaveFlags) "interleave()"
 without @ref InterleaveFlag::PreserveInterleavedAttributes set.
-@see @ref reference()
+@see @ref reference(), @ref filterOnlyAttributes(),
+    @ref filterExceptAttributes(), @ref meshtools-attributes-filter
 */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterAttributes(const Trade::MeshData& mesh, Containers::BitArrayView attributesToKeep);
+
+/**
+@brief Filter a mesh to contain only the selected subset of attributes
+@m_since_latest
+
+Compared to @ref filterAttributes(const Trade::MeshData&, Containers::BitArrayView),
+if the @p mesh index or vertex data is owned, the function transfers the data
+ownership to the returned instance instead of returning a non-owning reference.
+If neither the index nor the vertex data is owned, the two overloads behave the
+same.
+@see @ref Trade::MeshData::indexDataFlags(),
+     @ref Trade::MeshData::vertexDataFlags()
+*/
+MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterAttributes(Trade::MeshData&& mesh, Containers::BitArrayView attributesToKeep);
 
 /**
 @brief Filter a mesh to contain only the selected subset of named attributes
@@ -65,15 +81,16 @@ present, is left untouched. Attributes from the list that are not present in
 @p mesh are skipped, duplicates in the list are treated the same as if given
 attribute was listed just once. If given attribute is present multiple times in
 the mesh (such as secondary colors or texture coordinates), all its occurences
-are kept --- if you want a different behavior, use the
-@ref filterOnlyAttributes(const Trade::MeshData&, Containers::ArrayView<const UnsignedInt>)
-overload and pick attributes by their IDs instead.
+are kept --- if you want a different behavior, use
+@ref filterAttributes(const Trade::MeshData&, Containers::BitArrayView) and
+pick attributes by their IDs instead.
 
 This function only operates on the attribute metadata --- if you'd like to have
 the vertex data repacked to contain just the remaining attributes as well, pass
 the output to @ref interleave(const Trade::MeshData&, Containers::ArrayView<const Trade::MeshAttributeData>, InterleaveFlags) "interleave()"
 without @ref InterleaveFlag::PreserveInterleavedAttributes set.
-@see @ref reference()
+@see @ref reference(), @ref filterExceptAttributes(),
+    @ref meshtools-attributes-filter
 */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterOnlyAttributes(const Trade::MeshData& mesh, Containers::ArrayView<const Trade::MeshAttribute> attributes);
 
@@ -82,6 +99,26 @@ MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterOnlyAttributes(const Trade::MeshDa
  * @m_since_latest
  */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterOnlyAttributes(const Trade::MeshData& mesh, std::initializer_list<Trade::MeshAttribute> attributes);
+
+/**
+@brief Filter a mesh to contain only the selected subset of named attributes
+@m_since_latest
+
+Compared to @ref filterOnlyAttributes(const Trade::MeshData&, Containers::ArrayView<const Trade::MeshAttribute>),
+if the @p mesh index or vertex data is owned, the function transfers the data
+ownership to the returned instance instead of returning a non-owning reference.
+If neither the index nor the vertex data is owned, the two overloads behave the
+same.
+@see @ref Trade::MeshData::indexDataFlags(),
+     @ref Trade::MeshData::vertexDataFlags()
+*/
+MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterOnlyAttributes(Trade::MeshData&& mesh, Containers::ArrayView<const Trade::MeshAttribute> attributes);
+
+/**
+ * @overload
+ * @m_since_latest
+ */
+MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterOnlyAttributes(Trade::MeshData&& mesh, std::initializer_list<Trade::MeshAttribute> attributes);
 
 /**
 @brief Filter a mesh to contain everything except the selected subset of named attributes
@@ -93,14 +130,16 @@ present, is left untouched. Attributes from the list that are not present in
 @p mesh are skipped, duplicates in the list are treated the same as if given
 attribute was listed just once. If given attribute is present multiple times in
 the mesh (such as secondary colors or texture coordinates), all its occurences
-are removed --- if you want a different behavior, use the
-@ref filterOnlyAttributes(const Trade::MeshData&, Containers::ArrayView<const UnsignedInt>)
-overload and pick attributes by their IDs instead.
+are removed --- if you want a different behavior, use
+@ref filterAttributes(const Trade::MeshData&, Containers::BitArrayView) and
+pick attributes by their IDs instead.
 
 This function only operates on the attribute metadata --- if you'd like to have
 the vertex mesh repacked to contain just the remaining attributes as well, pass
 the output to @ref interleave(const Trade::MeshData&, Containers::ArrayView<const Trade::MeshAttributeData>, InterleaveFlags) "interleave()"
 without @ref InterleaveFlag::PreserveInterleavedAttributes set.
+@see @ref reference(), @ref filterOnlyAttributes(),
+    @ref meshtools-attributes-filter
 */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterExceptAttributes(const Trade::MeshData& mesh, Containers::ArrayView<const Trade::MeshAttribute> attributes);
 
@@ -109,6 +148,26 @@ MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterExceptAttributes(const Trade::Mesh
  * @m_since_latest
  */
 MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterExceptAttributes(const Trade::MeshData& mesh, std::initializer_list<Trade::MeshAttribute> attributes);
+
+/**
+@brief Filter a mesh to contain everything except the selected subset of named attributes
+@m_since_latest
+
+Compared to @ref filterExceptAttributes(const Trade::MeshData&, Containers::ArrayView<const Trade::MeshAttribute>),
+if the @p mesh index or vertex data is owned, the function transfers the data
+ownership to the returned instance instead of returning a non-owning reference.
+If neither the index nor the vertex data is owned, the two overloads behave the
+same.
+@see @ref Trade::MeshData::indexDataFlags(),
+     @ref Trade::MeshData::vertexDataFlags()
+*/
+MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterExceptAttributes(Trade::MeshData&& mesh, Containers::ArrayView<const Trade::MeshAttribute> attributes);
+
+/**
+ * @overload
+ * @m_since_latest
+ */
+MAGNUM_MESHTOOLS_EXPORT Trade::MeshData filterExceptAttributes(Trade::MeshData&& mesh, std::initializer_list<Trade::MeshAttribute> attributes);
 
 }}
 

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,12 +24,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/Containers/String.h>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
-#include <Corrade/Utility/DebugStl.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 
 #include "Magnum/Vk/LayerProperties.h"
 #include "Magnum/Vk/Version.h"
@@ -106,13 +105,13 @@ void LayerPropertiesVkTest::outOfRange() {
     LayerProperties properties = enumerateLayerProperties();
     const UnsignedInt count = properties.count();
 
-    std::ostringstream out;
+    Containers::String out;
     Error redirectError{&out};
     properties.name(count);
     properties.revision(count);
     properties.version(count);
     properties.description(count);
-    CORRADE_COMPARE(out.str(), Utility::formatString(
+    CORRADE_COMPARE(out, Utility::format(
         "Vk::LayerProperties::name(): index {0} out of range for {0} entries\n"
         "Vk::LayerProperties::revision(): index {0} out of range for {0} entries\n"
         "Vk::LayerProperties::version(): index {0} out of range for {0} entries\n"

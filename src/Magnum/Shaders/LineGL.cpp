@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -123,7 +124,8 @@ template<UnsignedInt dimensions> typename LineGL<dimensions>::CompileState LineG
     #endif
 
     /* Cap and join style is needed by both the vertex and fragment shader,
-       prepare their defines just once for both */
+       prepare their defines just once for both. This snippet is shared between
+       Shaders::LineGL and Ui::LineLayerGL, keep in sync. */
     Containers::StringView capStyleDefine, joinStyleDefine;
     switch(configuration.capStyle()) {
         case LineCapStyle::Butt:
@@ -180,6 +182,7 @@ template<UnsignedInt dimensions> typename LineGL<dimensions>::CompileState LineG
     }
     vert.addSource(rs.getString("generic.glsl"_s))
         .addSource(rs.getString("Line.vert"_s))
+        .addSource(rs.getString("Line.in.vert"_s))
         .submitCompile();
 
     GL::Shader frag{version, GL::Shader::Type::Fragment};
@@ -211,6 +214,7 @@ template<UnsignedInt dimensions> typename LineGL<dimensions>::CompileState LineG
     }
     frag.addSource(rs.getString("generic.glsl"_s))
         .addSource(rs.getString("Line.frag"_s))
+        .addSource(rs.getString("Line.in.frag"_s))
         .submitCompile();
 
     LineGL<dimensions> out{NoInit};
@@ -511,7 +515,7 @@ Debug& operator<<(Debug& debug, const LineGLFlag value) {
         /* LCOV_EXCL_STOP */
     }
 
-    return debug << "(" << Debug::nospace << reinterpret_cast<void*>(UnsignedShort(value)) << Debug::nospace << ")";
+    return debug << "(" << Debug::nospace << Debug::hex << UnsignedShort(value) << Debug::nospace << ")";
 }
 
 Debug& operator<<(Debug& debug, const LineGLFlags value) {

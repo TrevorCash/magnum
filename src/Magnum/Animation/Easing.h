@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -39,7 +40,7 @@ namespace Magnum { namespace Animation {
 @brief Easing functions
 @m_since_latest
 
-@m_keywords{Tweening Inbetweening}
+@m_keywords{Easing Tweening Inbetweening}
 
 A collection of predefined [easing / tweening](https://en.wikipedia.org/wiki/Inbetweening)
 functions for adding life to animation interpolation. Meant to be used through
@@ -241,12 +242,12 @@ See @ref building, @ref cmake and @ref animation for more information.
 
 The easing function is meant to be used to modify the interpolation factor, such as:
 
-@snippet MagnumAnimation.cpp Easing-factor
+@snippet Animation.cpp Easing-factor
 
 The @ref Animation library also provides the @ref ease() utility that combines
 the interpolator together with the easing function:
 
-@snippet MagnumAnimation.cpp Easing-ease
+@snippet Animation.cpp Easing-ease
 
 @section Animation-Easing-equations Equations
 
@@ -261,7 +262,7 @@ range and produces a NaN. You may want to ensure the factor stays in bounds,
 using either @ref Math::clamp() or the @ref easeClamped() function --- the
 following two expressions are equivalent:
 
-@snippet MagnumAnimation.cpp Easing-clamp
+@snippet Animation.cpp Easing-clamp
 
 Out-function @f$ f_\text{out} @f$ for a corresponding in-function @f$ f_\text{in} @f$
 is defined as the following, the equations in the docs usually just show the
@@ -289,7 +290,7 @@ plots it with a thin blue line. The curve is always normalized to go from
 @f$ (0, 0)^T @f$ to @f$ (1, 1)^T @f$, apply arbitrary transformation to each
 point as needed:
 
-@snippet MagnumAnimation.cpp Easing-bezier-transform
+@snippet Animation.cpp Easing-bezier-transform
 
 @section Animation-Easing-references References
 
@@ -343,7 +344,7 @@ template<class T> struct BasicEasing {
      * Implementation matching the GLSL @glsl smoothstep() @ce function.
      * Combine with @ref Math::lerp() to get the equivalent result:
      *
-     * @snippet MagnumAnimation.cpp Easing-smoothstep
+     * @snippet Animation.cpp Easing-smoothstep
      *
      * @htmlinclude easings-smoothstep.svg
      *

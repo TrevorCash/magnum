@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -39,12 +40,14 @@ struct DebugState {
 
     Containers::String(*getLabelImplementation)(GLenum, GLuint);
     void(*labelImplementation)(GLenum, GLuint, Containers::StringView);
-
-    void(*messageInsertImplementation)(DebugMessage::Source, DebugMessage::Type, UnsignedInt, DebugOutput::Severity, Containers::StringView);
-    void(*controlImplementation)(GLenum, GLenum, GLenum, std::initializer_list<UnsignedInt>, bool);
     void(*callbackImplementation)(DebugOutput::Callback);
-    void(*pushGroupImplementation)(DebugGroup::Source, UnsignedInt, Containers::StringView);
-    void(*popGroupImplementation)();
+
+    /* These are direct pointers to the GL functions, so need a __stdcall on
+       Windows to compile properly on 32 bits */
+    void(APIENTRY *messageInsertImplementation)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar*);
+    void(APIENTRY *controlImplementation)(GLenum, GLenum, GLenum, GLsizei, const GLuint*, GLboolean);
+    void(APIENTRY *pushGroupImplementation)(GLenum, GLuint, GLsizei, const GLchar*);
+    void(APIENTRY *popGroupImplementation)(void);
 
     GLint maxLabelLength, maxLoggedMessages, maxMessageLength, maxStackDepth;
     struct MessageCallback {

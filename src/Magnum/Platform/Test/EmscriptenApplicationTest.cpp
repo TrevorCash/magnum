@@ -25,7 +25,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#include <Corrade/Containers/EnumSet.hpp>
 #include <Corrade/Utility/Arguments.h>
+#include <emscripten/html5.h>
 
 #include "Magnum/Platform/EmscriptenApplication.h"
 #include "Magnum/GL/Renderer.h"
@@ -44,7 +46,246 @@
 #include <emscripten/version.h>
 #endif
 
-namespace Magnum { namespace Platform { namespace Test {
+namespace Magnum { namespace Platform {
+
+/* These cannot be in an anonymous namespace as enumSetDebugOutput() below
+   wouldn't be able to pick them up */
+
+static Debug& operator<<(Debug& debug, Application::Modifier value) {
+    debug << "Modifier" << Debug::nospace;
+
+    switch(value) {
+        #define _c(value) case Application::Modifier::value: return debug << "::" #value;
+        _c(Shift)
+        _c(Ctrl)
+        _c(Alt)
+        _c(Super)
+        #undef _c
+    }
+
+    return debug << "(" << Debug::nospace << UnsignedInt(value) << Debug::nospace << ")";
+}
+
+static Debug& operator<<(Debug& debug, Application::Pointer value) {
+    debug << "Pointer" << Debug::nospace;
+
+    switch(value) {
+        #define _c(value) case Application::Pointer::value: return debug << "::" #value;
+        _c(MouseLeft)
+        _c(MouseMiddle)
+        _c(MouseRight)
+        _c(MouseButton4)
+        _c(MouseButton5)
+        #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+        _c(Finger)
+        #endif
+        #undef _c
+    }
+
+    return debug << "(" << Debug::nospace << UnsignedInt(value) << Debug::nospace << ")";
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
+CORRADE_UNUSED static Debug& operator<<(Debug& debug, Application::MouseMoveEvent::Button value) {
+    debug << "Button" << Debug::nospace;
+
+    switch(value) {
+        #define _c(value) case Application::MouseMoveEvent::Button::value: return debug << "::" #value;
+        _c(Left)
+        _c(Middle)
+        _c(Right)
+        #undef _c
+    }
+
+    return debug << "(" << Debug::nospace << UnsignedInt(value) << Debug::nospace << ")";
+}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
+namespace Test { namespace {
+
+static Debug& operator<<(Debug& debug, Application::PointerEventSource value) {
+    debug << "PointerEventSource" << Debug::nospace;
+
+    switch(value) {
+        #define _c(value) case Application::PointerEventSource::value: return debug << "::" #value;
+        _c(Mouse)
+        #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+        _c(Touch)
+        #endif
+        #undef _c
+    }
+
+    return debug << "(" << Debug::nospace << UnsignedInt(value) << Debug::nospace << ")";
+}
+
+Debug& operator<<(Debug& debug, Application::Modifiers value) {
+    return Containers::enumSetDebugOutput(debug, value, "Modifiers{}", {
+        Application::Modifier::Shift,
+        Application::Modifier::Ctrl,
+        Application::Modifier::Alt,
+        Application::Modifier::Super
+    });
+}
+
+Debug& operator<<(Debug& debug, Application::Pointers value) {
+    return Containers::enumSetDebugOutput(debug, value, "Pointers{}", {
+        Application::Pointer::MouseLeft,
+        Application::Pointer::MouseMiddle,
+        Application::Pointer::MouseRight,
+        Application::Pointer::MouseButton4,
+        Application::Pointer::MouseButton5,
+        #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+        Application::Pointer::Finger,
+        #endif
+    });
+}
+
+#ifdef MAGNUM_BUILD_DEPRECATED
+CORRADE_IGNORE_DEPRECATED_PUSH
+CORRADE_UNUSED Debug& operator<<(Debug& debug, Application::MouseEvent::Button value) {
+    debug << "Button" << Debug::nospace;
+
+    switch(value) {
+        #define _c(value) case Application::MouseEvent::Button::value: return debug << "::" #value;
+        _c(Left)
+        _c(Middle)
+        _c(Right)
+        #undef _c
+    }
+
+    return debug << "(" << Debug::nospace << UnsignedInt(value) << Debug::nospace << ")";
+}
+
+CORRADE_UNUSED Debug& operator<<(Debug& debug, Application::MouseMoveEvent::Buttons value) {
+    return Containers::enumSetDebugOutput(debug, value, "Buttons{}", {
+        Application::MouseMoveEvent::Button::Left,
+        Application::MouseMoveEvent::Button::Middle,
+        Application::MouseMoveEvent::Button::Right,
+    });
+}
+CORRADE_IGNORE_DEPRECATED_POP
+#endif
+
+Debug& operator<<(Debug& debug, const Application::Key value) {
+    debug << "Key" << Debug::nospace;
+
+    switch(value) {
+        #define _c(value) case Application::Key::value: return debug << "::" #value;
+        _c(Unknown)
+        _c(LeftShift)
+        _c(RightShift)
+        _c(LeftCtrl)
+        _c(RightCtrl)
+        _c(LeftAlt)
+        _c(RightAlt)
+        _c(LeftSuper)
+        _c(RightSuper)
+        _c(Enter)
+        _c(Esc)
+        _c(Up)
+        _c(Down)
+        _c(Left)
+        _c(Right)
+        _c(Home)
+        _c(End)
+        _c(PageUp)
+        _c(PageDown)
+        _c(Backspace)
+        _c(Insert)
+        _c(Delete)
+        _c(F1)
+        _c(F2)
+        _c(F3)
+        _c(F4)
+        _c(F5)
+        _c(F6)
+        _c(F7)
+        _c(F8)
+        _c(F9)
+        _c(F10)
+        _c(F11)
+        _c(F12)
+        _c(Zero)
+        _c(One)
+        _c(Two)
+        _c(Three)
+        _c(Four)
+        _c(Five)
+        _c(Six)
+        _c(Seven)
+        _c(Eight)
+        _c(Nine)
+        _c(A)
+        _c(B)
+        _c(C)
+        _c(D)
+        _c(E)
+        _c(F)
+        _c(G)
+        _c(H)
+        _c(I)
+        _c(J)
+        _c(K)
+        _c(L)
+        _c(M)
+        _c(N)
+        _c(O)
+        _c(P)
+        _c(Q)
+        _c(R)
+        _c(S)
+        _c(T)
+        _c(U)
+        _c(V)
+        _c(W)
+        _c(X)
+        _c(Y)
+        _c(Z)
+        _c(Space)
+        _c(Tab)
+        _c(Quote)
+        _c(Comma)
+        _c(Period)
+        _c(Minus)
+        _c(Plus)
+        _c(Slash)
+        _c(Percent)
+        _c(Semicolon)
+        _c(Equal)
+        _c(LeftBracket)
+        _c(RightBracket)
+        _c(Backslash)
+        _c(Backquote)
+        _c(CapsLock)
+        _c(ScrollLock)
+        _c(NumLock)
+        _c(PrintScreen)
+        _c(Pause)
+        _c(Menu)
+        _c(NumZero)
+        _c(NumOne)
+        _c(NumTwo)
+        _c(NumThree)
+        _c(NumFour)
+        _c(NumFive)
+        _c(NumSix)
+        _c(NumSeven)
+        _c(NumEight)
+        _c(NumNine)
+        _c(NumDecimal)
+        _c(NumDivide)
+        _c(NumMultiply)
+        _c(NumSubtract)
+        _c(NumAdd)
+        _c(NumEnter)
+        _c(NumEqual)
+        #undef _c
+    }
+
+    return debug << "(" << Debug::nospace << Debug::hex << UnsignedInt(value) << Debug::nospace << ")";
+}
 
 using namespace Containers::Literals;
 using namespace Math::Literals;
@@ -53,7 +294,7 @@ struct EmscriptenApplicationTest: Platform::Application {
     /* For testing resize events */
     explicit EmscriptenApplicationTest(const Arguments& arguments);
 
-    virtual void drawEvent() override {
+    void drawEvent() override {
         Debug() << "draw event";
         #ifdef CUSTOM_CLEAR_COLOR
         GL::Renderer::setClearColor(CUSTOM_CLEAR_COLOR);
@@ -62,68 +303,90 @@ struct EmscriptenApplicationTest: Platform::Application {
 
         swapBuffers();
 
-        if(_redraw) {
+        if(_redraw)
             redraw();
-        }
     }
 
     #ifdef MAGNUM_TARGET_GL
     /* For testing HiDPI resize events */
     void viewportEvent(ViewportEvent& event) override {
-        Debug{} << "viewport event" << event.windowSize() << event.framebufferSize() << event.dpiScaling() << event.devicePixelRatio();
+        Debug{} << "viewport:" << event.windowSize() << event.framebufferSize() << event.dpiScaling() << event.devicePixelRatio();
     }
     #endif
 
-    /* For testing event coordinates */
+    /* Set to 0 to test the deprecated mouse events instead */
+    #if 1
+    void pointerPressEvent(PointerEvent& event) override {
+        Debug{} << "pointer press:" << event.source() << event.pointer() << (event.isPrimary() ? "primary" : "secondary") << event.id() << event.modifiers() << Debug::packed << event.position()
+            #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+            /* Just to verify the access works for both cases */
+            << (event.source() == PointerEventSource::Mouse ?
+                event.event<EmscriptenMouseEvent>().timestamp :
+                event.event<EmscriptenTouchEvent>().timestamp)
+            #endif
+            ;
+    }
+    void pointerReleaseEvent(PointerEvent& event) override {
+        Debug{} << "pointer release:" << event.source() << event.pointer() << (event.isPrimary() ? "primary" : "secondary") << event.id() << event.modifiers() << Debug::packed << event.position()
+            #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+            /* Just to verify the access works for both cases */
+            << (event.source() == PointerEventSource::Mouse ?
+                event.event<EmscriptenMouseEvent>().timestamp :
+                event.event<EmscriptenTouchEvent>().timestamp)
+            #endif
+            ;
+    }
+    void pointerMoveEvent(PointerMoveEvent& event) override {
+        Debug{} << "pointer move:" << event.source() << event.pointer() << event.pointers() << (event.isPrimary() ? "primary" : "secondary") << event.id() << event.modifiers() << Debug::packed << event.position() << Debug::packed << event.relativePosition()
+            #if __EMSCRIPTEN_major__*10000 + __EMSCRIPTEN_minor__*100 + __EMSCRIPTEN_tiny__ >= 20027
+            /* Just to verify the access works for both cases */
+            << (event.source() == PointerEventSource::Mouse ?
+                event.event<EmscriptenMouseEvent>().timestamp :
+                event.event<EmscriptenTouchEvent>().timestamp)
+            #endif
+            ;
+    }
+    void scrollEvent(ScrollEvent& event) override {
+        Debug{} << "scroll:" << event.modifiers() << Debug::packed << event.offset() << Debug::packed << event.position();
+    }
+    #else
+    CORRADE_IGNORE_DEPRECATED_PUSH
     void mousePressEvent(MouseEvent& event) override {
-        Debug{} << "mouse press event:" << event.position() << Int(event.button());
+        Debug{} << "mouse press:" << event.button() << event.modifiers() << Debug::packed << event.position();
     }
-
     void mouseReleaseEvent(MouseEvent& event) override {
-        Debug{} << "mouse release event:" << event.position() << Int(event.button());
+        Debug{} << "mouse release:" << event.button() << event.modifiers() << Debug::packed << event.position();
     }
-
     void mouseMoveEvent(MouseMoveEvent& event) override {
-        Debug{} << "mouse move event:" << event.position() << event.relativePosition() << Int(event.buttons());
+        Debug{} << "mouse move:" << event.buttons() << event.modifiers() << Debug::packed << event.position() << Debug::packed << event.relativePosition();
     }
-
     void mouseScrollEvent(MouseScrollEvent& event) override {
-        Debug{} << "mouse scroll event:" << event.offset() << event.position();
+        Debug{} << "mouse scroll:" << event.modifiers() << Debug::packed << event.offset() << Debug::packed << event.position();
     }
+    CORRADE_IGNORE_DEPRECATED_POP
+    #endif
 
     /* For testing keyboard capture */
     void keyPressEvent(KeyEvent& event) override {
-        {
-            Debug d;
-            if(event.key() != KeyEvent::Key::Unknown) {
-                d << "keyPressEvent(" << Debug::nospace << event.keyName().data() << Debug::nospace << "): ✔";
-            } else {
-                d << "keyPressEvent(" << Debug::nospace << event.keyName().data() << Debug::nospace << "): ✘";
-            }
+        Debug{} << "key press:" << event.key() << event.keyName() << "scancode:" << event.scanCodeName() << event.modifiers();
 
-            if(event.modifiers() & KeyEvent::Modifier::Shift) d << "Shift";
-            if(event.modifiers() & KeyEvent::Modifier::Ctrl) d << "Ctrl";
-            if(event.modifiers() & KeyEvent::Modifier::Alt) d << "Alt";
-            if(event.modifiers() & KeyEvent::Modifier::Super) d << "Super";
-        }
-
-        if(event.key() == KeyEvent::Key::F1) {
+        if(event.key() == Key::F1) {
             Debug{} << "starting text input";
             startTextInput();
-        } else if(event.key() == KeyEvent::Key::F2) {
+        } else if(event.key() == Key::F2) {
             _redraw = !_redraw;
             Debug{} << "redrawing" << (_redraw ? "enabled" : "disabled");
             if(_redraw) redraw();
-        } else if(event.key() == KeyEvent::Key::Esc) {
+        } else if(event.key() == Key::Esc) {
             Debug{} << "stopping text input";
             stopTextInput();
-        } else if(event.key() == KeyEvent::Key::F) {
+        } else if(event.key() == Key::F) {
             Debug{} << "toggling fullscreen";
             setContainerCssClass((_fullscreen ^= true) ? "mn-fullsizeX"_s.exceptSuffix(1) : "");
-        } else if(event.key() == KeyEvent::Key::T) {
+        } else if(event.key() == Key::T) {
             Debug{} << "setting window title";
             setWindowTitle("This is a UTF-8 Window Title™ and it should have no exclamation mark!!"_s.exceptSuffix(2));
-        } else if(event.key() == KeyEvent::Key::H) {
+        } else if(event.key() == Key::H) {
             Debug{} << "toggling hand cursor";
             setCursor(cursor() == Cursor::Arrow ? Cursor::Hand : Cursor::Arrow);
         }
@@ -132,25 +395,13 @@ struct EmscriptenApplicationTest: Platform::Application {
     }
 
     void keyReleaseEvent(KeyEvent& event) override {
-        {
-            Debug d;
-            if(event.key() != KeyEvent::Key::Unknown) {
-                d << "keyReleaseEvent(" << Debug::nospace << event.keyName() << Debug::nospace << "): ✔";
-            } else {
-                d << "keyReleaseEvent(" << Debug::nospace << event.keyName() << Debug::nospace << "): ✘";
-            }
-
-            if(event.modifiers() & KeyEvent::Modifier::Shift) d << "Shift";
-            if(event.modifiers() & KeyEvent::Modifier::Ctrl) d << "Ctrl";
-            if(event.modifiers() & KeyEvent::Modifier::Alt) d << "Alt";
-            if(event.modifiers() & KeyEvent::Modifier::Super) d << "Super";
-        }
+        Debug{} << "key release:" << event.key() << event.keyName() << "scancode:" << event.scanCodeName() << event.modifiers();
 
         event.setAccepted();
     }
 
     void textInputEvent(TextInputEvent& event) override {
-        Debug{} << "text input event:" << event.text();
+        Debug{} << "text input:" << event.text();
 
         event.setAccepted();
     }
@@ -203,6 +454,6 @@ EmscriptenApplicationTest::EmscriptenApplicationTest(const Arguments& arguments)
     GL::Mesh mesh;
 }
 
-}}}
+}}}}
 
 MAGNUM_APPLICATION_MAIN(Magnum::Platform::Test::EmscriptenApplicationTest)

@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -23,13 +24,12 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
+#include <new>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
-#include <Corrade/Utility/DebugStl.h>
-#if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+#if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
 #include <Corrade/Containers/String.h>
-#include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/Tweakable.h>
 #endif
 
@@ -83,7 +83,10 @@ struct ColorTest: TestSuite::Tester {
     void constructNoInit();
     void constructOneValue();
     void constructParts();
+    void constructArray();
+    void constructArrayRvalue();
     void constructConversion();
+    void constructBit();
     void constructPacking();
     void constructCopy();
     void convert();
@@ -125,6 +128,13 @@ struct ColorTest: TestSuite::Tester {
     void fromXyzDefaultAlpha();
     void xyY();
 
+    void premultiplied();
+    template<class T> void premultipliedRoundtrip();
+    void unpremultiplied();
+    template<class T> void unpremultipliedRoundtrip();
+
+    void multiplyDivideIntegral();
+
     void strictWeakOrdering();
 
     void swizzleType();
@@ -134,7 +144,7 @@ struct ColorTest: TestSuite::Tester {
     void debugUbColorColorsDisabled();
     void debugHsv();
 
-    #if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+    #if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
     void tweakableRgb();
     void tweakableSrgb();
     void tweakableRgbf();
@@ -168,7 +178,16 @@ using Magnum::Deg;
 
 using namespace Literals;
 
-#if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+const struct {
+    Int r, g, b;
+} UnpremultipliedRoundtripData[]{
+    {10, 8, 2}, /* same as in premultipliedRoundtrip() */
+    {4, 5, 0},
+    {9, 6, 7},
+    /** @todo for 1 and 3 it results in less precision, what to do? */
+};
+
+#if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
 const struct {
     const char* name;
     const char* dataRgb;
@@ -209,7 +228,10 @@ ColorTest::ColorTest() {
               &ColorTest::constructNoInit,
               &ColorTest::constructOneValue,
               &ColorTest::constructParts,
+              &ColorTest::constructArray,
+              &ColorTest::constructArrayRvalue,
               &ColorTest::constructConversion,
+              &ColorTest::constructBit,
               &ColorTest::constructPacking,
               &ColorTest::constructCopy,
               &ColorTest::convert,
@@ -253,6 +275,18 @@ ColorTest::ColorTest() {
               &ColorTest::fromXyzDefaultAlpha,
               &ColorTest::xyY,
 
+              &ColorTest::premultiplied,
+              &ColorTest::premultipliedRoundtrip<UnsignedByte>,
+              &ColorTest::premultipliedRoundtrip<UnsignedShort>,
+              &ColorTest::unpremultiplied});
+
+    addInstancedTests<ColorTest>({
+        &ColorTest::unpremultipliedRoundtrip<UnsignedByte>,
+        &ColorTest::unpremultipliedRoundtrip<UnsignedShort>},
+        Containers::arraySize(UnpremultipliedRoundtripData));
+
+    addTests({&ColorTest::multiplyDivideIntegral,
+
               &ColorTest::strictWeakOrdering,
 
               &ColorTest::swizzleType,
@@ -262,7 +296,7 @@ ColorTest::ColorTest() {
               &ColorTest::debugUbColorColorsDisabled,
               &ColorTest::debugHsv});
 
-    #if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+    #if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
     addInstancedTests({&ColorTest::tweakableRgb,
                        &ColorTest::tweakableSrgb,
                        &ColorTest::tweakableRgba,
@@ -405,6 +439,65 @@ void ColorTest::constructParts() {
     CORRADE_VERIFY(std::is_nothrow_constructible<Color4, Color3, Float>::value);
 }
 
+void ColorTest::constructArray() {
+    float data3[]{1.3f, 2.7f, -15.0f};
+    float data4[]{1.3f, 2.7f, -15.0f, 7.0f};
+    Color3 a3{data3};
+    Color4 a4{data4};
+    CORRADE_COMPARE(a3, (Color3{1.3f, 2.7f, -15.0f}));
+    CORRADE_COMPARE(a4, (Color4{1.3f, 2.7f, -15.0f, 7.0f}));
+
+    constexpr float cdata3[]{1.3f, 2.7f, -15.0f};
+    constexpr float cdata4[]{1.3f, 2.7f, -15.0f, 7.0f};
+    constexpr Color3 ca3{cdata3};
+    constexpr Color4 ca4{cdata4};
+    CORRADE_COMPARE(ca3, (Color3{1.3f, 2.7f, -15.0f}));
+    CORRADE_COMPARE(ca4, (Color4{1.3f, 2.7f, -15.0f, 7.0f}));
+
+    /* Implicit conversion is not allowed */
+    CORRADE_VERIFY(!std::is_convertible<float[3], Color3>::value);
+    CORRADE_VERIFY(!std::is_convertible<float[4], Color4>::value);
+
+    CORRADE_VERIFY(std::is_nothrow_constructible<Color3, float[3]>::value);
+    CORRADE_VERIFY(std::is_nothrow_constructible<Color4, float[4]>::value);
+
+    /* See VectorTest::constructArray() for details */
+    #if 0
+    float data1[]{1.3f};
+    float data5[]{1.3f, 2.7f, -15.0f, 7.0f, 22.6f};
+    Color3 b3{data1};
+    Color4 b4{data1};
+    Color3 c3{data5};
+    Color4 c4{data5};
+    #endif
+}
+
+void ColorTest::constructArrayRvalue() {
+    /* Silly but why not. Could theoretically help with some fancier types
+       that'd otherwise require explicit typing with the variadic
+       constructor. */
+    Color3 a3{{1.3f, 2.7f, -15.0f}};
+    Color4 a4{{1.3f, 2.7f, -15.0f, 7.0f}};
+    CORRADE_COMPARE(a3, (Color3{1.3f, 2.7f, -15.0f}));
+    CORRADE_COMPARE(a4, (Color4{1.3f, 2.7f, -15.0f, 7.0f}));
+
+    constexpr Color3 ca3{{1.3f, 2.7f, -15.0f}};
+    constexpr Color4 ca4{{1.3f, 2.7f, -15.0f, 7.0f}};
+    CORRADE_COMPARE(ca3, (Color3{1.3f, 2.7f, -15.0f}));
+    CORRADE_COMPARE(ca4, (Color4{1.3f, 2.7f, -15.0f, 7.0f}));
+
+    /* See VectorTest::constructArrayRvalue() for details */
+    #if 0
+    Color3 c3{{1.3f, 2.7f, -15.0f, 7.0f}};
+    Color4 c4{{1.3f, 2.7f, -15.0f, 7.0f, 22.6f}};
+    #endif
+    #if 0 || (defined(CORRADE_TARGET_GCC) && !defined(CORRADE_TARGET_CLANG) && __GNUC__ < 5)
+    CORRADE_WARN("Creating a Color from a smaller array isn't an error on GCC 4.8.");
+    Color3 b3{{1.3f, 2.7f}};
+    Color4 b4{{1.3f, 2.7f}};
+    #endif
+}
+
 void ColorTest::constructConversion() {
     constexpr Color3 a(10.1f, 12.5f, 0.75f);
     constexpr Color3ub b(a);
@@ -420,6 +513,27 @@ void ColorTest::constructConversion() {
 
     CORRADE_VERIFY(std::is_nothrow_constructible<Color3ub, Color3>::value);
     CORRADE_VERIFY(std::is_nothrow_constructible<Color4, Color4ub>::value);
+}
+
+void ColorTest::constructBit() {
+    BitVector3 a3{'\x5'}; /* 0b101 */
+    BitVector4 a4{'\xa'}; /* 0b1010 */
+    CORRADE_COMPARE(Color3{a3}, (Color3{1.0f, 0.0f, 1.0f}));
+    CORRADE_COMPARE(Color4ub{a4}, (Color4ub{0, 1, 0, 1}));
+
+    constexpr BitVector3 ca3{'\x5'}; /* 0b101 */
+    constexpr BitVector4 ca4{'\xa'}; /* 0b1010 */
+    constexpr Color3 cb3{ca3};
+    constexpr Color4ub cb4{ca4};
+    CORRADE_COMPARE(cb3, (Color3{1.0f, 0.0f, 1.0f}));
+    CORRADE_COMPARE(cb4, (Color4ub{0, 1, 0, 1}));
+
+    /* Implicit conversion is not allowed */
+    CORRADE_VERIFY(!std::is_convertible<BitVector3, Color3>::value);
+    CORRADE_VERIFY(!std::is_convertible<BitVector4, Color4>::value);
+
+    CORRADE_VERIFY(std::is_nothrow_constructible<Color3, BitVector3>::value);
+    CORRADE_VERIFY(std::is_nothrow_constructible<Color4, BitVector4>::value);
 }
 
 void ColorTest::constructPacking() {
@@ -626,15 +740,26 @@ void ColorTest::data() {
 }
 
 void ColorTest::literals() {
-    constexpr Color3ub a = 0x33b27f_rgb;
-    CORRADE_COMPARE(a, (Color3ub{0x33, 0xb2, 0x7f}));
-
-    constexpr Color4ub b = 0x33b27fcc_rgba;
-    CORRADE_COMPARE(b, (Color4ub{0x33, 0xb2, 0x7f, 0xcc}));
-
-    /* Not constexpr yet */
+    CORRADE_COMPARE(0x33b27f_rgb, (Color3ub{0x33, 0xb2, 0x7f}));
+    CORRADE_COMPARE(0x33b27fcc_rgba, (Color4ub{0x33, 0xb2, 0x7f, 0xcc}));
     CORRADE_COMPARE(0x33b27f_rgbf, (Color3{0.2f, 0.698039f, 0.498039f}));
     CORRADE_COMPARE(0x33b27fcc_rgbaf, (Color4{0.2f, 0.698039f, 0.498039f, 0.8f}));
+
+    /* As the implementation doesn't delegate into unpack() etc in order to be
+       constexpr, test also boundary values to be sure */
+    CORRADE_COMPARE(0xffffff_rgbf, Color3{1.0f});
+    CORRADE_COMPARE(0x000000_rgbf, Color3{0.0f});
+    CORRADE_COMPARE(0xffffffff_rgbaf, Color4{1.0f});
+    CORRADE_COMPARE(0x00000000_rgbaf, (Color4{0.0f, 0.0f}));
+
+    constexpr Color3ub ca = 0x33b27f_rgb;
+    constexpr Color4ub cb = 0x33b27fcc_rgba;
+    constexpr Color3 cc = 0x33b27f_rgbf;
+    constexpr Color4 cd = 0x33b27fcc_rgbaf;
+    CORRADE_COMPARE(ca, (Color3ub{0x33, 0xb2, 0x7f}));
+    CORRADE_COMPARE(cb, (Color4ub{0x33, 0xb2, 0x7f, 0xcc}));
+    CORRADE_COMPARE(cc, (Color3{0.2f, 0.698039f, 0.498039f}));
+    CORRADE_COMPARE(cd, (Color4{0.2f, 0.698039f, 0.498039f, 0.8f}));
 }
 
 void ColorTest::colors() {
@@ -1058,6 +1183,242 @@ void ColorTest::xyY() {
     CORRADE_COMPARE(xyYToXyz(xyY), xyz);
 }
 
+void ColorTest::premultiplied() {
+    /* Usual scenario */
+    CORRADE_COMPARE((Color4{0.6f, 0.8f, 0.4f, 0.25f}).premultiplied(), (Color4{0.15f, 0.2f, 0.1f, 0.25f}));
+    /* Slight imprecision with packed types */
+    CORRADE_COMPARE((Color4us{0x9999, 0xcccc, 0x6666, 0x3fff}).premultiplied(), (Color4us{0x2666, 0x3332, 0x1999, 0x3fff}));
+    /* Lol it wants to treat _rgba.premultiplied() as a literal suffix as a
+       whole?! Load-bearing space?! */
+    CORRADE_COMPARE(0x99cc663f_rgba .premultiplied(), 0x2632193f_rgba);
+
+    /* Zero alpha just zeroes out the rest, no special treatment */
+    CORRADE_COMPARE((Color4{0.6f, 0.8f, 0.4f, 0.0f}).premultiplied(), (Color4{0.0f, 0.0f, 0.0f, 0.0f}));
+    CORRADE_COMPARE((Color4us{0, 0, 0, 0}).premultiplied(), (Color4us{0, 0, 0, 0}));
+    CORRADE_COMPARE(0x00000000_rgba .premultiplied(), 0x00000000_rgba);
+
+    /* RGB channels over 1 aren't treated in any special way */
+    CORRADE_COMPARE((Color4{1.6f, 1.8f, 1.4f, 0.25f}).premultiplied(), (Color4{0.4f, 0.45f, 0.35f, 0.25f}));
+    /* (no way to express this with packed types) */
+
+    constexpr Color4 a{0.6f, 0.8f, 0.4f, 0.25f};
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* do I care? nah */
+    constexpr
+    #endif
+    Color4 ap = a.premultiplied();
+    CORRADE_COMPARE(ap, (Color4{0.15f, 0.2f, 0.1f, 0.25f}));
+
+    constexpr Color4us b{0x9999, 0xcccc, 0x6666, 0x3fff};
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* do I care? nah */
+    constexpr
+    #endif
+    Color4us bp = b.premultiplied();
+    CORRADE_COMPARE(bp, (Color4us{0x2666, 0x3332, 0x1999, 0x3fff}));
+
+    constexpr Color4ub c = 0x99cc663f_rgba;
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* do I care? nah */
+    constexpr
+    #endif
+    Color4ub cp = c.premultiplied();
+    CORRADE_COMPARE(cp, 0x2632193f_rgba);
+}
+
+template<class T> void ColorTest::premultipliedRoundtrip() {
+    setTestCaseTemplateName(TypeTraits<T>::name());
+
+    /* Unpacking, premultiplying and packing a color should give the same
+       result as premultiplying a packed color directly. The implementation
+       doesn't use pack() etc to be constexpr so verify the two have the same
+       rounding behavior.
+
+       This only holds for premultiplied(), with unpremultiplied() it doesn't,
+       see unpremultipliedRoundtrip() below. */
+
+    for(UnsignedInt i = 0; i != Implementation::bitMax<T>(); ++i) {
+        CORRADE_ITERATION(Debug::hex << i);
+
+        Math::Color4<T> a{
+            Math::pack<T>(1.0f), /* 0xff or 0xffff */
+            Math::pack<T>(0.8f), /* 0x99 or 0x9999 */
+            Math::pack<T>(0.2f), /* 0x33 or 0x3333 */
+            T(i)};
+        CORRADE_COMPARE(a.premultiplied(), Math::pack<Math::Color4<T>>(Math::unpack<Color4>(a).premultiplied()));
+    }
+}
+
+void ColorTest::unpremultiplied() {
+    /* Usual scenario, inverse of the above */
+    CORRADE_COMPARE((Color4{0.15f, 0.2f, 0.1f, 0.25f}).unpremultiplied(), (Color4{0.6f, 0.8f, 0.4f, 0.25f}));
+    /* Slight imprecision with packed types */
+    CORRADE_COMPARE((Color4us{0x2666, 0x3333, 0x1999, 0x3fff}).unpremultiplied(), (Color4us{0x999a, 0xccce, 0x6665, 0x3fff}));
+    /* Lol a load-bearing space again */
+    CORRADE_COMPARE(0x2633193f_rgba .unpremultiplied(), 0x9ace653f_rgba);
+
+    /* With zero alpha the RGB channels get ignored, no matter what they are */
+    CORRADE_COMPARE((Color4{0.6f, 0.8f, 0.4f, 0.0f}).unpremultiplied(), (Color4{0.0f, 0.0f, 0.0f, 0.0f}));
+    CORRADE_COMPARE((Color4us{0x6666, 0xcccc, 0xffff, 0}).unpremultiplied(), (Color4us{0, 0, 0, 0}));
+    CORRADE_COMPARE(0x33ff9900_rgba .unpremultiplied(), 0x00000000_rgba);
+
+    /* RGB channels over alpha aren't treated in any special way for floats
+       (inverse of what's tested in premultiplied()) */
+    CORRADE_COMPARE((Color4{0.4f, 0.45f, 0.35f, 0.25f}).unpremultiplied(), (Color4{1.6f, 1.8f, 1.4f, 0.25f}));
+    /* For packed types they get individually clamped -- i.e., it's not all of
+       them being set to full channel, only those that overflow */
+    CORRADE_COMPARE((Color4us{0x6666, 0x2666, 0x4000, 0x3fff}).unpremultiplied(), (Color4us{0xffff, 0x999a, 0xffff, 0x3fff}));
+    CORRADE_COMPARE(0x2666193f_rgba .unpremultiplied(), 0x9aff653f_rgba);
+
+    constexpr Color4 ap{0.15f, 0.2f, 0.1f, 0.25f};
+    constexpr Color4 apz{0.15f, 0.2f, 0.1f, 0.0f};
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* do I care? nah */
+    constexpr
+    #endif
+    Color4 a = ap.unpremultiplied();
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* do I care? nah */
+    constexpr
+    #endif
+    Color4 az = apz.unpremultiplied();
+    CORRADE_COMPARE(a, (Color4{0.6f, 0.8f, 0.4f, 0.25f}));
+    CORRADE_COMPARE(az, (Color4{0.0f, 0.0f, 0.0f, 0.0f}));
+
+    /* Second channel overflows here */
+    constexpr Color4us bp{0x2666, 0x6666, 0x1999, 0x3fff};
+    constexpr Color4us bpz{0x2666, 0x6666, 0x1999, 0};
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* do I care? nah */
+    constexpr
+    #endif
+    Color4us b = bp.unpremultiplied();
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* do I care? nah */
+    constexpr
+    #endif
+    Color4us bz = bpz.unpremultiplied();
+    CORRADE_COMPARE(b, (Color4us{0x999a, 0xffff, 0x6665, 0x3fff}));
+    CORRADE_COMPARE(bz, (Color4us{0, 0, 0, 0}));
+
+    /* First channel overflows here */
+    constexpr Color4ub cp = 0x6633193f_rgba;
+    constexpr Color4ub cpz = 0x66331900_rgba;
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* do I care? nah */
+    constexpr
+    #endif
+    Color4ub c = cp.unpremultiplied();
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* do I care? nah */
+    constexpr
+    #endif
+    Color4ub cz = cpz.unpremultiplied();
+    CORRADE_COMPARE(c, 0xffce653f_rgba);
+    CORRADE_COMPARE(cz, 0x00000000_rgba);
+}
+
+/* A variant of packed unpremultiplied() that does a calculation that has
+   exactly the same rounding behavior as unpack() followed by pack(). */
+template<class T> constexpr Math::Color4<T> unpremultipliedPackedExact(const Math::Color4<T>& color) {
+    return color.a() == T(0) ? Math::Color4<T>{} : Math::Color4<T>{
+        T(Implementation::bitMax<T>()*((typename Math::Color4<T>::FloatingPointType(min(color.r(), color.a()))/Implementation::bitMax<T>())/(typename Math::Color4<T>::FloatingPointType(color.a())/Implementation::bitMax<T>())) + typename Math::Color4<T>::FloatingPointType(0.5)),
+        T(Implementation::bitMax<T>()*((typename Math::Color4<T>::FloatingPointType(min(color.g(), color.a()))/Implementation::bitMax<T>())/(typename Math::Color4<T>::FloatingPointType(color.a())/Implementation::bitMax<T>())) + typename Math::Color4<T>::FloatingPointType(0.5)),
+        T(Implementation::bitMax<T>()*((typename Math::Color4<T>::FloatingPointType(min(color.b(), color.a()))/Implementation::bitMax<T>())/(typename Math::Color4<T>::FloatingPointType(color.a())/Implementation::bitMax<T>())) + typename Math::Color4<T>::FloatingPointType(0.5)),
+        color.a()
+    };
+}
+
+template<class T> void ColorTest::unpremultipliedRoundtrip() {
+    auto&& data = UnpremultipliedRoundtripData[testCaseInstanceId()];
+    setTestCaseTemplateName(TypeTraits<T>::name());
+    setTestCaseDescription(Utility::format("{}/10, {}/10, {}/10", data.r, data.g, data.b));
+
+    /* Compared to premultipliedRoundtrip(), the sequence of operations with
+       pack()/unpack() causes extra rounding differences and in general is more
+       complex code. The simpler sequence in unpremultiplied() doesn't lead to
+       more precision always, but only in majority of cases, which is what this
+       test tries to show. */
+
+    UnsignedInt impreciseCount = 0, preciseCount = 0;
+    for(UnsignedInt i = 0; i != Implementation::bitMax<T>(); ++i) {
+        CORRADE_ITERATION(Debug::hex << i);
+
+        Math::Color4<T> ap{T(i*data.r/10),
+                           T(i*data.g/10),
+                           T(i*data.b/10),
+                           T(i)};
+
+        /* It only matches when we replicate the exact sequence of operations */
+        Math::Color4<T> ae = unpremultipliedPackedExact(ap);
+        CORRADE_COMPARE(ae, Math::pack<Math::Color4<T>>(Math::unpack<Color4>(ap).unpremultiplied()));
+
+        /* The unpremultiplied() implementation is at most off-by-one from
+           that. Casting, not unpacking, to a float type so we can compare with
+           a ±1 delta even the boundary values without overflow. */
+        Math::Color4<T> a = ap.unpremultiplied();
+        CORRADE_COMPARE_WITH(Color4{a},
+            Color4{Math::pack<Math::Color4<T>>(Math::unpack<Color4>(ap).unpremultiplied())},
+            TestSuite::Compare::around(Color4{1.0f, 1.0f}));
+
+        /* If they're different, the unpremultiplied() should be always closer
+           to the ideal than unpack() + pack() */
+        if(ae != a) {
+            const Color3 expected{
+                Float(UnsignedInt(Implementation::bitMax<T>())*data.r/10)/Implementation::bitMax<T>(),
+                Float(UnsignedInt(Implementation::bitMax<T>())*data.g/10)/Implementation::bitMax<T>(),
+                Float(UnsignedInt(Implementation::bitMax<T>())*data.b/10)/Implementation::bitMax<T>()};
+            const Float aDelta = (Math::unpack<Color3>(a.rgb()) - expected).dot();
+            const Float aeDelta = (Math::unpack<Color3>(ae.rgb()) - expected).dot();
+
+            if(aDelta > aeDelta)
+                ++impreciseCount;
+            else if(aDelta < aeDelta)
+                ++preciseCount;
+        }
+    }
+
+    if(impreciseCount > preciseCount)
+        CORRADE_FAIL(impreciseCount << "values out of" << Implementation::bitMax<T>() << "were less precise than the pack()/unpack() variant," << preciseCount << "were more precise.");
+    if(impreciseCount)
+        CORRADE_WARN(impreciseCount << "values out of" << Implementation::bitMax<T>() << "were less precise than the pack()/unpack() variant," << preciseCount << "were more precise.");
+    else if(preciseCount)
+        CORRADE_INFO(preciseCount << "values out of" << Implementation::bitMax<T>() << "were more precise than the pack()/unpack() variant.");
+}
+
+void ColorTest::multiplyDivideIntegral() {
+    typedef Math::Color3<Int> Color3i;
+    typedef Math::Color4<Int> Color4i;
+
+    const Color3i vector3{32, 10, -6};
+    const Color4i vector4{32, 10, -6, 2};
+    const Color3i multiplied3{-48, -15, 9};
+    const Color4i multiplied4{-48, -15, 9, -3};
+
+    CORRADE_COMPARE(vector3*-1.5f, multiplied3);
+    CORRADE_COMPARE(vector4*-1.5f, multiplied4);
+    /* On MSVC 2015 this picks an int*Vector2i overload, leading to a wrong
+       result, unless MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION() is used */
+    CORRADE_COMPARE(-1.5f*vector3, multiplied3);
+    CORRADE_COMPARE(-1.5f*vector4, multiplied4);
+
+    constexpr Color3i cvector3{32, 10, -6};
+    constexpr Color4i cvector4{32, 10, -6, 2};
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* No idea? */
+    constexpr
+    #endif
+    Color3i ca31 = cvector3*-1.5f;
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* No idea? */
+    constexpr
+    #endif
+    Color4i ca41 = cvector4*-1.5f;
+    /* On MSVC 2015 this picks an int*Vector2i overload, leading to a wrong
+       result, unless MAGNUM_VECTORn_OPERATOR_IMPLEMENTATION() is used */
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* No idea? */
+    constexpr
+    #endif
+    Color3i ca32 = -1.5f*cvector3;
+    #ifndef CORRADE_MSVC2015_COMPATIBILITY /* No idea? */
+    constexpr
+    #endif
+    Color4i ca42 = -1.5f*cvector4;
+    CORRADE_COMPARE(ca31, multiplied3);
+    CORRADE_COMPARE(ca41, multiplied4);
+    CORRADE_COMPARE(ca32, multiplied3);
+    CORRADE_COMPARE(ca42, multiplied4);
+}
+
 void ColorTest::strictWeakOrdering() {
     StrictWeakOrdering o;
 
@@ -1102,23 +1463,28 @@ void ColorTest::swizzleType() {
 }
 
 void ColorTest::debug() {
-    std::ostringstream o;
-    Debug(&o) << Color3(0.5f, 0.75f, 1.0f);
-    CORRADE_COMPARE(o.str(), "Vector(0.5, 0.75, 1)\n");
+    Containers::String out;
+    Debug{&out} << Color3(0.5f, 0.75f, 1.0f);
+    CORRADE_COMPARE(out, "Vector(0.5, 0.75, 1)\n");
 
-    o.str({});
-    Debug(&o) << Color4(0.5f, 0.75f, 0.0f, 1.0f);
-    CORRADE_COMPARE(o.str(), "Vector(0.5, 0.75, 0, 1)\n");
+    out = {};
+    Debug{&out} << Color4(0.5f, 0.75f, 0.0f, 1.0f);
+    CORRADE_COMPARE(out, "Vector(0.5, 0.75, 0, 1)\n");
 }
 
 void ColorTest::debugUb() {
-    std::ostringstream o;
-    Debug(&o) << 0x123456_rgb << 0x789abc_rgb;
-    CORRADE_COMPARE(o.str(), "#123456 #789abc\n");
+    Containers::String out;
+    Debug{&out} << 0x123456_rgb << 0x789abc_rgb;
+    CORRADE_COMPARE(out, "#123456 #789abc\n");
 
-    o.str({});
-    Debug(&o) << 0x12345678_rgba << 0x90abcdef_rgba;
-    CORRADE_COMPARE(o.str(), "#12345678 #90abcdef\n");
+    out = {};
+    Debug{&out} << 0x12345678_rgba << 0x90abcdef_rgba;
+    CORRADE_COMPARE(out, "#12345678 #90abcdef\n");
+
+    /* The Hex flag shouldn't affect this at all */
+    out = {};
+    Debug{&out, Debug::Flag::Hex} << 0x789abc_rgb << 0x12345678_rgba;
+    CORRADE_COMPARE(out, "#789abc #12345678\n");
 }
 
 void ColorTest::debugUbColor() {
@@ -1135,12 +1501,12 @@ void ColorTest::debugUbColor() {
         << 0x3bd26799_rgba << 0x3bd267cc_rgba << 0x3bd267ff_rgba;
 
     /* It should work just for the immediately following value */
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out}
         << Debug::color << 0x3bd267_rgb
         << Debug::color << 0x2f83cc99_rgba
         << 0x3bd267_rgb << 0x2f83cc99_rgba;
-    CORRADE_COMPARE(out.str(),
+    CORRADE_COMPARE(out,
         "\033[38;2;59;210;103m\033[48;2;59;210;103m██\033[0m "
         "\033[38;2;47;131;204m▒▒\033[0m #3bd267 #2f83cc99\n");
 }
@@ -1159,21 +1525,21 @@ void ColorTest::debugUbColorColorsDisabled() {
         << 0x3bd26799_rgba << 0x3bd267cc_rgba << 0x3bd267ff_rgba;
 
     /* It should work just for the immediately following value */
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out, Debug::Flag::DisableColors}
         << Debug::color << 0x2f83cc_rgb
         << Debug::color << 0x2f83cc99_rgba
         << 0x2f83cc_rgb << 0x2f83cc99_rgba;
-    CORRADE_COMPARE(out.str(), "▓▓ ▒▒ #2f83cc #2f83cc99\n");
+    CORRADE_COMPARE(out, "▓▓ ▒▒ #2f83cc #2f83cc99\n");
 }
 
 void ColorTest::debugHsv() {
-    std::ostringstream out;
+    Containers::String out;
     Debug{&out} << ColorHsv(135.0_degf, 0.75f, 0.3f);
-    CORRADE_COMPARE(out.str(), "ColorHsv(Deg(135), 0.75, 0.3)\n");
+    CORRADE_COMPARE(out, "ColorHsv(Deg(135), 0.75, 0.3)\n");
 }
 
-#if defined(DOXYGEN_GENERATING_OUTPUT) || defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
+#if defined(CORRADE_TARGET_UNIX) || (defined(CORRADE_TARGET_WINDOWS) && !defined(CORRADE_TARGET_WINDOWS_RT)) || defined(CORRADE_TARGET_EMSCRIPTEN)
 void ColorTest::tweakableRgb() {
     auto&& data = TweakableData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
@@ -1250,11 +1616,11 @@ void ColorTest::tweakableErrorRgb() {
     auto&& data = TweakableErrorData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Error redirectError{&out};
     Utility::TweakableState state = Utility::TweakableParser<Color3ub>::parse(Utility::format(data.data, "ff3366", "rgb")).first();
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.error, "ff3366", "rgb", ""));
+    CORRADE_COMPARE(out, Utility::format(data.error, "ff3366", "rgb", ""));
     CORRADE_COMPARE(state, data.state);
 }
 
@@ -1262,11 +1628,11 @@ void ColorTest::tweakableErrorSrgb() {
     auto&& data = TweakableErrorData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Error redirectError{&out};
     Utility::TweakableState state = Utility::TweakableParser<Vector3ub>::parse(Utility::format(data.data, "ff3366", "srgb")).first();
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.error, "ff3366", "rgb", "s"));
+    CORRADE_COMPARE(out, Utility::format(data.error, "ff3366", "rgb", "s"));
     CORRADE_COMPARE(state, data.state);
 }
 
@@ -1274,11 +1640,11 @@ void ColorTest::tweakableErrorRgba() {
     auto&& data = TweakableErrorData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Error redirectError{&out};
     Utility::TweakableState state = Utility::TweakableParser<Color4ub>::parse(Utility::format(data.data, "ff3366aa", "rgba")).first();
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.error, "ff3366aa", "rgba", ""));
+    CORRADE_COMPARE(out, Utility::format(data.error, "ff3366aa", "rgba", ""));
     CORRADE_COMPARE(state, data.state);
 }
 
@@ -1286,11 +1652,11 @@ void ColorTest::tweakableErrorSrgba() {
     auto&& data = TweakableErrorData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Error redirectError{&out};
     Utility::TweakableState state = Utility::TweakableParser<Vector4ub>::parse(Utility::format(data.data, "ff3366aa", "srgba")).first();
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.error, "ff3366aa", "rgba", "s"));
+    CORRADE_COMPARE(out, Utility::format(data.error, "ff3366aa", "rgba", "s"));
     CORRADE_COMPARE(state, data.state);
 }
 
@@ -1298,11 +1664,11 @@ void ColorTest::tweakableErrorRgbf() {
     auto&& data = TweakableErrorData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Error redirectError{&out};
     Utility::TweakableState state = Utility::TweakableParser<Color3>::parse(Utility::format(data.data, "ff3366", "rgbf")).first();
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.error, "ff3366", "rgbf", ""));
+    CORRADE_COMPARE(out, Utility::format(data.error, "ff3366", "rgbf", ""));
     CORRADE_COMPARE(state, data.state);
 }
 
@@ -1310,11 +1676,11 @@ void ColorTest::tweakableErrorSrgbf() {
     auto&& data = TweakableErrorData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Error redirectError{&out};
     Utility::TweakableState state = Utility::TweakableParser<Color3>::parse(Utility::format(data.data, "ff3366", "srgbf")).first();
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.error, "ff3366", "rgbf", "s"));
+    CORRADE_COMPARE(out, Utility::format(data.error, "ff3366", "rgbf", "s"));
     CORRADE_COMPARE(state, data.state);
 }
 
@@ -1322,11 +1688,11 @@ void ColorTest::tweakableErrorRgbaf() {
     auto&& data = TweakableErrorData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Error redirectError{&out};
     Utility::TweakableState state = Utility::TweakableParser<Color4>::parse(Utility::format(data.data, "ff3366aa", "rgbaf")).first();
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.error, "ff3366aa", "rgbaf", ""));
+    CORRADE_COMPARE(out, Utility::format(data.error, "ff3366aa", "rgbaf", ""));
     CORRADE_COMPARE(state, data.state);
 }
 
@@ -1334,11 +1700,11 @@ void ColorTest::tweakableErrorSrgbaf() {
     auto&& data = TweakableErrorData[testCaseInstanceId()];
     setTestCaseDescription(data.name);
 
-    std::ostringstream out;
+    Containers::String out;
     Warning redirectWarning{&out};
     Error redirectError{&out};
     Utility::TweakableState state = Utility::TweakableParser<Color4>::parse(Utility::format(data.data, "ff3366aa", "srgbaf")).first();
-    CORRADE_COMPARE(out.str(), Utility::formatString(data.error, "ff3366aa", "rgbaf", "s"));
+    CORRADE_COMPARE(out, Utility::format(data.error, "ff3366aa", "rgbaf", "s"));
     CORRADE_COMPARE(state, data.state);
 }
 #endif

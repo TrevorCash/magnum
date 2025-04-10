@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -31,19 +32,12 @@
 #cmakedefine MAGNUM_TARGET_GL
 #cmakedefine MAGNUM_TARGET_GLES
 #cmakedefine MAGNUM_TARGET_GLES2
-#cmakedefine MAGNUM_TARGET_GLES3
 #cmakedefine MAGNUM_TARGET_WEBGL
 #cmakedefine MAGNUM_TARGET_EGL
 #cmakedefine MAGNUM_TARGET_VK
 
 #ifdef MAGNUM_BUILD_DEPRECATED
 #include "Corrade/configure.h"
-#ifdef CORRADE_BUILD_MULTITHREADED
-/* For compatibility only, to be removed at some point. Deliberate double space
-   after the #define to avoid being unconditionally matched by older FindMagnum
-   modules. */
-#define  MAGNUM_BUILD_MULTITHREADED
-#endif
 /* The following applies only to desktop platforms */
 #if !defined(CORRADE_TARGET_IOS) && !defined(CORRADE_TARGET_ANDROID) && !defined(CORRADE_TARGET_EMSCRIPTEN) && !defined(CORRADE_TARGET_WINDOWS_RT)
 /* MAGNUM_TARGET_HEADLESS used to be an option defined on desktop GL only, not
@@ -61,6 +55,12 @@
 #define  MAGNUM_TARGET_DESKTOP_GLES
 #endif
 #endif
+/* MAGNUM_TARGET_GLES3 used to be an inverse of MAGNUM_TARGET_GLES2 in an
+   anticipation of there eventually being GLES 4. Used very rarely in the
+   internals and only led to confusion. It's however still a cmakedefine so old
+   FindMagnum modules, which use it for linking OpenGLES3 libraries, can detect
+   and use it. */
+#cmakedefine MAGNUM_TARGET_GLES3
 #endif
 
 #endif // kate: hl c++

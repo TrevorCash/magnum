@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -30,11 +31,14 @@
  */
 
 #include "Magnum/Types.h"
-#include "Magnum/configure.h"
 
-namespace Magnum { namespace Text {
+#ifdef MAGNUM_BUILD_DEPRECATED
+#include <Corrade/Utility/Macros.h>
+#endif
 
 #ifndef DOXYGEN_GENERATING_OUTPUT
+namespace Magnum { namespace Text {
+
 class AbstractFont;
 class AbstractFontConverter;
 class AbstractGlyphCache;
@@ -52,16 +56,30 @@ enum class Script: UnsignedInt;
 
 class FeatureRange;
 
+class RendererCore;
+class Renderer;
+
 #ifdef MAGNUM_TARGET_GL
-class DistanceFieldGlyphCache;
-class GlyphCache;
-class AbstractRenderer;
-template<UnsignedInt> class Renderer;
-typedef Renderer<2> Renderer2D;
-typedef Renderer<3> Renderer3D;
+class DistanceFieldGlyphCacheGL;
+class GlyphCacheGL;
+#ifdef MAGNUM_BUILD_DEPRECATED
+typedef CORRADE_DEPRECATED("use DistanceFieldGlyphCacheGL instead") DistanceFieldGlyphCacheGL DistanceFieldGlyphCache;
+typedef CORRADE_DEPRECATED("use GlyphCacheGL instead") GlyphCacheGL GlyphCache;
+#endif
+#ifndef MAGNUM_TARGET_GLES2
+class GlyphCacheArrayGL;
+#endif
+class RendererGL;
+#ifdef MAGNUM_BUILD_DEPRECATED
+class CORRADE_DEPRECATED("use Renderer or RendererGL instead") AbstractRenderer;
+CORRADE_IGNORE_DEPRECATED_PUSH /* idiotic MSVC warns for deprecated APIs using deprecated APIs */
+typedef CORRADE_DEPRECATED("use Renderer or RendererGL instead") AbstractRenderer Renderer2D;
+typedef CORRADE_DEPRECATED("use Renderer or RendererGL instead") AbstractRenderer Renderer3D;
+CORRADE_IGNORE_DEPRECATED_POP
 #endif
 #endif
 
 }}
+#endif
 
 #endif

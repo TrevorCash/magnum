@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -36,7 +37,7 @@ namespace Magnum {
 
 UnsignedInt pixelFormatSize(const PixelFormat format) {
     CORRADE_ASSERT(!isPixelFormatImplementationSpecific(format),
-        "pixelFormatSize(): can't determine size of an implementation-specific format" << reinterpret_cast<void*>(pixelFormatUnwrap(format)), {});
+        "pixelFormatSize(): can't determine size of an implementation-specific format" << Debug::hex << pixelFormatUnwrap(format), {});
 
     #ifdef CORRADE_TARGET_GCC
     #pragma GCC diagnostic push
@@ -120,7 +121,7 @@ UnsignedInt pixelFormatSize(const PixelFormat format) {
 
 PixelFormat pixelFormatChannelFormat(const PixelFormat format) {
     CORRADE_ASSERT(!isPixelFormatImplementationSpecific(format),
-        "pixelFormatChannelFormat(): can't determine channel format of an implementation-specific format" << reinterpret_cast<void*>(pixelFormatUnwrap(format)), {});
+        "pixelFormatChannelFormat(): can't determine channel format of an implementation-specific format" << Debug::hex << pixelFormatUnwrap(format), {});
 
     #ifdef CORRADE_TARGET_GCC
     #pragma GCC diagnostic push
@@ -211,7 +212,7 @@ PixelFormat pixelFormatChannelFormat(const PixelFormat format) {
 
 UnsignedInt pixelFormatChannelCount(const PixelFormat format) {
     CORRADE_ASSERT(!isPixelFormatImplementationSpecific(format),
-        "pixelFormatChannelCount(): can't determine channel count of an implementation-specific format" << reinterpret_cast<void*>(pixelFormatUnwrap(format)), {});
+        "pixelFormatChannelCount(): can't determine channel count of an implementation-specific format" << Debug::hex << pixelFormatUnwrap(format), {});
 
     #ifdef CORRADE_TARGET_GCC
     #pragma GCC diagnostic push
@@ -292,7 +293,7 @@ UnsignedInt pixelFormatChannelCount(const PixelFormat format) {
 
 bool isPixelFormatNormalized(const PixelFormat format) {
     CORRADE_ASSERT(!isPixelFormatImplementationSpecific(format),
-        "isPixelFormatNormalized(): can't determine type of an implementation-specific format" << reinterpret_cast<void*>(pixelFormatUnwrap(format)), {});
+        "isPixelFormatNormalized(): can't determine type of an implementation-specific format" << Debug::hex << pixelFormatUnwrap(format), {});
 
     #ifdef CORRADE_TARGET_GCC
     #pragma GCC diagnostic push
@@ -371,7 +372,7 @@ bool isPixelFormatNormalized(const PixelFormat format) {
 
 bool isPixelFormatIntegral(const PixelFormat format) {
     CORRADE_ASSERT(!isPixelFormatImplementationSpecific(format),
-        "isPixelFormatIntegral(): can't determine type of an implementation-specific format" << reinterpret_cast<void*>(pixelFormatUnwrap(format)), {});
+        "isPixelFormatIntegral(): can't determine type of an implementation-specific format" << Debug::hex << pixelFormatUnwrap(format), {});
 
     #ifdef CORRADE_TARGET_GCC
     #pragma GCC diagnostic push
@@ -450,7 +451,7 @@ bool isPixelFormatIntegral(const PixelFormat format) {
 
 bool isPixelFormatFloatingPoint(const PixelFormat format) {
     CORRADE_ASSERT(!isPixelFormatImplementationSpecific(format),
-        "isPixelFormatFloatingPoint(): can't determine type of an implementation-specific format" << reinterpret_cast<void*>(pixelFormatUnwrap(format)), {});
+        "isPixelFormatFloatingPoint(): can't determine type of an implementation-specific format" << Debug::hex << pixelFormatUnwrap(format), {});
 
     #ifdef CORRADE_TARGET_GCC
     #pragma GCC diagnostic push
@@ -529,7 +530,7 @@ bool isPixelFormatFloatingPoint(const PixelFormat format) {
 
 bool isPixelFormatSrgb(const PixelFormat format) {
     CORRADE_ASSERT(!isPixelFormatImplementationSpecific(format),
-        "isPixelFormatSrgb(): can't determine colorspace of an implementation-specific format" << reinterpret_cast<void*>(pixelFormatUnwrap(format)), {});
+        "isPixelFormatSrgb(): can't determine colorspace of an implementation-specific format" << Debug::hex << pixelFormatUnwrap(format), {});
 
     #ifdef CORRADE_TARGET_GCC
     #pragma GCC diagnostic push
@@ -608,7 +609,7 @@ bool isPixelFormatSrgb(const PixelFormat format) {
 
 bool isPixelFormatDepthOrStencil(const PixelFormat format) {
     CORRADE_ASSERT(!isPixelFormatImplementationSpecific(format),
-        "isPixelFormatDepthOrStencil(): can't determine type of an implementation-specific format" << reinterpret_cast<void*>(pixelFormatUnwrap(format)), {});
+        "isPixelFormatDepthOrStencil(): can't determine type of an implementation-specific format" << Debug::hex << pixelFormatUnwrap(format), {});
 
     #ifdef CORRADE_TARGET_GCC
     #pragma GCC diagnostic push
@@ -686,7 +687,7 @@ bool isPixelFormatDepthOrStencil(const PixelFormat format) {
 
 PixelFormat pixelFormat(const PixelFormat format, const UnsignedInt channelCount, const bool srgb) {
     CORRADE_ASSERT(!isPixelFormatImplementationSpecific(format),
-        "pixelFormat(): can't assemble a format out of an implementation-specific format" << reinterpret_cast<void*>(pixelFormatUnwrap(format)), {});
+        "pixelFormat(): can't assemble a format out of an implementation-specific format" << Debug::hex << pixelFormatUnwrap(format), {});
     CORRADE_ASSERT(!isPixelFormatDepthOrStencil(format),
         "pixelFormat(): can't assemble a format out of" << format, {});
 
@@ -729,17 +730,14 @@ PixelFormat pixelFormat(const PixelFormat format, const UnsignedInt channelCount
 
 namespace {
 
-#ifndef DOXYGEN_GENERATING_OUTPUT /* It gets *really* confused */
 constexpr const char* PixelFormatNames[] {
     #define _c(format) #format,
     #include "Magnum/Implementation/pixelFormatMapping.hpp"
     #undef _c
 };
-#endif
 
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
 Debug& operator<<(Debug& debug, const PixelFormat value) {
     const bool packed = debug.immediateFlags() >= Debug::Flag::Packed;
 
@@ -747,25 +745,17 @@ Debug& operator<<(Debug& debug, const PixelFormat value) {
         debug << "PixelFormat" << Debug::nospace;
 
     if(isPixelFormatImplementationSpecific(value)) {
-        return debug << (packed ? "ImplementationSpecific(" : "::ImplementationSpecific(") << Debug::nospace << reinterpret_cast<void*>(pixelFormatUnwrap(value)) << Debug::nospace << ")";
+        return debug << (packed ? "ImplementationSpecific(" : "::ImplementationSpecific(") << Debug::nospace << Debug::hex << pixelFormatUnwrap(value) << Debug::nospace << ")";
     }
 
     if(UnsignedInt(value) - 1 < Containers::arraySize(PixelFormatNames)) {
         return debug << (packed ? "" : "::") << Debug::nospace << PixelFormatNames[UnsignedInt(value) - 1];
     }
 
-    return debug << (packed ? "" : "(") << Debug::nospace << reinterpret_cast<void*>(UnsignedInt(value)) << Debug::nospace << (packed ? "" : ")");
+    return debug << (packed ? "" : "(") << Debug::nospace << Debug::hex << UnsignedInt(value) << Debug::nospace << (packed ? "" : ")");
 }
-#endif
 
 namespace {
-
-#ifndef DOXYGEN_GENERATING_OUTPUT /* It gets *really* confused */
-constexpr const char* CompressedPixelFormatNames[] {
-    #define _c(format, width, height, depth, size) #format,
-    #include "Magnum/Implementation/compressedPixelFormatMapping.hpp"
-    #undef _c
-};
 
 constexpr UnsignedShort CompressedBlockData[] {
     /* Assuming w/h/d/s is never larger than 16 (and never zero), each number
@@ -781,13 +771,12 @@ constexpr UnsignedShort CompressedBlockData[] {
     #include "Magnum/Implementation/compressedPixelFormatMapping.hpp"
     #undef _c
 };
-#endif
 
 }
 
 Vector3i compressedPixelFormatBlockSize(const CompressedPixelFormat format) {
     CORRADE_ASSERT(!(UnsignedInt(format) & (1 << 31)),
-        "compressedPixelFormatBlockSize(): can't determine size of an implementation-specific format" << reinterpret_cast<void*>(compressedPixelFormatUnwrap(format)), {});
+        "compressedPixelFormatBlockSize(): can't determine size of an implementation-specific format" << Debug::hex << compressedPixelFormatUnwrap(format), {});
 
     CORRADE_ASSERT(UnsignedInt(format) - 1 < Containers::arraySize(CompressedBlockData),
         "compressedPixelFormatBlockSize(): invalid format" << format, {});
@@ -807,14 +796,404 @@ Vector3i compressedBlockSize(const CompressedPixelFormat format) {
 
 UnsignedInt compressedPixelFormatBlockDataSize(const CompressedPixelFormat format) {
     CORRADE_ASSERT(!(UnsignedInt(format) & (1 << 31)),
-        "compressedPixelFormatBlockDataSize(): can't determine size of an implementation-specific format" << reinterpret_cast<void*>(compressedPixelFormatUnwrap(format)), {});
+        "compressedPixelFormatBlockDataSize(): can't determine size of an implementation-specific format" << Debug::hex << compressedPixelFormatUnwrap(format), {});
 
     CORRADE_ASSERT(UnsignedInt(format) - 1 < Containers::arraySize(CompressedBlockData),
         "compressedPixelFormatBlockDataSize(): invalid format" << format, {});
     return (CompressedBlockData[UnsignedInt(format) - 1] & 0xf) + 1;
 }
 
-#ifndef DOXYGEN_GENERATING_OUTPUT
+bool isCompressedPixelFormatNormalized(const CompressedPixelFormat format) {
+    CORRADE_ASSERT(!isCompressedPixelFormatImplementationSpecific(format),
+        "isCompressedPixelFormatNormalized(): can't determine type of an implementation-specific format" << Debug::hex << compressedPixelFormatUnwrap(format), {});
+
+    #ifdef CORRADE_TARGET_GCC
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic error "-Wswitch"
+    #endif
+    switch(format) {
+        case CompressedPixelFormat::Bc1RGBUnorm:
+        case CompressedPixelFormat::Bc1RGBSrgb:
+        case CompressedPixelFormat::Bc1RGBAUnorm:
+        case CompressedPixelFormat::Bc1RGBASrgb:
+        case CompressedPixelFormat::Bc2RGBAUnorm:
+        case CompressedPixelFormat::Bc2RGBASrgb:
+        case CompressedPixelFormat::Bc3RGBAUnorm:
+        case CompressedPixelFormat::Bc3RGBASrgb:
+        case CompressedPixelFormat::Bc4RUnorm:
+        case CompressedPixelFormat::Bc4RSnorm:
+        case CompressedPixelFormat::Bc5RGUnorm:
+        case CompressedPixelFormat::Bc5RGSnorm:
+        case CompressedPixelFormat::Bc7RGBAUnorm:
+        case CompressedPixelFormat::Bc7RGBASrgb:
+        case CompressedPixelFormat::EacR11Unorm:
+        case CompressedPixelFormat::EacR11Snorm:
+        case CompressedPixelFormat::EacRG11Unorm:
+        case CompressedPixelFormat::EacRG11Snorm:
+        case CompressedPixelFormat::Etc2RGB8Unorm:
+        case CompressedPixelFormat::Etc2RGB8Srgb:
+        case CompressedPixelFormat::Etc2RGB8A1Unorm:
+        case CompressedPixelFormat::Etc2RGB8A1Srgb:
+        case CompressedPixelFormat::Etc2RGBA8Unorm:
+        case CompressedPixelFormat::Etc2RGBA8Srgb:
+        case CompressedPixelFormat::Astc4x4RGBAUnorm:
+        case CompressedPixelFormat::Astc4x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x4RGBAUnorm:
+        case CompressedPixelFormat::Astc5x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x5RGBAUnorm:
+        case CompressedPixelFormat::Astc5x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x5RGBAUnorm:
+        case CompressedPixelFormat::Astc6x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x6RGBAUnorm:
+        case CompressedPixelFormat::Astc6x6RGBASrgb:
+        case CompressedPixelFormat::Astc8x5RGBAUnorm:
+        case CompressedPixelFormat::Astc8x5RGBASrgb:
+        case CompressedPixelFormat::Astc8x6RGBAUnorm:
+        case CompressedPixelFormat::Astc8x6RGBASrgb:
+        case CompressedPixelFormat::Astc8x8RGBAUnorm:
+        case CompressedPixelFormat::Astc8x8RGBASrgb:
+        case CompressedPixelFormat::Astc10x5RGBAUnorm:
+        case CompressedPixelFormat::Astc10x5RGBASrgb:
+        case CompressedPixelFormat::Astc10x6RGBAUnorm:
+        case CompressedPixelFormat::Astc10x6RGBASrgb:
+        case CompressedPixelFormat::Astc10x8RGBAUnorm:
+        case CompressedPixelFormat::Astc10x8RGBASrgb:
+        case CompressedPixelFormat::Astc10x10RGBAUnorm:
+        case CompressedPixelFormat::Astc10x10RGBASrgb:
+        case CompressedPixelFormat::Astc12x10RGBAUnorm:
+        case CompressedPixelFormat::Astc12x10RGBASrgb:
+        case CompressedPixelFormat::Astc12x12RGBAUnorm:
+        case CompressedPixelFormat::Astc12x12RGBASrgb:
+        case CompressedPixelFormat::Astc3x3x3RGBAUnorm:
+        case CompressedPixelFormat::Astc3x3x3RGBASrgb:
+        case CompressedPixelFormat::Astc4x3x3RGBAUnorm:
+        case CompressedPixelFormat::Astc4x3x3RGBASrgb:
+        case CompressedPixelFormat::Astc4x4x3RGBAUnorm:
+        case CompressedPixelFormat::Astc4x4x3RGBASrgb:
+        case CompressedPixelFormat::Astc4x4x4RGBAUnorm:
+        case CompressedPixelFormat::Astc4x4x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x4x4RGBAUnorm:
+        case CompressedPixelFormat::Astc5x4x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x5x4RGBAUnorm:
+        case CompressedPixelFormat::Astc5x5x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x5x5RGBAUnorm:
+        case CompressedPixelFormat::Astc5x5x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x5x5RGBAUnorm:
+        case CompressedPixelFormat::Astc6x5x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x6x5RGBAUnorm:
+        case CompressedPixelFormat::Astc6x6x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x6x6RGBAUnorm:
+        case CompressedPixelFormat::Astc6x6x6RGBASrgb:
+        case CompressedPixelFormat::PvrtcRGB2bppUnorm:
+        case CompressedPixelFormat::PvrtcRGB2bppSrgb:
+        case CompressedPixelFormat::PvrtcRGBA2bppUnorm:
+        case CompressedPixelFormat::PvrtcRGBA2bppSrgb:
+        case CompressedPixelFormat::PvrtcRGB4bppUnorm:
+        case CompressedPixelFormat::PvrtcRGB4bppSrgb:
+        case CompressedPixelFormat::PvrtcRGBA4bppUnorm:
+        case CompressedPixelFormat::PvrtcRGBA4bppSrgb:
+            return true;
+        case CompressedPixelFormat::Bc6hRGBUfloat:
+        case CompressedPixelFormat::Bc6hRGBSfloat:
+        case CompressedPixelFormat::Astc4x4RGBAF:
+        case CompressedPixelFormat::Astc5x4RGBAF:
+        case CompressedPixelFormat::Astc5x5RGBAF:
+        case CompressedPixelFormat::Astc6x5RGBAF:
+        case CompressedPixelFormat::Astc6x6RGBAF:
+        case CompressedPixelFormat::Astc8x5RGBAF:
+        case CompressedPixelFormat::Astc8x6RGBAF:
+        case CompressedPixelFormat::Astc8x8RGBAF:
+        case CompressedPixelFormat::Astc10x5RGBAF:
+        case CompressedPixelFormat::Astc10x6RGBAF:
+        case CompressedPixelFormat::Astc10x8RGBAF:
+        case CompressedPixelFormat::Astc10x10RGBAF:
+        case CompressedPixelFormat::Astc12x10RGBAF:
+        case CompressedPixelFormat::Astc12x12RGBAF:
+        case CompressedPixelFormat::Astc3x3x3RGBAF:
+        case CompressedPixelFormat::Astc4x3x3RGBAF:
+        case CompressedPixelFormat::Astc4x4x3RGBAF:
+        case CompressedPixelFormat::Astc4x4x4RGBAF:
+        case CompressedPixelFormat::Astc5x4x4RGBAF:
+        case CompressedPixelFormat::Astc5x5x4RGBAF:
+        case CompressedPixelFormat::Astc5x5x5RGBAF:
+        case CompressedPixelFormat::Astc6x5x5RGBAF:
+        case CompressedPixelFormat::Astc6x6x5RGBAF:
+        case CompressedPixelFormat::Astc6x6x6RGBAF:
+            return false;
+    }
+    #ifdef CORRADE_TARGET_GCC
+    #pragma GCC diagnostic pop
+    #endif
+
+    CORRADE_ASSERT_UNREACHABLE("isCompressedPixelFormatNormalized(): invalid format" << format, {});
+}
+
+bool isCompressedPixelFormatFloatingPoint(const CompressedPixelFormat format) {
+    CORRADE_ASSERT(!isCompressedPixelFormatImplementationSpecific(format),
+        "isCompressedPixelFormatFloatingPoint(): can't determine type of an implementation-specific format" << Debug::hex << compressedPixelFormatUnwrap(format), {});
+
+    /* Yes, this is currently the exact inverse of
+       isCompressedPixelFormatNormalized(), so one function could call the
+       other and negate the result. But keeping it this way in case there's
+       some future integer CompressedPixelFormat, which would be false in both
+       and which would need a new isCompressedPixelFormatIntegral(). */
+
+    #ifdef CORRADE_TARGET_GCC
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic error "-Wswitch"
+    #endif
+    switch(format) {
+        case CompressedPixelFormat::Bc6hRGBUfloat:
+        case CompressedPixelFormat::Bc6hRGBSfloat:
+        case CompressedPixelFormat::Astc4x4RGBAF:
+        case CompressedPixelFormat::Astc5x4RGBAF:
+        case CompressedPixelFormat::Astc5x5RGBAF:
+        case CompressedPixelFormat::Astc6x5RGBAF:
+        case CompressedPixelFormat::Astc6x6RGBAF:
+        case CompressedPixelFormat::Astc8x5RGBAF:
+        case CompressedPixelFormat::Astc8x6RGBAF:
+        case CompressedPixelFormat::Astc8x8RGBAF:
+        case CompressedPixelFormat::Astc10x5RGBAF:
+        case CompressedPixelFormat::Astc10x6RGBAF:
+        case CompressedPixelFormat::Astc10x8RGBAF:
+        case CompressedPixelFormat::Astc10x10RGBAF:
+        case CompressedPixelFormat::Astc12x10RGBAF:
+        case CompressedPixelFormat::Astc12x12RGBAF:
+        case CompressedPixelFormat::Astc3x3x3RGBAF:
+        case CompressedPixelFormat::Astc4x3x3RGBAF:
+        case CompressedPixelFormat::Astc4x4x3RGBAF:
+        case CompressedPixelFormat::Astc4x4x4RGBAF:
+        case CompressedPixelFormat::Astc5x4x4RGBAF:
+        case CompressedPixelFormat::Astc5x5x4RGBAF:
+        case CompressedPixelFormat::Astc5x5x5RGBAF:
+        case CompressedPixelFormat::Astc6x5x5RGBAF:
+        case CompressedPixelFormat::Astc6x6x5RGBAF:
+        case CompressedPixelFormat::Astc6x6x6RGBAF:
+            return true;
+        case CompressedPixelFormat::Bc1RGBUnorm:
+        case CompressedPixelFormat::Bc1RGBSrgb:
+        case CompressedPixelFormat::Bc1RGBAUnorm:
+        case CompressedPixelFormat::Bc1RGBASrgb:
+        case CompressedPixelFormat::Bc2RGBAUnorm:
+        case CompressedPixelFormat::Bc2RGBASrgb:
+        case CompressedPixelFormat::Bc3RGBAUnorm:
+        case CompressedPixelFormat::Bc3RGBASrgb:
+        case CompressedPixelFormat::Bc4RUnorm:
+        case CompressedPixelFormat::Bc4RSnorm:
+        case CompressedPixelFormat::Bc5RGUnorm:
+        case CompressedPixelFormat::Bc5RGSnorm:
+        case CompressedPixelFormat::Bc7RGBAUnorm:
+        case CompressedPixelFormat::Bc7RGBASrgb:
+        case CompressedPixelFormat::EacR11Unorm:
+        case CompressedPixelFormat::EacR11Snorm:
+        case CompressedPixelFormat::EacRG11Unorm:
+        case CompressedPixelFormat::EacRG11Snorm:
+        case CompressedPixelFormat::Etc2RGB8Unorm:
+        case CompressedPixelFormat::Etc2RGB8Srgb:
+        case CompressedPixelFormat::Etc2RGB8A1Unorm:
+        case CompressedPixelFormat::Etc2RGB8A1Srgb:
+        case CompressedPixelFormat::Etc2RGBA8Unorm:
+        case CompressedPixelFormat::Etc2RGBA8Srgb:
+        case CompressedPixelFormat::Astc4x4RGBAUnorm:
+        case CompressedPixelFormat::Astc4x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x4RGBAUnorm:
+        case CompressedPixelFormat::Astc5x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x5RGBAUnorm:
+        case CompressedPixelFormat::Astc5x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x5RGBAUnorm:
+        case CompressedPixelFormat::Astc6x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x6RGBAUnorm:
+        case CompressedPixelFormat::Astc6x6RGBASrgb:
+        case CompressedPixelFormat::Astc8x5RGBAUnorm:
+        case CompressedPixelFormat::Astc8x5RGBASrgb:
+        case CompressedPixelFormat::Astc8x6RGBAUnorm:
+        case CompressedPixelFormat::Astc8x6RGBASrgb:
+        case CompressedPixelFormat::Astc8x8RGBAUnorm:
+        case CompressedPixelFormat::Astc8x8RGBASrgb:
+        case CompressedPixelFormat::Astc10x5RGBAUnorm:
+        case CompressedPixelFormat::Astc10x5RGBASrgb:
+        case CompressedPixelFormat::Astc10x6RGBAUnorm:
+        case CompressedPixelFormat::Astc10x6RGBASrgb:
+        case CompressedPixelFormat::Astc10x8RGBAUnorm:
+        case CompressedPixelFormat::Astc10x8RGBASrgb:
+        case CompressedPixelFormat::Astc10x10RGBAUnorm:
+        case CompressedPixelFormat::Astc10x10RGBASrgb:
+        case CompressedPixelFormat::Astc12x10RGBAUnorm:
+        case CompressedPixelFormat::Astc12x10RGBASrgb:
+        case CompressedPixelFormat::Astc12x12RGBAUnorm:
+        case CompressedPixelFormat::Astc12x12RGBASrgb:
+        case CompressedPixelFormat::Astc3x3x3RGBAUnorm:
+        case CompressedPixelFormat::Astc3x3x3RGBASrgb:
+        case CompressedPixelFormat::Astc4x3x3RGBAUnorm:
+        case CompressedPixelFormat::Astc4x3x3RGBASrgb:
+        case CompressedPixelFormat::Astc4x4x3RGBAUnorm:
+        case CompressedPixelFormat::Astc4x4x3RGBASrgb:
+        case CompressedPixelFormat::Astc4x4x4RGBAUnorm:
+        case CompressedPixelFormat::Astc4x4x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x4x4RGBAUnorm:
+        case CompressedPixelFormat::Astc5x4x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x5x4RGBAUnorm:
+        case CompressedPixelFormat::Astc5x5x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x5x5RGBAUnorm:
+        case CompressedPixelFormat::Astc5x5x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x5x5RGBAUnorm:
+        case CompressedPixelFormat::Astc6x5x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x6x5RGBAUnorm:
+        case CompressedPixelFormat::Astc6x6x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x6x6RGBAUnorm:
+        case CompressedPixelFormat::Astc6x6x6RGBASrgb:
+        case CompressedPixelFormat::PvrtcRGB2bppUnorm:
+        case CompressedPixelFormat::PvrtcRGB2bppSrgb:
+        case CompressedPixelFormat::PvrtcRGBA2bppUnorm:
+        case CompressedPixelFormat::PvrtcRGBA2bppSrgb:
+        case CompressedPixelFormat::PvrtcRGB4bppUnorm:
+        case CompressedPixelFormat::PvrtcRGB4bppSrgb:
+        case CompressedPixelFormat::PvrtcRGBA4bppUnorm:
+        case CompressedPixelFormat::PvrtcRGBA4bppSrgb:
+            return false;
+    }
+    #ifdef CORRADE_TARGET_GCC
+    #pragma GCC diagnostic pop
+    #endif
+
+    CORRADE_ASSERT_UNREACHABLE("isCompressedPixelFormatFloatingPoint(): invalid format" << format, {});
+}
+
+bool isCompressedPixelFormatSrgb(const CompressedPixelFormat format) {
+    CORRADE_ASSERT(!isCompressedPixelFormatImplementationSpecific(format),
+        "isCompressedPixelFormatSrgb(): can't determine colorspace of an implementation-specific format" << Debug::hex << compressedPixelFormatUnwrap(format), {});
+
+    #ifdef CORRADE_TARGET_GCC
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic error "-Wswitch"
+    #endif
+    switch(format) {
+        case CompressedPixelFormat::Bc1RGBSrgb:
+        case CompressedPixelFormat::Bc1RGBASrgb:
+        case CompressedPixelFormat::Bc2RGBASrgb:
+        case CompressedPixelFormat::Bc3RGBASrgb:
+        case CompressedPixelFormat::Bc7RGBASrgb:
+        case CompressedPixelFormat::Etc2RGB8Srgb:
+        case CompressedPixelFormat::Etc2RGB8A1Srgb:
+        case CompressedPixelFormat::Etc2RGBA8Srgb:
+        case CompressedPixelFormat::Astc4x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x6RGBASrgb:
+        case CompressedPixelFormat::Astc8x5RGBASrgb:
+        case CompressedPixelFormat::Astc8x6RGBASrgb:
+        case CompressedPixelFormat::Astc8x8RGBASrgb:
+        case CompressedPixelFormat::Astc10x5RGBASrgb:
+        case CompressedPixelFormat::Astc10x6RGBASrgb:
+        case CompressedPixelFormat::Astc10x8RGBASrgb:
+        case CompressedPixelFormat::Astc10x10RGBASrgb:
+        case CompressedPixelFormat::Astc12x10RGBASrgb:
+        case CompressedPixelFormat::Astc12x12RGBASrgb:
+        case CompressedPixelFormat::Astc3x3x3RGBASrgb:
+        case CompressedPixelFormat::Astc4x3x3RGBASrgb:
+        case CompressedPixelFormat::Astc4x4x3RGBASrgb:
+        case CompressedPixelFormat::Astc4x4x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x4x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x5x4RGBASrgb:
+        case CompressedPixelFormat::Astc5x5x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x5x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x6x5RGBASrgb:
+        case CompressedPixelFormat::Astc6x6x6RGBASrgb:
+        case CompressedPixelFormat::PvrtcRGB2bppSrgb:
+        case CompressedPixelFormat::PvrtcRGBA2bppSrgb:
+        case CompressedPixelFormat::PvrtcRGB4bppSrgb:
+        case CompressedPixelFormat::PvrtcRGBA4bppSrgb:
+            return true;
+        case CompressedPixelFormat::Bc1RGBUnorm:
+        case CompressedPixelFormat::Bc1RGBAUnorm:
+        case CompressedPixelFormat::Bc2RGBAUnorm:
+        case CompressedPixelFormat::Bc3RGBAUnorm:
+        case CompressedPixelFormat::Bc4RUnorm:
+        case CompressedPixelFormat::Bc4RSnorm:
+        case CompressedPixelFormat::Bc5RGUnorm:
+        case CompressedPixelFormat::Bc5RGSnorm:
+        case CompressedPixelFormat::Bc6hRGBUfloat:
+        case CompressedPixelFormat::Bc6hRGBSfloat:
+        case CompressedPixelFormat::Bc7RGBAUnorm:
+        case CompressedPixelFormat::EacR11Unorm:
+        case CompressedPixelFormat::EacR11Snorm:
+        case CompressedPixelFormat::EacRG11Unorm:
+        case CompressedPixelFormat::EacRG11Snorm:
+        case CompressedPixelFormat::Etc2RGB8Unorm:
+        case CompressedPixelFormat::Etc2RGB8A1Unorm:
+        case CompressedPixelFormat::Etc2RGBA8Unorm:
+        case CompressedPixelFormat::Astc4x4RGBAUnorm:
+        case CompressedPixelFormat::Astc4x4RGBAF:
+        case CompressedPixelFormat::Astc5x4RGBAUnorm:
+        case CompressedPixelFormat::Astc5x4RGBAF:
+        case CompressedPixelFormat::Astc5x5RGBAUnorm:
+        case CompressedPixelFormat::Astc5x5RGBAF:
+        case CompressedPixelFormat::Astc6x5RGBAUnorm:
+        case CompressedPixelFormat::Astc6x5RGBAF:
+        case CompressedPixelFormat::Astc6x6RGBAUnorm:
+        case CompressedPixelFormat::Astc6x6RGBAF:
+        case CompressedPixelFormat::Astc8x5RGBAUnorm:
+        case CompressedPixelFormat::Astc8x5RGBAF:
+        case CompressedPixelFormat::Astc8x6RGBAUnorm:
+        case CompressedPixelFormat::Astc8x6RGBAF:
+        case CompressedPixelFormat::Astc8x8RGBAUnorm:
+        case CompressedPixelFormat::Astc8x8RGBAF:
+        case CompressedPixelFormat::Astc10x5RGBAUnorm:
+        case CompressedPixelFormat::Astc10x5RGBAF:
+        case CompressedPixelFormat::Astc10x6RGBAUnorm:
+        case CompressedPixelFormat::Astc10x6RGBAF:
+        case CompressedPixelFormat::Astc10x8RGBAUnorm:
+        case CompressedPixelFormat::Astc10x8RGBAF:
+        case CompressedPixelFormat::Astc10x10RGBAUnorm:
+        case CompressedPixelFormat::Astc10x10RGBAF:
+        case CompressedPixelFormat::Astc12x10RGBAUnorm:
+        case CompressedPixelFormat::Astc12x10RGBAF:
+        case CompressedPixelFormat::Astc12x12RGBAUnorm:
+        case CompressedPixelFormat::Astc12x12RGBAF:
+        case CompressedPixelFormat::Astc3x3x3RGBAUnorm:
+        case CompressedPixelFormat::Astc3x3x3RGBAF:
+        case CompressedPixelFormat::Astc4x3x3RGBAUnorm:
+        case CompressedPixelFormat::Astc4x3x3RGBAF:
+        case CompressedPixelFormat::Astc4x4x3RGBAUnorm:
+        case CompressedPixelFormat::Astc4x4x3RGBAF:
+        case CompressedPixelFormat::Astc4x4x4RGBAUnorm:
+        case CompressedPixelFormat::Astc4x4x4RGBAF:
+        case CompressedPixelFormat::Astc5x4x4RGBAUnorm:
+        case CompressedPixelFormat::Astc5x4x4RGBAF:
+        case CompressedPixelFormat::Astc5x5x4RGBAUnorm:
+        case CompressedPixelFormat::Astc5x5x4RGBAF:
+        case CompressedPixelFormat::Astc5x5x5RGBAUnorm:
+        case CompressedPixelFormat::Astc5x5x5RGBAF:
+        case CompressedPixelFormat::Astc6x5x5RGBAUnorm:
+        case CompressedPixelFormat::Astc6x5x5RGBAF:
+        case CompressedPixelFormat::Astc6x6x5RGBAUnorm:
+        case CompressedPixelFormat::Astc6x6x5RGBAF:
+        case CompressedPixelFormat::Astc6x6x6RGBAUnorm:
+        case CompressedPixelFormat::Astc6x6x6RGBAF:
+        case CompressedPixelFormat::PvrtcRGB2bppUnorm:
+        case CompressedPixelFormat::PvrtcRGBA2bppUnorm:
+        case CompressedPixelFormat::PvrtcRGB4bppUnorm:
+        case CompressedPixelFormat::PvrtcRGBA4bppUnorm:
+            return false;
+    }
+    #ifdef CORRADE_TARGET_GCC
+    #pragma GCC diagnostic pop
+    #endif
+
+    CORRADE_ASSERT_UNREACHABLE("isCompressedPixelFormatSrgb(): invalid format" << format, {});
+}
+
+namespace {
+
+constexpr const char* CompressedPixelFormatNames[] {
+    #define _c(format, width, height, depth, size) #format,
+    #include "Magnum/Implementation/compressedPixelFormatMapping.hpp"
+    #undef _c
+};
+
+}
+
 Debug& operator<<(Debug& debug, const CompressedPixelFormat value) {
     const bool packed = debug.immediateFlags() >= Debug::Flag::Packed;
 
@@ -822,16 +1201,15 @@ Debug& operator<<(Debug& debug, const CompressedPixelFormat value) {
         debug << "CompressedPixelFormat" << Debug::nospace;
 
     if(isCompressedPixelFormatImplementationSpecific(value)) {
-        return debug << (packed ? "ImplementationSpecific(" : "::ImplementationSpecific(") << Debug::nospace << reinterpret_cast<void*>(compressedPixelFormatUnwrap(value)) << Debug::nospace << ")";
+        return debug << (packed ? "ImplementationSpecific(" : "::ImplementationSpecific(") << Debug::nospace << Debug::hex << compressedPixelFormatUnwrap(value) << Debug::nospace << ")";
     }
 
     if(UnsignedInt(value) - 1 < Containers::arraySize(CompressedPixelFormatNames)) {
         return debug << (packed ? "" : "::") << Debug::nospace << CompressedPixelFormatNames[UnsignedInt(value) - 1];
     }
 
-    return debug << (packed ? "" : "(") << Debug::nospace << reinterpret_cast<void*>(UnsignedInt(value)) << Debug::nospace << (packed ? "" : ")");
+    return debug << (packed ? "" : "(") << Debug::nospace << Debug::hex << UnsignedInt(value) << Debug::nospace << (packed ? "" : ")");
 }
-#endif
 
 }
 

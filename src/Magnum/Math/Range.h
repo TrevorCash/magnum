@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -85,7 +86,7 @@ code that expects a vector type for any dimension. Solution is to
 unconditionally cast the value to a vector type or explicitly specify template
 parameters to choose a vector function overload. For example:
 
-@snippet MagnumMath.cpp Range-generic
+@snippet Math.cpp Range-generic
 */
 template<UnsignedInt dimensions, class T> class Range {
     template<UnsignedInt, class> friend class Range;
@@ -100,7 +101,7 @@ template<UnsignedInt dimensions, class T> class Range {
         typedef typename Implementation::RangeTraits<dimensions, T>::Type VectorType;
 
         /**
-         * @brief Create a range from minimal coordinates and size
+         * @brief Create a range from minimal coordinates and a size
          * @param min   Minimal coordinates
          * @param size  Range size
          */
@@ -109,14 +110,14 @@ template<UnsignedInt dimensions, class T> class Range {
         }
 
         /**
-         * @brief Create a range from center and half size
+         * @brief Create a range from a center and a half size
          * @param center    Range center
          * @param halfSize  Half size
          *
          * For creating integer center ranges you can use @ref fromSize()
          * together with @ref padded(), for example:
          *
-         * @snippet MagnumMath.cpp Range-fromCenter-integer
+         * @snippet Math.cpp Range-fromCenter-integer
          */
         static Range<dimensions, T> fromCenter(const VectorType& center, const VectorType& halfSize) {
             return {center - halfSize, center + halfSize};
@@ -143,7 +144,7 @@ template<UnsignedInt dimensions, class T> class Range {
         constexpr /*implicit*/ Range(const VectorType& min, const VectorType& max) noexcept: _min{min}, _max{max} {}
         /** @overload */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d == 1>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d == 1, int>::type = 0>
         #endif
         constexpr /*implicit*/ Range(const Vector<dimensions, T>& min, const Vector<dimensions, T>& max) noexcept: _min{Implementation::RangeTraits<dimensions, T>::fromVector(min)}, _max{Implementation::RangeTraits<dimensions, T>::fromVector(max)} {}
 
@@ -153,39 +154,51 @@ template<UnsignedInt dimensions, class T> class Range {
          * Useful in combination with e.g. @ref minmax(), here for example to
          * calculate bounds of a triangle:
          *
-         * @snippet MagnumMath.cpp Range-construct-minmax3D
+         * @snippet Math.cpp Range-construct-minmax3D
          */
         constexpr /*implicit*/ Range(const Containers::Pair<VectorType, VectorType>& minmax) noexcept:
             _min{minmax.first()}, _max{minmax.second()} {}
 
         /** @overload */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d != 1>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d != 1, int>::type = 0>
         #endif
         constexpr /*implicit*/ Range(const Containers::Pair<Vector<dimensions, T>, Vector<dimensions, T>>& minmax) noexcept: _min{minmax.first()}, _max{minmax.second()} {}
 
         /**
-         * @brief Construct range from another of different type
+         * @brief Construct a range from another of different type
          *
          * Performs only default casting on the values, no rounding or
          * anything else. Example usage:
          *
-         * @snippet MagnumMath.cpp Range-conversion
+         * @snippet Math.cpp Range-conversion
          */
         template<class U> constexpr explicit Range(const Range<dimensions, U>& other) noexcept: _min(other._min), _max(other._max) {}
 
-        /** @brief Construct range from external representation */
-        template<class U, class V = decltype(Implementation::RangeConverter<dimensions, T, U>::from(std::declval<U>()))> constexpr explicit Range(const U& other): Range{Implementation::RangeConverter<dimensions, T, U>::from(other)} {}
+        /** @brief Construct a range from external representation */
+        template<class U, class = decltype(Implementation::RangeConverter<dimensions, T, U>::from(std::declval<U>()))> constexpr explicit Range(const U& other): Range{Implementation::RangeConverter<dimensions, T, U>::from(other)} {}
 
-        /** @brief Convert range to external representation */
-        template<class U, class V = decltype(Implementation::RangeConverter<dimensions, T, U>::to(std::declval<Range<dimensions, T>>()))> constexpr explicit operator U() const {
+        /** @brief Convert the range to external representation */
+        template<class U, class = decltype(Implementation::RangeConverter<dimensions, T, U>::to(std::declval<Range<dimensions, T>>()))> constexpr explicit operator U() const {
             return Implementation::RangeConverter<dimensions, T, U>::to(*this);
         }
 
-        /** @brief Equality comparison */
+        /**
+         * @brief Equality comparison
+         *
+         * Done by comparing the underlying vectors, which internally uses
+         * @ref TypeTraits::equals(), i.e. a fuzzy compare for floating-point
+         * types.
+         */
         bool operator==(const Range<dimensions, T>& other) const;
 
-        /** @brief Non-equality comparison */
+        /**
+         * @brief Non-equality comparison
+         *
+         * Done by comparing the underlying vectors, which internally uses
+         * @ref TypeTraits::equals(), i.e. a fuzzy compare for floating-point
+         * types.
+         */
         bool operator!=(const Range<dimensions, T>& other) const {
             return !operator==(other);
         }
@@ -298,7 +311,7 @@ template<UnsignedInt dimensions, class T> class Range {
          * @m_since_latest
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d != 1>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d != 1, int>::type = 0>
         #endif
         Range<dimensions, T> scaled(T scaling) const {
             return {_min*scaling, _max*scaling};
@@ -321,7 +334,7 @@ template<UnsignedInt dimensions, class T> class Range {
          * @m_since_latest
          */
         #ifndef DOXYGEN_GENERATING_OUTPUT
-        template<UnsignedInt d = dimensions, class = typename std::enable_if<d != 1>::type>
+        template<UnsignedInt d = dimensions, typename std::enable_if<d != 1, int>::type = 0>
         #endif
         Range<dimensions, T> scaledFromCenter(T scaling) const {
             /* Can't use *T(0.5) because that won't work for integers */
@@ -454,7 +467,7 @@ template<class T> class Range2D: public Range<2, T> {
          * Useful in combination with e.g. @ref minmax(), here for example to
          * calculate texture bounds:
          *
-         * @snippet MagnumMath.cpp Range-construct-minmax2D
+         * @snippet Math.cpp Range-construct-minmax2D
          */
         constexpr /*implicit*/ Range2D(const Containers::Pair<Vector2<T>, Vector2<T>>& minmax) noexcept: Range<2, T>{minmax.first(), minmax.second()} {}
 
@@ -467,10 +480,8 @@ template<class T> class Range2D: public Range<2, T> {
         /** @copydoc Range(const Range<dimensions, U>&) */
         template<class U> constexpr explicit Range2D(const Range2D<U>& other) noexcept: Range<2, T>(other) {}
 
-        /**
-         * @brief Construct range from external representation
-         */
-        template<class U, class V =
+        /** @brief Construct a range from external representation */
+        template<class U, class =
             #ifndef CORRADE_MSVC2015_COMPATIBILITY /* Causes ICE */
             decltype(Implementation::RangeConverter<2, T, U>::from(std::declval<U>()))
             #else
@@ -605,7 +616,7 @@ template<class T> class Range3D: public Range<3, T> {
          * Useful in combination with e.g. @ref minmax(), here for example to
          * calculate bounds of a triangle:
          *
-         * @snippet MagnumMath.cpp Range-construct-minmax3D
+         * @snippet Math.cpp Range-construct-minmax3D
          */
         constexpr /*implicit*/ Range3D(const Containers::Pair<Vector3<T>, Vector3<T>>& minmax) noexcept: Range<3, T>{minmax.first(), minmax.second()} {}
 
@@ -618,10 +629,8 @@ template<class T> class Range3D: public Range<3, T> {
         /** @copydoc Range(const Range<dimensions, U>&) */
         template<class U> constexpr explicit Range3D(const Range3D<U>& other) noexcept: Range<3, T>(other) {}
 
-        /**
-         * @brief Construct range from external representation
-         */
-        template<class U, class V = decltype(Implementation::RangeConverter<3, T, U>::from(std::declval<U>()))> constexpr explicit Range3D(const U& other) noexcept: Range<3, T>{Implementation::RangeConverter<3, T, U>::from(other)} {}
+        /** @brief Construct a range from external representation */
+        template<class U, class = decltype(Implementation::RangeConverter<3, T, U>::from(std::declval<U>()))> constexpr explicit Range3D(const U& other) noexcept: Range<3, T>{Implementation::RangeConverter<3, T, U>::from(other)} {}
 
         /** @brief Copy constructor */
         constexpr /*implicit*/ Range3D(const Range<3, T>& other) noexcept: Range<3, T>(other) {}
@@ -780,11 +789,35 @@ template<class T> class Range3D: public Range<3, T> {
 Returns a range that contains both input ranges. If one of the ranges is empty,
 only the other is returned. Results are undefined if any range has a negative
 size.
+@see @ref join(const Range<dimensions, T>&, const Vector<dimensions, T>&)
 */
 template<UnsignedInt dimensions, class T> inline Range<dimensions, T> join(const Range<dimensions, T>& a, const Range<dimensions, T>& b) {
     if(a.min() == a.max()) return b;
     if(b.min() == b.max()) return a;
     return {min(a.min(), b.min()), max(a.max(), b.max())};
+}
+
+/** @relatesalso Range
+@brief Join a range and a point
+@m_since_latest
+
+Returns a range that contains both the input range and the point. Compared to
+@ref join(const Range<dimensions, T>&, const Range<dimensions, T>&) there's no
+special casing for an empty range. Results are undefined if the range has a
+negative size.
+*/
+template<UnsignedInt dimensions, class T> inline Range<dimensions, T> join(const Range<dimensions, T>& a,
+    /* std::common_type has to be used so it's possible to pass Vector2 and
+       other subclasses, FFS */
+    #ifdef DOXYGEN_GENERATING_OUTPUT
+    const Vector<dimensions, T>& b
+    #else
+    const typename std::common_type<Vector<dimensions, T>>::type& b
+    #endif
+) {
+    /* Range::min() / max() return scalars for 1D, have to explicitly choose a
+       vector overload of Math::min() / max() to make it work with 1D vectors */
+    return {min<dimensions, T>(a.min(), b), max<dimensions, T>(a.max(), b)};
 }
 
 /** @relatesalso Range

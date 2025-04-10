@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -26,6 +27,7 @@
 #include <Corrade/TestSuite/Tester.h>
 
 #include "Magnum/GL/BufferImage.h"
+#include "Magnum/GL/PixelFormat.h"
 
 namespace Magnum { namespace GL { namespace Test { namespace {
 
@@ -51,6 +53,11 @@ void BufferImageTest::constructNoCreate() {
     {
         BufferImage2D image{NoCreate};
         CORRADE_COMPARE(image.buffer().id(), 0);
+        CORRADE_COMPARE(image.size(), Vector2i{});
+        CORRADE_COMPARE(image.format(), PixelFormat::RGBA);
+        CORRADE_COMPARE(image.type(), PixelType::UnsignedByte);
+        CORRADE_COMPARE(image.pixelSize(), 4);
+        CORRADE_COMPARE(image.dataSize(), 0);
     }
 
     /* Implicit construction is not allowed */
@@ -61,6 +68,9 @@ void BufferImageTest::constructNoCreateCompressed() {
     {
         CompressedBufferImage2D image{NoCreate};
         CORRADE_COMPARE(image.buffer().id(), 0);
+        CORRADE_COMPARE(image.size(), Vector2i{});
+        CORRADE_COMPARE(image.format(), CompressedPixelFormat{});
+        CORRADE_COMPARE(image.dataSize(), 0);
     }
 
     CORRADE_VERIFY(true);

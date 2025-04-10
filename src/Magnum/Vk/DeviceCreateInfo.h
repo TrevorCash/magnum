@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -31,6 +32,7 @@
  */
 
 #include <cstddef>
+#include <initializer_list>
 #include <Corrade/Containers/Pointer.h>
 
 #include "Magnum/Tags.h"
@@ -71,7 +73,7 @@ class MAGNUM_VK_EXPORT DeviceCreateInfo {
              * gets enabled, set this flag.
              *
              * This flag also affects enabling of
-             * @vk_extension{KHR,portability_subset},which is *required* to be
+             * @vk_extension{KHR,portability_subset}, which is *required* to be
              * enabled by the spec on any device that advertises it, and
              * behavior of related @ref DeviceFeatures. See
              * @ref Vk-Device-portability-subset for details.
@@ -187,7 +189,7 @@ class MAGNUM_VK_EXPORT DeviceCreateInfo {
          *
          * @note The function makes copies of string views that are not global
          *      or null-terminated, use the
-         *      @link Containers::Literals::operator""_s() @endlink
+         *      @link Corrade::Containers::Literals::StringLiterals::operator""_s() Containers::Literals::operator""_s() @endlink
          *      literal to prevent that where possible.
          */
         DeviceCreateInfo& addEnabledExtensions(const Containers::StringIterable& extensions) &;

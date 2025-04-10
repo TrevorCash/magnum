@@ -4,7 +4,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -60,7 +61,7 @@ template<class T> class CubicHermite {
         typedef T Type;             /**< @brief Underlying data type */
 
         /**
-         * @brief Create cubic Hermite spline point from adjacent Bézier curve segments
+         * @brief Create a cubic Hermite spline point from adjacent Bézier curve segments
          *
          * Given two adjacent cubic Bézier curve segments defined by points
          * @f$ \boldsymbol{a}_i @f$ and @f$ \boldsymbol{b}_i @f$,
@@ -82,18 +83,16 @@ template<class T> class CubicHermite {
          * the end of a curve, simply pass a dummy Bézier segment that
          * satisfies this constraint as the other parameter:
          *
-         * @snippet MagnumMath.cpp CubicHermite-fromBezier
+         * @snippet Math.cpp CubicHermite-fromBezier
          *
          * Enabled only on vector underlying types. See
          * @ref Bezier::fromCubicHermite() for the inverse operation.
          */
-        template<UnsignedInt dimensions, class U> static
-        #ifdef DOXYGEN_GENERATING_OUTPUT
-        CubicHermite<T>
-        #else
-        typename std::enable_if<std::is_base_of<Vector<dimensions, U>, T>::value, CubicHermite<T>>::type
-        #endif
-        fromBezier(const CubicBezier<dimensions, U>& a, const CubicBezier<dimensions, U>& b) {
+        template<UnsignedInt dimensions, class U
+            #ifndef DOXYGEN_GENERATING_OUTPUT
+            , typename std::enable_if<std::is_base_of<Vector<dimensions, U>, T>::value, int>::type = 0
+            #endif
+        > static CubicHermite<T> fromBezier(const CubicBezier<dimensions, U>& a, const CubicBezier<dimensions, U>& b) {
             return CORRADE_CONSTEXPR_DEBUG_ASSERT(a[3] == b[0],
                 "Math::CubicHermite::fromBezier(): segments are not adjacent"),
                 CubicHermite<T>{3*(a[3] - a[2]), a[3], 3*(b[1] - a[3])};
@@ -123,13 +122,16 @@ template<class T> class CubicHermite {
          * @ref outTangent() is constructed as zero. Enabled only for complex
          * and quaternion types.
          */
-        template<class U = T, class = typename std::enable_if<std::is_constructible<U, IdentityInitT>::value>::type> constexpr explicit CubicHermite(IdentityInitT) noexcept: _inTangent{ZeroInit}, _point{IdentityInit}, _outTangent{ZeroInit} {}
+        #ifndef DOXYGEN_GENERATING_OUTPUT
+        template<class U = T, typename std::enable_if<std::is_constructible<U, IdentityInitT>::value, int>::type = 0>
+        #endif
+        constexpr explicit CubicHermite(IdentityInitT) noexcept: _inTangent{ZeroInit}, _point{IdentityInit}, _outTangent{ZeroInit} {}
 
-        /** @brief Construct cubic Hermite spline point without initializing its contents */
+        /** @brief Construct a cubic Hermite spline point without initializing its contents */
         explicit CubicHermite(Magnum::NoInitT) noexcept: CubicHermite{Magnum::NoInit, typename std::conditional<std::is_constructible<T, Magnum::NoInitT>::value, Magnum::NoInitT*, void*>::type{}} {}
 
         /**
-         * @brief Construct cubic Hermite spline point with given control points
+         * @brief Construct a cubic Hermite spline point with given control points
          * @param inTangent     In-tangent @f$ \boldsymbol{m} @f$
          * @param point         Point @f$ \boldsymbol{p} @f$
          * @param outTangent    Out-tangent @f$ \boldsymbol{n} @f$
@@ -137,7 +139,7 @@ template<class T> class CubicHermite {
         constexpr /*implicit*/ CubicHermite(const T& inTangent, const T& point, const T& outTangent) noexcept: _inTangent{inTangent}, _point{point}, _outTangent{outTangent} {}
 
         /**
-         * @brief Construct cubic Hermite spline point from another of different type
+         * @brief Construct a cubic Hermite spline point from another of different type
          *
          * Performs only default casting on the values, no rounding or
          * anything else.
@@ -171,10 +173,18 @@ template<class T> class CubicHermite {
         }
         #endif
 
-        /** @brief Equality comparison */
+        /**
+         * @brief Equality comparison
+         *
+         * Done using @ref TypeTraits::equals(), i.e. with fuzzy compare.
+         */
         bool operator==(const CubicHermite<T>& other) const;
 
-        /** @brief Non-equality comparison */
+        /**
+         * @brief Non-equality comparison
+         *
+         * Done using @ref TypeTraits::equals(), i.e. with fuzzy compare.
+         */
         bool operator!=(const CubicHermite<T>& other) const {
             return !operator==(other);
         }

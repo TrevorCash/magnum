@@ -2,7 +2,8 @@
     This file is part of Magnum.
 
     Copyright © 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-                2020, 2021, 2022, 2023 Vladimír Vondruš <mosra@centrum.cz>
+                2020, 2021, 2022, 2023, 2024, 2025
+              Vladimír Vondruš <mosra@centrum.cz>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
@@ -83,7 +84,7 @@
 #include <emscripten/version.h>
 #endif
 
-namespace Magnum {
+namespace Magnum { namespace {
 
 /** @page magnum-gl-info Magnum GL Info
 @brief Displays information about Magnum engine OpenGL capabilities
@@ -200,16 +201,17 @@ Vendor extension support:
     for more information.
 */
 
-class MagnumInfo: public Platform::WindowlessApplication {
+#ifndef DOXYGEN_GENERATING_OUTPUT
+class GLInfo: public Platform::WindowlessApplication {
     public:
-        explicit MagnumInfo(const Arguments& arguments);
+        explicit GLInfo(const Arguments& arguments);
 
         int exec() override { return 0; }
 };
 
 using namespace Containers::Literals;
 
-MagnumInfo::MagnumInfo(const Arguments& arguments): Platform::WindowlessApplication{arguments, NoCreate} {
+GLInfo::GLInfo(const Arguments& arguments): Platform::WindowlessApplication{arguments, NoCreate} {
     Utility::Arguments args;
     args.addBooleanOption('s', "short").setHelp("short", "display just essential info and exit")
         .addBooleanOption("extension-strings").setHelp("extension-strings", "list all extension strings provided by the driver (implies --short)")
@@ -873,7 +875,8 @@ MagnumInfo::MagnumInfo(const Arguments& arguments): Platform::WindowlessApplicat
     #undef _l
     #undef _h
 }
+#endif
 
-}
+}}
 
-MAGNUM_WINDOWLESSAPPLICATION_MAIN(Magnum::MagnumInfo)
+MAGNUM_WINDOWLESSAPPLICATION_MAIN(Magnum::GLInfo)
